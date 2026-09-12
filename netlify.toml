@@ -1,0 +1,16 @@
+# Comment Netlify publie ce dépôt.
+#
+# Il n'y a rien à compiler : la page est servie telle quelle, et le dossier
+# entier est publié depuis la racine — c'est là que Netlify trouve _redirects
+# et _headers.
+#
+# La seule chose à faire avant chaque envoi, c'est estamper les adresses des
+# feuilles de style et des scripts de l'empreinte de leur contenu, et renommer
+# le cache du service worker. Oublié, un téléphone qui a déjà ouvert le site
+# ressert sa copie et la modification n'apparaît jamais. C'était jusqu'ici une
+# commande à ne pas oublier ; c'est maintenant Netlify qui la lance, à chaque
+# publication, sans qu'on ait à y penser.
+
+[build]
+  command = "node outils/versionner.mjs"
+  publish = "."
