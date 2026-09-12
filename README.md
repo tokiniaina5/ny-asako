@@ -1,4 +1,4 @@
-# Ny asako — Gestion de stockage
+# Ny asako
 
 Application installable de gestion de stock : produits et mouvements, factures,
 portefeuille, pointage de l'équipe, suivi des livreurs et fil d'actualité pour
