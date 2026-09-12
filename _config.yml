@@ -1,0 +1,26 @@
+# Ce fichier ne sert qu'à GitHub Pages.
+#
+# Le site se publie sur Netlify, où _redirects referme ce qui ne doit pas
+# sortir : le schéma de la base, les fonctions Edge, les outils, le mode
+# d'emploi. Mais GitHub Pages ignore _redirects — c'est une règle Netlify — et
+# il a publié le dépôt entier : les fichiers SQL se téléchargeaient à qui
+# connaissait leur nom.
+#
+# Jekyll, qui construit les pages GitHub, sait au moins ne pas copier ce qu'on
+# lui désigne. La liste ci-dessous les laisse donc dans le dépôt, où ils
+# servent, et hors du site, où ils n'ont rien à faire.
+#
+# Le bon geste reste d'éteindre GitHub Pages (Settings → Pages → Source: None) :
+# un seul site vaut mieux que deux, et celui-ci ne sait pas se refermer tout
+# seul. Ce fichier est la ceinture — au cas où Pages serait rallumé un jour.
+#
+# Ne pas ajouter de .nojekyll : sans Jekyll, plus d'exclusions, et tout
+# redeviendrait public.
+
+exclude:
+  - supabase
+  - outils
+  - LISEZ-MOI-SUPABASE.txt
+  - README.md
+  - netlify.toml
+  - _config.yml
