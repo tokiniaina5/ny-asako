@@ -165,29 +165,54 @@
     return sortie;
   }
 
-  function lienDe(jeton) {
-    return location.origin + location.pathname + '?mpiasa=' + jeton;
+  // L'adresse sur laquelle se bâtissent les deux liens qui partent d'ici.
+  //
+  // Ce n'est pas celle de la page ouverte. Le patron travaille parfois depuis
+  // « localhost », et un lien bâti là-dessus désigne sa propre machine :
+  // l'employé qui le reçoit n'ouvre rien, le client non plus. inviter.js avait
+  // déjà réglé la question pour les liens d'invitation ; ceux d'ici s'y
+  // rattachent, avec la même adresse réglable dans « Nous contacter ».
+  //
+  // Le repli sur l'adresse courante n'est là que si inviter.js n'a pas été
+  // chargé — un lien local vaut mieux que pas de lien du tout.
+  function base() {
+    if (typeof publicBaseUrl === 'function') return publicBaseUrl();
+    return location.origin + location.pathname;
   }
 
-  function donnerLeLien(personne, bouton) {
+  function lienDe(jeton) {
+    return base() + '?mpiasa=' + jeton;
+  }
+
+  // Poser le jeton, séparé de ce qu'on en fait ensuite. Deux boutons mènent
+  // au même lien — le copier, ou l'envoyer par mail — et aucun des deux ne
+  // doit obliger à presser l'autre d'abord.
+  function creerLeJeton(personne, bouton) {
     const client = sb();
-    if (!client) return;
-    if (personne.jeton) { montrerLeLien(personne, personne.jeton); return; }
+    if (!client) return Promise.resolve('');
+    if (personne.jeton) return Promise.resolve(personne.jeton);
 
     if (bouton) bouton.disabled = true;
     const jeton = nouveauJeton();
-    client.from('equipe').update({ jeton: jeton }).eq('id', personne.id)
+    return client.from('equipe').update({ jeton: jeton }).eq('id', personne.id)
       .then(function (res) {
         if (bouton) bouton.disabled = false;
-        if (res && res.error) { direPartout('Tsy voaforona ny rohy : ' + res.error.message, true); return; }
+        if (res && res.error) { direPartout('Tsy voaforona ny rohy : ' + res.error.message, true); return ''; }
         personne.jeton = jeton;
-        montrerLeLien(personne, jeton);
         if (personneOuverte && personneOuverte.id === personne.id) dessinerLienPersonne(personne);
         charger();
+        return jeton;
       }, function () {
         if (bouton) bouton.disabled = false;
         direPartout('Tsy tafita ny fangatahana.', true);
+        return '';
       });
+  }
+
+  function donnerLeLien(personne, bouton) {
+    creerLeJeton(personne, bouton).then(function (jeton) {
+      if (jeton) montrerLeLien(personne, jeton);
+    });
   }
 
   function montrerLeLien(personne, jeton) {
@@ -205,13 +230,46 @@
     }
   }
 
+  // ---------- Le lien par mail ----------
+  // L'adresse saisie à l'inscription ne servait qu'à être relue dans la
+  // liste : rien ne partait jamais vers elle. Le lien se collait donc à la
+  // main dans un message, et une adresse notée ne dispensait de rien.
+  //
+  // C'est le client mail du patron qui s'ouvre, pré-rempli — l'application
+  // n'a pas de serveur d'envoi, et de toute façon un lien qui ouvre un compte
+  // ne devrait pas partir sans que quelqu'un ait lu à qui il l'envoie. Le
+  // dernier geste reste le sien : « Envoyer ».
+  function mailDuLien(personne, jeton) {
+    const lien = lienDe(jeton);
+    const sujet = encodeURIComponent('Ny rohinao — Ny asako');
+    const corps = encodeURIComponent(
+      'Salama ' + personne.nom + ',\n\n' +
+      'Ity ny rohy hidiranao amin\'ny asako. Tsy mila tenimiafina : ampy ny manokatra azy.\n\n' +
+      lien + '\n\n' +
+      'Tehirizo ho anao ihany io rohy io : izy irery no manokatra ny pejinao.\n\n' +
+      'Misaotra.'
+    );
+    // Sans adresse connue, on ouvre quand même : le message est écrit, il ne
+    // manque que le destinataire, que le patron tape lui-même. Un bouton
+    // éteint l'aurait renvoyé effacer la personne et la réinscrire — il n'y a
+    // pas d'écran pour corriger une adresse après coup.
+    const a = personne.email || '';
+    window.location.href = 'mailto:' + a + '?subject=' + sujet + '&body=' + corps;
+  }
+
+  function envoyerLeLienParMail(personne, bouton) {
+    creerLeJeton(personne, bouton).then(function (jeton) {
+      if (jeton) mailDuLien(personne, jeton);
+    });
+  }
+
   // ---------- Le lien du client ----------
   // Le commerçant l'envoie par SMS. Il ne donne rien d'autre que cette
   // course-là : ni le stock, ni les autres clients, ni le téléphone du
   // livreur. Et il s'éteint de lui-même — la fonction cesse de rendre une
   // position dès que la course est arrivée ou annulée.
   function lienSuivi(jeton) {
-    return location.origin + location.pathname + '?suivi=' + jeton;
+    return base() + '?suivi=' + jeton;
   }
 
   function donnerLeLienClient(course, bouton) {
@@ -832,6 +890,16 @@
     const bouton = document.getElementById('personneLienBtn');
     if (ligne) ligne.textContent = p.jeton ? lienDe(p.jeton) : 'Mbola tsy misy rohy.';
     if (bouton) bouton.textContent = p.jeton ? 'Adikao ny rohy' : 'Hamorona rohy';
+
+    // Dire à l'avance où le mail ira. Une adresse manquante n'est pas une
+    // panne : le message s'ouvrira vide de destinataire, et la ligne le
+    // prévient plutôt que de le laisser découvrir.
+    const note = document.getElementById('personneLienMailNote');
+    if (note) {
+      note.textContent = p.email
+        ? 'Halefa any amin\'ny ' + p.email + '.'
+        : 'Tsy misy email voasoratra ho an\'i ' + p.nom + ' : ianao no manoratra azy eo amin\'ny mailaka hisokatra.';
+    }
   }
 
   // Les mêmes articles que ceux qu'il verra : c'est la copie déposée à
@@ -1007,6 +1075,11 @@
     const lienBtn = document.getElementById('personneLienBtn');
     if (lienBtn) lienBtn.addEventListener('click', function () {
       if (personneOuverte) donnerLeLien(personneOuverte, lienBtn);
+    });
+
+    const lienMailBtn = document.getElementById('personneLienMailBtn');
+    if (lienMailBtn) lienMailBtn.addEventListener('click', function () {
+      if (personneOuverte) envoyerLeLienParMail(personneOuverte, lienMailBtn);
     });
 
     const cleBtn = document.getElementById('carteCleBtn');
