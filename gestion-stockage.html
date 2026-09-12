@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestion de Stockage — Tanjona</title>
+<!-- Application installable : le manifeste décrit le nom, l'icône et la façon
+     de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0d10">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- iOS ne lit pas le manifeste : il lui faut ses propres balises. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ny asako">
+<link rel="apple-touch-icon" href="/icone-192.png">
+<!-- Sans image à sa taille exacte, iOS ouvre l'application sur un rectangle
+     vide : il ne lit pas le manifeste, d'où Android tire le sien. -->
+<!-- écrans de démarrage iOS : écrits par outils/icones.mjs -->
+<link rel="apple-touch-startup-image" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/640x1136.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/750x1334.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/demarrage/1242x2208.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/demarrage/1125x2436.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/828x1792.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/demarrage/1242x2688.png">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/demarrage/1170x2532.png">
+<link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/demarrage/1284x2778.png">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/demarrage/1179x2556.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/demarrage/1290x2796.png">
+<link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/demarrage/1206x2622.png">
+<link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/demarrage/1320x2868.png">
+<link rel="apple-touch-startup-image" media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/1488x2266.png">
+<link rel="apple-touch-startup-image" media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2266x1488.png">
+<link rel="apple-touch-startup-image" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/1536x2048.png">
+<link rel="apple-touch-startup-image" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2048x1536.png">
+<link rel="apple-touch-startup-image" media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/1620x2160.png">
+<link rel="apple-touch-startup-image" media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2160x1620.png">
+<link rel="apple-touch-startup-image" media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/1640x2360.png">
+<link rel="apple-touch-startup-image" media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2360x1640.png">
+<link rel="apple-touch-startup-image" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/1668x2224.png">
+<link rel="apple-touch-startup-image" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2224x1668.png">
+<link rel="apple-touch-startup-image" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/1668x2388.png">
+<link rel="apple-touch-startup-image" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2388x1668.png">
+<link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/demarrage/2048x2732.png">
+<link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2732x2048.png">
+<!-- fin des écrans de démarrage iOS -->
+<link rel="icon" href="/icone-192.png" type="image/png">
+<link rel="stylesheet" href="gestion-stockage-css/base.css?v=d0e9b428">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=4eee254f">
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="gestion-stockage-js/supabase-init.js?v=cc96464f"></script>
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="eyebrow">Gestion de Stockage</div>
+    <h1 id="loginTitle">Connexion</h1>
+    <p class="sub" id="loginSub">Première connexion : renseignez vos informations et choisissez un mot de passe pour créer votre compte.</p>
+
+    <!-- Retour d'un compte déjà enregistré : email + code suffisent -->
+    <form id="quickLoginForm" style="display:none;">
+      <div class="field">
+        <label for="quickEmail">Email</label>
+        <input id="quickEmail" type="email" required placeholder="vous@exemple.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="quickCode">Mot de passe</label>
+        <input id="quickCode" type="password" required minlength="6" placeholder="••••••" autocomplete="current-password">
+      </div>
+      <p id="quickLoginStatus" style="font-size:0.75rem; color:var(--muted); margin:-0.4rem 0 0.8rem; min-height:1.1em;"></p>
+      <button type="submit" class="btn btn-primary">Se connecter</button>
+      <button type="button" class="btn btn-sm" id="showFullLoginBtn" style="width:100%; margin-top:0.7rem;">Première connexion / autre compte</button>
+    </form>
+
+    <!-- Retour depuis le lien de réinitialisation reçu par email -->
+    <div id="recoveryBox" style="display:none;">
+      <p class="sub" style="margin-bottom:1rem;">Choisissez votre nouveau code d'accès.</p>
+      <div class="field">
+        <label for="recoveryPassword">Nouveau mot de passe</label>
+        <input id="recoveryPassword" type="password" minlength="6" placeholder="6 caractères minimum" autocomplete="new-password">
+      </div>
+      <p id="recoveryStatus" style="font-size:0.78rem; color:var(--amber); margin:-0.2rem 0 0.8rem; line-height:1.5;"></p>
+      <button type="button" class="btn btn-primary" id="recoverySaveBtn" style="width:100%;">Enregistrer et entrer</button>
+    </div>
+
+    <!-- Deux dépannages séparés : le mot de passe oublié (lien par email, le compte
+         reste ouvert) et la demande de déblocage (compte fermé, paiement à confirmer). -->
+    <div id="forgotWrap" style="display:none;">
+
+      <!-- 1) MOT DE PASSE OUBLIÉ : le lien n'arrive que dans la boîte mail du titulaire -->
+      <button type="button" class="btn btn-sm" id="resetToggleBtn" style="width:100%; margin-top:0.7rem;">🔑 Mot de passe oublié ?</button>
+
+      <div id="resetBox" style="display:none; margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.9rem;">
+        <p style="font-size:0.76rem; color:var(--muted); line-height:1.5; margin-bottom:0.9rem;">
+          Votre compte reste ouvert : nous envoyons un lien à votre email pour choisir un
+          <strong style="color:var(--text);">nouveau mot de passe</strong>. Rien à payer, et
+          personne d'autre ne peut s'en servir : le lien n'arrive que dans votre boîte mail.
+        </p>
+        <div class="field">
+          <label for="resetEmail">Email</label>
+          <input id="resetEmail" type="email" placeholder="vous@exemple.com" autocomplete="email">
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="sendResetLinkBtn" style="width:100%;">✉️ Recevoir un lien par email</button>
+        <p id="resetStatus" style="font-size:0.75rem; color:var(--muted); margin-top:0.7rem; line-height:1.5;"></p>
+      </div>
+
+      <!-- 2) DEMANDE DE DÉBLOCAGE : lettre de demande de validation envoyée au propriétaire -->
+      <button type="button" class="btn btn-sm" id="forgotToggleBtn" style="width:100%; margin-top:0.7rem;">🔓 Mon compte est bloqué — demander un déblocage</button>
+
+      <div id="forgotBox" style="display:none; margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.9rem;">
+        <p style="font-size:0.76rem; color:var(--muted); line-height:1.5; margin-bottom:0.9rem;">
+          Votre accès est fermé (abonnement à régler ou compte suspendu). Le déblocage se règle
+          <strong style="color:var(--text);">avec le solde de votre portefeuille</strong> : rien à
+          envoyer, rien à attendre — votre accès se rouvre tout de suite.
+        </p>
+        <div class="field">
+          <label for="forgotName">Nom</label>
+          <input id="forgotName" type="text" placeholder="Votre nom">
+        </div>
+        <div class="field">
+          <label for="forgotEmail">Email</label>
+          <input id="forgotEmail" type="email" placeholder="vous@exemple.com">
+        </div>
+
+        <!-- Aucun chiffre du portefeuille ici : le solde est l'affaire de la
+             page Portefeuille, pas d'un écran de connexion. Seul le prix est
+             annoncé, parce qu'on ne fait pas payer sans dire combien. -->
+        <div style="border:1px solid var(--line); border-radius:8px; padding:0.8rem 0.9rem; margin-bottom:0.9rem; background:var(--panel-2);">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:0.8rem;">
+            <span style="font-size:0.76rem; color:var(--muted);">Coût du déblocage</span>
+            <strong id="unlockWalletCost" style="font-family:var(--font-mono); font-size:1.1rem; color:var(--cyan);">0</strong>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="payFromWalletBtn" style="width:100%; margin-top:0.8rem;">💰 Payer avec mon solde et débloquer</button>
+        </div>
+
+        <p style="font-size:0.74rem; color:var(--muted); line-height:1.5;">
+          Votre solde et vos retraits se consultent dans <strong style="color:var(--text);">Portefeuille</strong>,
+          une fois entré dans l'application.
+        </p>
+        <p id="forgotStatus" style="font-size:0.75rem; color:var(--muted); margin-top:0.7rem; line-height:1.5;"></p>
+      </div>
+    </div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginName">Nom</label>
+        <input id="loginName" type="text" required placeholder="Votre nom">
+      </div>
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" required placeholder="vous@exemple.com">
+      </div>
+      <div class="field">
+        <label for="loginPhone">Numéro de téléphone</label>
+        <input id="loginPhone" type="tel" placeholder="034 00 000 00">
+      </div>
+      <div class="field">
+        <label for="loginLogo">Logo (image)</label>
+        <input id="loginLogo" type="file" accept="image/*">
+        <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Obligatoire uniquement à la 1ère connexion — ensuite votre nom suffit à retrouver votre logo.</p>
+      </div>
+      <div class="field">
+        <label for="loginCode">Mot de passe</label>
+        <input id="loginCode" type="password" required minlength="6" placeholder="6 caractères minimum" autocomplete="new-password">
+        <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Il est conservé chiffré sur le serveur (jamais sur cet appareil) et vous permet de vous connecter depuis n'importe quel téléphone ou ordinateur.</p>
+      </div>
+      <p id="loginStatus" style="font-size:0.78rem; color:var(--amber); margin:-0.2rem 0 0.8rem; line-height:1.5;"></p>
+      <button type="submit" class="btn btn-primary">Se connecter</button>
+      <button type="button" class="btn btn-sm" id="showQuickLoginBtn" style="width:100%; margin-top:0.7rem; display:none;">J’ai déjà un compte — connexion rapide</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ AUTO-POPUP : INFO ABONNEMENT ============ -->
+<!-- ============ ÉTAPE 2 : PIÈCE D'IDENTITÉ ============ -->
+<!-- Demandée juste après la connexion, avant d'entrer dans l'application.
+     Ces informations restent sur l'appareil et dans le compte du client ;
+     elles ne partent qu'au propriétaire, et seulement en cas d'alerte. -->
+<div id="identityGate" style="display:none; position:fixed; inset:0; background:rgba(4,8,10,0.94); align-items:center; justify-content:center; z-index:210; padding:1rem; overflow-y:auto;">
+  <div class="login-card" style="max-width:420px;">
+    <div class="eyebrow">Étape 2 sur 2</div>
+    <h1 style="font-size:1.15rem;">Vérification d'identité</h1>
+    <p class="sub">
+      Ces informations servent uniquement à vous identifier auprès du propriétaire
+      en cas d'alerte de sécurité sur votre compte. Elles restent sur cet appareil
+      et dans votre compte : personne d'autre ne les voit.
+    </p>
+    <div class="field">
+      <label for="idNumber">Numéro CIN ou passeport</label>
+      <input id="idNumber" type="text" placeholder="Ex : 101 234 567 890">
+    </div>
+    <div class="field">
+      <label for="idDate">Date de la CIN / du passeport</label>
+      <input id="idDate" type="date">
+    </div>
+    <div class="field">
+      <label for="birthDate">Date de naissance</label>
+      <input id="birthDate" type="date">
+    </div>
+    <div class="field">
+      <label for="birthPlace">Lieu de naissance</label>
+      <input id="birthPlace" type="text" placeholder="Ex : Antananarivo">
+    </div>
+    <p id="identityStatus" style="font-size:0.78rem; color:var(--amber); margin:-0.2rem 0 0.8rem; line-height:1.5;"></p>
+    <button type="button" class="btn btn-primary" id="identitySaveBtn" style="width:100%;">Enregistrer et entrer</button>
+  </div>
+</div>
+
+<!-- ============ ACCUEIL : MOT DE BIENVENUE ============ -->
+<!-- Première chose vue en arrivant sur le site, avant l'écran de connexion. -->
+<div id="welcomeOverlay" style="display:none; position:fixed; inset:0; background:rgba(6,10,18,0.94); align-items:center; justify-content:center; z-index:300; padding:1.2rem;">
+  <div class="login-card" style="max-width:520px; position:relative; text-align:center; padding:3rem 2.2rem;">
+    <button type="button" id="welcomeClose" aria-label="Fermer" style="position:absolute; top:0.8rem; right:1rem; background:none; border:none; color:var(--muted); font-size:1.6rem; cursor:pointer; line-height:1;">✕</button>
+    <div class="eyebrow" style="font-size:0.8rem;">Tongasoa · Bienvenue</div>
+    <h1 style="font-size:2rem; line-height:1.25; margin-bottom:0.9rem;">
+      Tongasoa eto amin'ny tranonkala<br>
+      <span style="color:var(--cyan);">Relation &amp; Gestion International</span>
+    </h1>
+    <p class="sub" style="font-size:1rem; margin-bottom:1.8rem;">
+      Bienvenue sur le site de <strong style="color:var(--text);">Relation et Gestion International</strong>.
+    </p>
+    <button type="button" class="btn btn-primary" id="welcomeEnterBtn" style="width:100%;">Hiditra · Entrer</button>
+  </div>
+</div>
+
+<div id="autoNoticeModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:200; padding:1rem;">
+  <div class="login-card" style="max-width:380px; position:relative;">
+    <button type="button" id="autoNoticeClose" aria-label="Fermer" style="position:absolute; top:0.7rem; right:0.9rem; background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer; line-height:1;">✕</button>
+    <div class="eyebrow">Gestion de Stockage</div>
+    <h1 id="autoNoticeTitle" style="font-size:1.15rem;">Essai gratuit &amp; abonnement</h1>
+    <p class="sub" id="autoNoticeText">
+      L'application est <strong>gratuite pendant 7 jours</strong>. Passé ce délai, un abonnement
+      <strong>mensuel</strong> ou <strong>annuel</strong> sera demandé pour continuer à l'utiliser.
+      En cas de non-paiement, l'accès sera bloqué ; un <strong>code de déverrouillage</strong> vous sera
+      alors envoyé par email pour réactiver votre compte.
+    </p>
+    <button type="button" class="btn btn-primary" id="autoNoticeLoginBtn" style="width:100%; display:none;">Se connecter pour débloquer</button>
+  </div>
+</div>
+
+<!-- ============ MODIFIER UN ARTICLE ============ -->
+<div id="editItemModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:200; padding:1rem;">
+  <div class="panel" style="max-width:480px; width:100%; max-height:90vh; overflow-y:auto;">
+    <h3>Modifier l'article</h3>
+    <div class="form-grid">
+      <div class="field" style="margin-bottom:0;">
+        <label>Référence (automatique)</label>
+        <input id="editItemRef" type="text" readonly>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Nom</label>
+        <input id="editItemName" type="text" placeholder="Ex: Câble USB">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Catégorie</label>
+        <input id="editItemCategory" type="text" placeholder="Ex: Électronique">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Quantité</label>
+        <input id="editItemQty" type="number" min="0" value="1">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Unité</label>
+        <select id="editItemUnit">
+          <option value="pièce">Pièce</option>
+          <option value="kg">Kg</option>
+          <option value="g">g</option>
+          <option value="l">Litre</option>
+          <option value="m">Mètre</option>
+          <option value="boîte">Boîte</option>
+          <option value="carton">Carton</option>
+          <option value="sac">Sac</option>
+          <option value="paire">Paire</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Prix unitaire (Ar)</label>
+        <input id="editItemPrice" type="number" min="0" value="0">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Seuil d'alerte</label>
+        <input id="editItemSeuil" type="number" min="0" value="5">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Fournisseur (optionnel)</label>
+        <input id="editItemSupplier" type="text" placeholder="Ex: Grossiste Analakely">
+      </div>
+    </div>
+    <div style="display:flex; gap:0.6rem; margin-top:1rem;">
+      <button type="button" class="btn" id="editItemCancelBtn" style="width:auto;">Annuler</button>
+      <button type="button" class="btn btn-primary" id="editItemSaveBtn" style="width:auto;">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ABONNEMENT / PAYWALL ============ -->
+<div id="paywallScreen" style="display:none; min-height:100vh; align-items:center; justify-content:center; padding:2rem;">
+  <div class="login-card" style="max-width:420px;">
+    <div class="eyebrow">Gestion de Stockage</div>
+    <h1>Abonnement requis</h1>
+    <p class="sub">Votre essai gratuit de 7 jours est terminé. Choisissez une formule pour continuer à utiliser l'application.</p>
+
+    <div class="paywall-plans">
+      <div class="plan-card selected" data-plan="mensuel" id="planMensuel">
+        <div class="plan-name">Mensuel</div>
+        <div class="plan-price">15 000 Ar</div>
+        <div class="plan-note">par mois</div>
+      </div>
+      <div class="plan-card" data-plan="annuel" id="planAnnuel">
+        <div class="plan-name">Annuel</div>
+        <div class="plan-price">150 000 Ar</div>
+        <div class="plan-note">par an (2 mois offerts)</div>
+      </div>
+    </div>
+
+    <!-- Payer avec le portefeuille : rien ne sort de l'application, l'abonnement
+         est actif dans la seconde. C'est la voie la plus courte, donc la première. -->
+    <div style="border:1px solid var(--cyan); border-radius:10px; padding:0.9rem 1rem; margin-bottom:1rem; background:var(--panel-2);">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:0.8rem;">
+        <strong style="font-size:0.9rem;">💰 Payer avec mon portefeuille</strong>
+        <span id="paywallWalletBalance" style="font-family:var(--font-mono); font-size:0.9rem; color:var(--cyan);">—</span>
+      </div>
+      <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0.5rem 0 0.8rem;">
+        Immédiat, sans code à demander : la somme quitte votre solde et votre abonnement démarre.
+      </p>
+      <button type="button" class="btn btn-primary btn-sm" id="paywallWalletBtn" style="width:100%;">Payer avec mon solde</button>
+      <p id="paywallWalletStatus" style="font-size:0.78rem; color:var(--cyan); margin-top:0.6rem; line-height:1.5;"></p>
+    </div>
+
+    <div class="paywall-pay">
+      <strong>Ou payer directement :</strong><br>
+      Envoyez le montant de la formule choisie via MVola, Orange Money ou Airtel Money au
+      <strong data-owner="phone"></strong>, au nom de <strong data-owner="name"></strong>.
+      Ensuite, cliquez sur « Signaler mon paiement » : un mail sera envoyé au vendeur avec votre nom et vos
+      coordonnées. Il vous communiquera un code de déverrouillage à saisir ci-dessous.
+    </div>
+
+    <button type="button" class="btn" id="sendCodeBtn" style="width:100%; margin-bottom:0.8rem;">Signaler mon paiement par mail</button>
+
+    <div class="field">
+      <label for="paywallCodeInput">Code de déverrouillage donné par le vendeur</label>
+      <input id="paywallCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="------">
+    </div>
+    <p id="codeStatus" style="font-size:0.75rem; color:var(--muted); margin:-0.4rem 0 0.8rem;"></p>
+
+    <button type="button" class="btn btn-primary" id="confirmPaymentBtn" style="width:100%;" disabled>Valider le code et débloquer</button>
+    <button type="button" class="btn" id="paywallLogoutBtn" style="width:100%; margin-top:0.6rem;">Se déconnecter</button>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<!-- Sans réseau, la page s'ouvre quand même — le service worker l'a gardée —
+     mais Supabase ne répond pas : les listes restent vides et rien ne dit
+     pourquoi. Ce bandeau le dit. Il vit hors de l'application : la panne de
+     réseau se constate aussi bien devant l'écran de connexion, qui autrement
+     refuse d'entrer sans expliquer. -->
+<div class="bandeau-reseau" id="bandeauReseau" role="status" hidden>
+  <span aria-hidden="true">📡</span>
+  <span>Vous êtes hors ligne — les données peuvent dater.</span>
+</div>
+
+<div id="appScreen">
+  <div id="callOverlay" style="display:none; position:fixed; inset:0; background:rgba(4,8,10,0.94); z-index:200; align-items:center; justify-content:center; flex-direction:column; padding:1.5rem; text-align:center;">
+    <div id="callIncomingBox" style="display:none;">
+      <div style="font-family:var(--font-mono); font-size:0.75rem; color:var(--cyan); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem;" id="callIncomingType">Antso miditra...</div>
+      <div style="font-family:var(--font-display); font-size:1.4rem; margin-bottom:1.6rem; color:var(--text);" id="callIncomingName">—</div>
+      <div style="display:flex; gap:1.2rem; justify-content:center;">
+        <button type="button" class="btn btn-primary btn-icon" id="callAcceptBtn" style="border-radius:50%; width:64px; height:64px; font-size:1.4rem;">✅</button>
+        <button type="button" class="btn btn-red btn-icon" id="callDeclineBtn" style="border-radius:50%; width:64px; height:64px; font-size:1.4rem;">❌</button>
+      </div>
+    </div>
+
+    <div id="callOutgoingBox" style="display:none;">
+      <div style="font-family:var(--font-mono); font-size:0.75rem; color:var(--cyan); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem;">Miantso...</div>
+      <div style="font-family:var(--font-display); font-size:1.4rem; margin-bottom:1.6rem; color:var(--text);" id="callOutgoingName">—</div>
+      <button type="button" class="btn btn-red btn-icon" id="callCancelBtn" style="border-radius:50%; width:64px; height:64px; font-size:1.4rem;">❌</button>
+    </div>
+
+    <div id="callActiveBox" style="display:none; width:100%; max-width:520px;">
+      <div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.6rem;" id="callActiveWith">—</div>
+      <div style="position:relative;">
+        <video id="callRemoteVideo" autoplay playsinline style="width:100%; border-radius:12px; background:#000; max-height:60vh;"></video>
+        <video id="callLocalVideo" autoplay playsinline muted style="position:absolute; bottom:10px; right:10px; width:110px; border-radius:8px; border:2px solid var(--line); background:#000;"></video>
+      </div>
+      <!-- Traduction en direct : ce que dit l'autre s'écrit dans votre langue,
+           et ce que vous dites part traduit dans la sienne. -->
+      <div id="callTranslateBox" style="margin-top:0.8rem; border:1px solid var(--line); border-radius:10px; padding:0.7rem 0.8rem; background:var(--panel-2); text-align:left;">
+        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+          <label style="font-size:0.74rem; color:var(--muted); display:flex; align-items:center; gap:0.4rem;">
+            🌍 Ma langue
+            <select id="callMyLang" style="padding:0.3rem 0.4rem; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.76rem;"></select>
+          </label>
+          <label style="font-size:0.74rem; color:var(--muted); display:flex; align-items:center; gap:0.4rem;">
+            Sa langue
+            <select id="callTheirLang" style="padding:0.3rem 0.4rem; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.76rem;"></select>
+          </label>
+          <button type="button" class="btn btn-sm" id="callTranslateToggle" style="width:auto;">🗣️ Traduire</button>
+        </div>
+        <p id="callTranslateHint" style="font-size:0.7rem; color:var(--muted); margin-top:0.5rem; line-height:1.5;"></p>
+        <div id="callSubtitles" style="margin-top:0.6rem; max-height:130px; overflow-y:auto; font-size:0.82rem; line-height:1.6;"></div>
+      </div>
+
+      <div style="display:flex; gap:0.8rem; justify-content:center; margin-top:1rem; flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm" id="callMuteBtn">🎙️ Mute</button>
+        <button type="button" class="btn btn-sm" id="callCamBtn">📷 Kamera</button>
+        <button type="button" class="btn btn-red btn-sm" id="callHangupBtn">📞 Ajanona</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="brand">Ny <span>asako</span></div>
+        <div style="display:flex; align-items:center; gap:0.5rem; position:relative;">
+
+          <div id="notifPanel" style="display:none; position:absolute; top:44px; right:0; width:300px; max-height:360px; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:50;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:0.7rem 0.9rem; border-bottom:1px solid var(--line);">
+              <strong style="font-size:0.85rem;">Notifications</strong>
+              <button type="button" id="notifClearBtn" style="background:none; border:none; color:var(--cyan); font-size:0.72rem; cursor:pointer;">Tout effacer</button>
+            </div>
+            <div id="notifList"></div>
+          </div>
+
+          <div id="marketPanel" style="display:none; position:absolute; top:44px; right:0; width:300px; max-height:360px; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:50;">
+            <div style="padding:0.7rem 0.9rem; border-bottom:1px solid var(--line);">
+              <strong style="font-size:0.85rem;">🌍 Achats internationaux</strong>
+            </div>
+            <div style="padding:0.8rem 0.9rem;">
+              <p class="community-sub" style="margin-bottom:0.8rem;">Rohy mankany amin'ny varotra international (Alibaba, AliExpress, sy ny hafa).</p>
+              <div id="marketplaceLinks" class="marketplace-row"></div>
+              <div id="marketplaceAdminForm" style="display:none; margin-top:1rem; border-top:1px solid var(--line); padding-top:1rem;">
+                <div class="form-grid">
+                  <div class="field" style="margin-bottom:0;">
+                    <label>Anarana</label>
+                    <input type="text" id="newMarketName" placeholder="Ex: DHgate">
+                  </div>
+                  <div class="field" style="margin-bottom:0;">
+                    <label>Lien</label>
+                    <input type="url" id="newMarketUrl" placeholder="https://...">
+                  </div>
+                  <button type="button" class="btn btn-violet btn-sm" id="addMarketBtn">Ajouter</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="brand-sub">Tanjona · Gestion de Stockage</div>
+
+      <!-- Le hamburger revient pour l'ordinateur, où l'on a une souris et de la
+           place : il se pose où l'on veut. Sur téléphone, c'est la loupe de la
+           rangée du bas qui ouvre le même menu — les deux ne paraissent jamais
+           ensemble. -->
+      <button class="menu-toggle floating" id="menuFlottant" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
+
+      <!-- Le menu ne porte plus la navigation — elle est passée dans la rangée
+           du bas. Il ne reste que l'identité et la sortie : « Se déconnecter »
+           n'a rien à faire dans une rangée d'icônes qui défile, où le doigt
+           l'atteindrait par accident. -->
+      <div class="nav-list" id="navList">
+        <input type="search" id="menuRecherche" class="menu-recherche" placeholder="Karohy ny pejy..." aria-label="Rechercher une page" autocomplete="off">
+        <p class="menu-vide" id="menuVide" style="display:none;">Tsy misy pejy mifanaraka.</p>
+        <button type="button" class="nav-action" id="menuAccueil">🏠 Botika</button>
+        <button type="button" class="nav-action" id="composerToggle" aria-label="Écrire un message" aria-expanded="false">✏️ Écrire</button>
+        <button type="button" class="nav-action" id="menuArticles">📋 Articles</button>
+        <button type="button" class="nav-action" id="notifToggle" aria-label="Notifications" aria-expanded="false" style="position:relative;">
+          <span>🔔 Notifications</span>
+          <span id="notifBadge" style="display:none; background:#ff6b6b; color:#fff; font-size:0.62rem; font-weight:700; border-radius:999px; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 4px;">0</span>
+        </button>
+        <button type="button" class="nav-action" id="marketToggle" aria-label="Achats internationaux" aria-expanded="false">🌍 Achats internationaux</button>
+        <!-- « Stock » ne se montre plus : on y entre par Accueil ou Articles,
+             qui sont ses deux vues. L'entrée reste pourtant là, masquée : c'est
+             par elle que le code ouvre la section — l'Accueil et les Articles
+             appelés depuis une autre page, comme la recherche globale, passent
+             tous par ce point. La retirer les laisserait afficher une vue que
+             personne ne regarde. -->
+        <div class="nav-item active" id="navStock" data-section="stock" style="display:none;">📦 Stock</div>
+        <div class="nav-item" data-section="factures">🧾 Factures</div>
+        <div class="nav-item" data-section="inviter">✉️ Inviter des amis</div>
+        <div class="nav-item" data-section="contact">☎️ Nous contacter</div>
+        <div class="nav-item" data-section="live">🔴 Live direct</div>
+        <div class="nav-item" data-section="appels">📞 Antso mivantana</div>
+        <div class="nav-item" data-section="wallet">💰 Portefeuille</div>
+        <div class="nav-item" data-section="mpiasa">👷 Mpiasa</div>
+        <div class="nav-item" data-section="livreur">🛵 Livreur</div>
+        <div class="nav-item" data-section="abonnement">💳 Abonnement</div>
+        <div class="nav-item" data-section="fond">🖼️ Fond d'écran</div>
+        <div class="nav-item" data-section="connexions" id="navParametres">⚙️ Paramètres</div>
+        <!-- Espace du propriétaire : masqué pour tous les clients -->
+        <div class="nav-item" data-section="admin" id="navAdmin" style="display:none;">🛡️ Espace admin</div>
+
+        <div class="user-chip">
+          <strong id="currentUserName">—</strong>
+          <span id="currentUserEmail">—</span>
+        </div>
+        <button class="btn btn-red btn-sm" id="logoutBtn" style="margin-top:0.8rem;">Se déconnecter</button>
+        <!-- L'empreinte de la version installée. Sans elle, « c'est encore
+             l'ancienne » et « c'est la nouvelle » se ressemblent trop. -->
+        <div class="menu-version" id="menuVersion">version —</div>
+      </div>
+
+      <div class="nav-spacer"></div>
+    </aside>
+
+    <main class="content">
+
+      <!-- Rangée fixée en bas, commune à toutes les pages. Il n'y reste que le
+           crayon : tout le reste a rejoint le menu. -->
+      <!-- Rangée fixée en bas : l'Accueil seul, le geste qu'on refait le plus
+           souvent. Tout le reste est à une pression du menu. -->
+      <div class="dash-tabs dash-tabs-main" id="stockMainTabs">
+        <!-- Le menu tient dans une loupe : à quatorze entrées, on cherche un
+             nom plus vite qu'on ne parcourt une liste. -->
+        <button type="button" class="dash-tab bar-icone" id="menuToggle" title="Rechercher une page" aria-label="Rechercher une page" aria-expanded="false">🔍</button>
+        <button type="button" class="dash-tab" id="barComposer" title="Écrire" aria-label="Écrire un message" aria-expanded="false">
+          <span aria-hidden="true">✏️</span><span class="tab-text">Écrire</span>
+        </button>
+        <button type="button" class="dash-tab" id="barAccueil" title="Botika" aria-label="Botika">
+          <span aria-hidden="true">🏠</span><span class="tab-text">Botika</span>
+        </button>
+        <!-- Dernière de la rangée : c'est d'ici qu'on décide comment les icônes
+             s'en vont. Trois points, et non un engrenage — celui-ci désigne
+             déjà les Paramètres du compte. -->
+        <button type="button" class="dash-tab bar-icone" id="barReglagesBtn" title="Réglages de la rangée" aria-label="Réglages de la rangée" aria-expanded="false">⋯</button>
+      </div>
+
+      <!-- Petit panneau des réglages de la rangée : il monte au-dessus d'elle,
+           comme les autres. -->
+      <div class="panneau-flottant panneau-boite" id="barReglages" style="display:none;">
+        <div class="panneau-titre">Ny sary eo amin'ny barre</div>
+        <div class="reglages-choix">
+          <button type="button" class="reglage-mode" data-mode="manuel" title="Manuel">
+            <span class="reglage-icone" aria-hidden="true">✋</span>
+            <span class="reglage-nom">Manuel</span>
+          </button>
+          <button type="button" class="reglage-mode" data-mode="auto" title="Automatique">
+            <span class="reglage-icone" aria-hidden="true">🤖</span>
+            <span class="reglage-nom">Automatique</span>
+          </button>
+        </div>
+        <p class="panneau-note" id="barReglagesNote"></p>
+        <!-- Sortie de secours : une rangée vidée ne se remplissait plus jamais
+             d'elle-même, et il n'y avait aucun chemin pour y revenir. -->
+        <button type="button" class="btn btn-sm" id="barToutRemettre" style="width:100%; margin-top:0.8rem;">↩︎ Averina ny sary rehetra</button>
+      </div>
+
+      <!-- Bandeau d'installation. Le navigateur propose déjà l'installation par
+           une icône de sa barre d'adresse — que personne ne regarde sur un
+           téléphone. Le bandeau la propose une fois, là où le pouce se trouve
+           déjà, puis ne revient plus : refusée ou acceptée, la réponse est prise.
+           Il ne paraît que dans l'application, jamais sur l'écran de connexion,
+           et jamais quand on est déjà dans l'application installée. -->
+      <div class="bandeau-install" id="bandeauInstall" hidden>
+        <span class="bandeau-install-icone" aria-hidden="true">📲</span>
+        <div class="bandeau-install-texte">
+          <strong>Installer l'application</strong>
+          <span id="bandeauInstallSous">Une icône sur l'écran d'accueil, et elle s'ouvre en plein écran.</span>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary" id="bandeauInstallOui">Installer</button>
+        <button type="button" class="bandeau-install-fermer" id="bandeauInstallNon" aria-label="Ne plus proposer">✕</button>
+      </div>
+
+      <!-- ---- STOCK ---- -->
+      <section class="section active" id="section-stock">
+        <div class="dash-tabs" id="stockSubTabs">
+          <div class="dash-tab" data-dash="dashboard">📊 Tableau de bord</div>
+          <div class="dash-tab" data-dash="historique">📜 Historique des mouvements</div>
+          <div class="dash-tab" data-dash="ajouter">➕ Ajouter</div>
+          <div class="dash-tab" data-dash="comptes">👥 Gestion de compte</div>
+        </div>
+
+        <div class="global-search" style="position:relative; margin:0 0 1.2rem;">
+          <input type="text" id="globalSearchInput" placeholder="🔍 Rechercher un article, un mouvement..." autocomplete="off" style="width:100%; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.82rem; box-sizing:border-box;">
+          <div id="globalSearchResults" style="display:none; position:absolute; top:110%; left:0; right:0; background:var(--panel); border:1px solid var(--line); border-radius:10px; max-height:340px; overflow-y:auto; z-index:60; box-shadow:0 8px 24px rgba(0,0,0,0.35);"></div>
+        </div>
+
+        <!-- ===== ACCUEIL ===== -->
+        <div class="dash-view active" id="dash-accueil">
+          <!-- « Stock » vivait derrière la fenêtre de l'Accueil, hors de
+               portée : depuis que l'Accueil s'ouvre par-dessus, ce titre et
+               ses deux boutons ne se voyaient plus. Ils sont dedans. -->
+          <div class="section-head tete-accueil">
+            <div>
+              <h2>Botika</h2>
+            </div>
+            <div class="actions-row">
+              <button class="btn btn-amber btn-sm" id="exportExcelBtn">Exporter en Excel</button>
+              <button class="btn btn-violet btn-sm" id="downloadJsonBtn">Télécharger les données</button>
+            </div>
+          </div>
+
+          <div class="community-grid">
+            <div class="fb-main">
+              <div class="panel fb-composer" id="fbComposer" style="margin-top:0; display:none;">
+                <div class="fb-composer-row">
+                  <div class="fb-avatar" id="composerAvatar">?</div>
+                  <div style="flex:1; display:flex; flex-direction:column; gap:0.6rem;">
+                    <div id="newsImagePreviewWrap" style="display:none; flex-wrap:wrap; gap:0.5rem;"></div>
+                    <input type="text" id="newsMessage" class="fb-composer-input" placeholder="Inona no vaovao aminao, ry client?" style="width:100%;">
+                  </div>
+                </div>
+                <div class="fb-composer-extra">
+                  <!-- title et aria-label portent le sens que l'icône seule ne
+                       dit pas : au survol pour la souris, à la lecture d'écran
+                       pour qui ne voit pas l'image. -->
+                  <label for="newsImage" class="composer-icone" title="Sary (maromaro azo alaina)" aria-label="Sary (maromaro azo alaina)">🖼️</label>
+                  <input type="file" id="newsImage" accept="image/*" multiple style="display:none;">
+                  <label class="composer-icone" id="newsIsGoodsLabel" title="Entana amidy" aria-label="Entana amidy">
+                    <input type="checkbox" id="newsIsGoods" class="composer-case"> 🛒
+                  </label>
+                  <input type="number" id="newsPrice" min="0" step="100" placeholder="Vidiny (Ar)" style="display:none; width:130px;">
+                  <button type="button" class="btn btn-primary btn-sm" id="postNewsBtn" style="width:auto;">Publier</button>
+                </div>
+              </div>
+
+              <div id="communityNewsList" class="fb-feed"></div>
+              <div class="empty-hint" id="communityNewsEmpty" style="display:none;">Tsy mbola misy vaovao. Ianao no ho voalohany hizara zavatra!</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== ARTICLES ===== -->
+        <div class="dash-view" id="dash-articles">
+          <div class="table-scroll">
+            <table id="stockTable">
+              <thead>
+                <tr><th>Réf.</th><th>Nom</th><th>Catégorie</th><th>Quantité</th><th>Unité</th><th>Prix unitaire</th><th>Valeur</th><th>Seuil</th><th>Fournisseur</th><th></th></tr>
+              </thead>
+              <tbody id="stockTableBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-hint" id="stockEmptyHint" style="display:none;">Aucun article pour le moment. Ajoutez-en un depuis l’onglet « Ajouter ».</p>
+        </div>
+
+        <!-- ===== DASHBOARD ===== -->
+        <div class="dash-view" id="dash-dashboard">
+
+          <div class="filters-panel">
+            <div class="filter-group">
+              <h4>Plage de dates</h4>
+              <div class="date-range">
+                <input type="date" id="filterDateFrom">
+                <span>→</span>
+                <input type="date" id="filterDateTo">
+              </div>
+            </div>
+            <div class="filter-group">
+              <h4>Jour</h4>
+              <div id="filterDays"></div>
+            </div>
+            <div class="filter-group">
+              <h4>Catégorie</h4>
+              <div id="filterCategories"></div>
+            </div>
+            <div class="filter-group">
+              <h4>Référence</h4>
+              <div id="filterRefs"></div>
+            </div>
+            <button type="button" class="filter-clear" id="clearFiltersBtn">✕ Réinitialiser les filtres</button>
+          </div>
+
+          <div class="kpi-row">
+            <div class="kpi-card"><div class="kpi-label">Stock total</div><div class="kpi-value" id="kpiStockTotal">0</div></div>
+            <div class="kpi-card"><div class="kpi-label">Valeur de stock</div><div class="kpi-value" id="kpiStockValue">0 Ar</div></div>
+            <div class="kpi-card"><div class="kpi-label">Total des entrées</div><div class="kpi-value" id="kpiEntreesTotal">0</div></div>
+            <div class="kpi-card"><div class="kpi-label">Valeur des entrées</div><div class="kpi-value" id="kpiEntreesValue">0 Ar</div></div>
+            <div class="kpi-card"><div class="kpi-label">Total des sorties</div><div class="kpi-value" id="kpiSortiesTotal">0</div></div>
+            <div class="kpi-card"><div class="kpi-label">Valeur des sorties</div><div class="kpi-value" id="kpiSortiesValue">0 Ar</div></div>
+          </div>
+
+          <div class="chart-grid">
+            <div class="chart-panel"><h4>Stock par catégorie</h4><div class="chart-box" style="height:180px;"><canvas id="chartStockQty"></canvas></div></div>
+            <div class="chart-panel"><h4>Valeur par catégorie</h4><div class="chart-box" style="height:180px;"><canvas id="chartStockValue"></canvas></div></div>
+            <div class="chart-panel"><h4>Entrées par catégorie</h4><div class="chart-box" style="height:180px;"><canvas id="chartEntreesQty"></canvas></div></div>
+            <div class="chart-panel"><h4>Valeur des entrées par catégorie</h4><div class="chart-box" style="height:180px;"><canvas id="chartEntreesValue"></canvas></div></div>
+            <div class="chart-panel"><h4>Sorties par catégorie</h4><div class="chart-box" style="height:180px;"><canvas id="chartSortiesQty"></canvas></div></div>
+            <div class="chart-panel"><h4>Valeur des sorties par catégorie</h4><div class="chart-box" style="height:180px;"><canvas id="chartSortiesValue"></canvas></div></div>
+          </div>
+
+          <div class="filter-group" style="margin:0 0 1rem;">
+            <h4>Période des tendances</h4>
+            <div id="trendPeriodChips">
+              <span class="filter-chip checked" data-period="day">Jour</span>
+              <span class="filter-chip" data-period="week">Semaine</span>
+              <span class="filter-chip" data-period="month">Mois</span>
+            </div>
+          </div>
+
+          <div class="mid-grid">
+            <div class="stack-panel">
+              <div class="list-panel">
+                <h4>🏆 Top 3 des marchandises</h4>
+                <div id="topItemsList"></div>
+              </div>
+              <div class="list-panel">
+                <h4>⚠️ Marchandises à approvisionner</h4>
+                <div id="restockList"></div>
+              </div>
+            </div>
+            <div class="chart-panel"><h4>Total des entrées</h4><div class="chart-box" style="height:240px;"><canvas id="chartEntreesDay"></canvas></div></div>
+            <div class="chart-panel"><h4>Total des sorties</h4><div class="chart-box" style="height:240px;"><canvas id="chartSortiesDay"></canvas></div></div>
+          </div>
+
+          <div class="line-grid">
+            <div class="chart-panel"><h4>Valeur des entrées</h4><div class="chart-box" style="height:200px;"><canvas id="chartEntreesValueDay"></canvas></div></div>
+            <div class="chart-panel"><h4>Valeur des sorties</h4><div class="chart-box" style="height:200px;"><canvas id="chartSortiesValueDay"></canvas></div></div>
+          </div>
+        </div>
+
+        <!-- ===== HISTORIQUE DES MOUVEMENTS ===== -->
+        <div class="dash-view" id="dash-historique">
+
+            <div class="panel">
+              <h3>📜 Historique des mouvements</h3>
+              <p style="font-size:0.76rem; color:var(--muted); margin:-0.4rem 0 0.6rem;">💡 Amin'ny telefaonina : kisaho ankavia/ankavanana ny andalana iray mba hamafana azy. Amin'ny ordinateur : tsindrio ny totozy eo amin'ilay andalana ary kisaho (glisser) ankavia/ankavanana. Ny mouvement an'ny entana efa voafafa dia mijanona eto 3 semaine raha tsy nofafanao an-tanana.</p>
+              <div class="table-scroll">
+                <table id="movementsTable">
+                  <thead>
+                    <tr><th>Date</th><th>Type</th><th>Réf.</th><th>Nom</th><th>Catégorie</th><th>Quantité</th><th>Valeur</th><th>Remarque</th></tr>
+                  </thead>
+                  <tbody id="movementsTableBody"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint" id="movementsEmptyHint" style="display:none;">Aucun mouvement enregistré pour le moment.</p>
+            </div>
+        </div>
+
+        <!-- ===== AJOUTER ===== -->
+        <div class="dash-view" id="dash-ajouter">
+            <div class="panel">
+              <h3>Ajouter un article (entrée en stock)</h3>
+              <div class="form-grid">
+                <div class="field" style="margin-bottom:0;">
+                  <label>Référence (automatique)</label>
+                  <input id="itemRef" type="text" readonly>
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Nom</label>
+                  <input id="itemName" type="text" placeholder="Ex: Câble USB">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Catégorie</label>
+                  <input id="itemCategory" type="text" placeholder="Ex: Électronique">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Quantité</label>
+                  <input id="itemQty" type="number" min="0" value="1">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Unité</label>
+                  <select id="itemUnit">
+                    <option value="pièce">Pièce</option>
+                    <option value="kg">Kg</option>
+                    <option value="g">g</option>
+                    <option value="l">Litre</option>
+                    <option value="m">Mètre</option>
+                    <option value="boîte">Boîte</option>
+                    <option value="carton">Carton</option>
+                    <option value="sac">Sac</option>
+                    <option value="paire">Paire</option>
+                  </select>
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Prix unitaire (Ar)</label>
+                  <input id="itemPrice" type="number" min="0" value="0">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Seuil d'alerte</label>
+                  <input id="itemSeuil" type="number" min="0" value="5">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Fournisseur (optionnel)</label>
+                  <input id="itemSupplier" type="text" placeholder="Ex: Grossiste Analakely">
+                </div>
+                <button class="btn btn-primary" id="addItemBtn" style="width:auto;">Ajouter</button>
+              </div>
+            </div>
+
+        </div>
+
+          <!-- ===== ACHETER ===== -->
+          <div class="dash-view" id="dash-acheter">
+            <div class="panel">
+              <button type="button" class="btn btn-sm" id="backToAccueilBtn" style="width:auto; margin-bottom:0.8rem;">← Hiverina amin'ny Botika</button>
+              <h3>🛒 Acheter (réapprovisionnement)</h3>
+              <p style="font-size:0.8rem; color:var(--muted); margin-bottom:0.8rem;">Misafidiana entana efa misy raha te-hanampy stock, na manorata anarana vaovao raha entana tsy mbola misy.</p>
+              <div class="form-grid">
+                <div class="field" style="margin-bottom:0;">
+                  <label>Article existant</label>
+                  <select id="acheterItemSelect"><option value="">— Nouvel article —</option></select>
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Nom (si nouvel article)</label>
+                  <input id="acheterItemName" type="text" placeholder="Ex: Câble USB">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Catégorie</label>
+                  <input id="acheterCategory" type="text" placeholder="Ex: Électronique">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Quantité achetée</label>
+                  <input id="acheterQty" type="number" min="1" value="1">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Unité</label>
+                  <select id="acheterUnit">
+                    <option value="pièce">Pièce</option>
+                    <option value="kg">Kg</option>
+                    <option value="g">g</option>
+                    <option value="l">Litre</option>
+                    <option value="m">Mètre</option>
+                    <option value="boîte">Boîte</option>
+                    <option value="carton">Carton</option>
+                    <option value="sac">Sac</option>
+                    <option value="paire">Paire</option>
+                  </select>
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Prix unitaire (Ar)</label>
+                  <input id="acheterPrice" type="number" min="0" value="0">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Fournisseur</label>
+                  <input id="acheterSupplier" type="text" placeholder="Ex: Grossiste Analakely">
+                </div>
+                <button class="btn btn-primary" id="acheterConfirmBtn" style="width:auto;">Acheter</button>
+              </div>
+              <p id="acheterStatus" style="font-size:0.8rem; color:var(--muted); margin-top:0.8rem;"></p>
+            </div>
+          </div>
+
+          <!-- ===== GESTION DE COMPTE ===== -->
+          <div class="dash-view" id="dash-comptes">
+            <div class="panel">
+              <h3>👥 Ajouter un client</h3>
+              <div class="form-grid">
+                <div class="field" style="margin-bottom:0;">
+                  <label>Nom</label>
+                  <input id="clientName" type="text" placeholder="Ex: Rakoto">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Téléphone</label>
+                  <input id="clientPhone" type="tel" placeholder="034 00 000 00">
+                </div>
+                <button class="btn btn-primary" id="addClientBtn" style="width:auto;">Ajouter</button>
+              </div>
+            </div>
+
+            <div class="table-scroll">
+              <table id="clientsTable">
+                <thead><tr><th>Nom</th><th>Téléphone</th><th>Dette totale</th><th></th></tr></thead>
+                <tbody id="clientsTableBody"></tbody>
+              </table>
+            </div>
+            <p class="empty-hint" id="clientsEmptyHint" style="display:none;">Aucun client pour le moment.</p>
+
+            <div class="panel" id="clientDetailPanel" style="display:none;">
+              <h3 id="clientDetailName">—</h3>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Date</th><th>Article</th><th>Qté</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
+                  <tbody id="clientSalesTableBody"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint" id="clientSalesEmptyHint" style="display:none;">Aucune vente à crédit pour ce client.</p>
+              <button class="btn btn-amber btn-sm" id="closeClientDetailBtn" style="margin-top:0.8rem; width:auto;">Fermer</button>
+            </div>
+          </div>
+
+      </section>
+
+      <!-- ---- FACTURES ---- -->
+      <section class="section" id="section-factures">
+        <div class="section-head">
+          <div>
+            <h2>Factures</h2>
+            <p>Sélectionnez des articles du stock et générez une facture en PDF.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Client</h3>
+          <div class="form-grid">
+            <div class="field" style="margin-bottom:0;">
+              <label>Nom du client</label>
+              <input id="invoiceCustomer" type="text" placeholder="Nom du client">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label>Email du client (pour l'envoi par mail)</label>
+              <input id="invoiceCustomerEmail" type="email" placeholder="client@exemple.com">
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Articles à facturer</h3>
+          <div id="invoiceItemsList"></div>
+          <p class="empty-hint" id="invoiceEmptyHint" style="display:none;">Ajoutez d'abord des articles dans la section Stock.</p>
+          <div class="total-row">
+            <span>Total</span>
+            <span id="invoiceTotal">0 Ar</span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1rem;">
+          <button class="btn btn-primary" id="generateInvoiceBtn" style="width:auto;">Générer la facture (PDF)</button>
+          <button class="btn btn-amber" id="mailInvoiceBtn" style="width:auto;">Envoyer par mail</button>
+        </div>
+      </section>
+
+      <!-- ---- INVITER ---- -->
+      <section class="section" id="section-inviter">
+        <div class="section-head">
+          <div>
+            <h2>Inviter des amis</h2>
+            <p>Partagez l'accès à cette application de gestion de stockage.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Lien d'invitation</h3>
+          <div class="invite-box">
+            <input id="inviteLink" type="text" readonly>
+            <button class="btn btn-amber" id="copyInviteBtn" title="Copier tous les liens de l’application">Copier tout</button>
+          </div>
+          <p class="local-link-warning" id="localLinkWarning" style="display:none;"></p>
+          <p style="font-size:0.78rem; color:var(--muted); margin-top:0.6rem; line-height:1.5;">
+            Chaque personne qui ouvre l'application via ce lien vous rapporte
+            <strong style="color:var(--text);">1 crédit</strong> dans votre
+            <strong style="color:var(--text);">Portefeuille électronique</strong>. Vous choisissez
+            ensuite quoi en faire : essai gratuit, booster, ou réduction sur l'abonnement.
+          </p>
+        </div>
+
+        <div class="panel">
+          <h3>Vos parrainages</h3>
+          <div class="line-grid">
+            <div>
+              <div class="plan-note">Personnes ayant utilisé votre lien</div>
+              <div class="plan-price" id="referralCount" style="font-size:1.4rem;">0</div>
+            </div>
+            <div>
+              <div class="plan-note">Solde disponible</div>
+              <div class="plan-price" id="referralBonusDays" style="font-size:1.4rem; color:var(--cyan);">0</div>
+            </div>
+            <div>
+              <div class="plan-note">Déjà dépensé</div>
+              <div class="plan-price" id="referralNextIn" style="font-size:1.4rem;">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Envoyer par email</h3>
+          <div class="form-grid">
+            <div class="field" style="margin-bottom:0;">
+              <label>Email de l'ami</label>
+              <input id="inviteEmail" type="email" placeholder="ami@exemple.com">
+            </div>
+            <button class="btn btn-violet" id="sendInviteBtn" style="width:auto;">Ouvrir l'email d'invitation</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Partager sur les réseaux sociaux</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem; line-height:1.5;">
+            Envoyez votre lien directement sur un réseau social. Dès que votre ami ouvre l'application
+            via ce lien, il est automatiquement compté dans « Vos parrainages » ci-dessus — aucune
+            confirmation manuelle n'est nécessaire de votre part.
+          </p>
+          <div class="actions-row" style="flex-wrap:wrap; gap:0.6rem;">
+            <button type="button" class="btn" id="shareWhatsappBtn" style="border-color:#25D366; color:#25D366;">WhatsApp</button>
+            <button type="button" class="btn" id="shareFacebookBtn" style="border-color:#1877F2; color:#1877F2;">Facebook</button>
+            <button type="button" class="btn" id="shareTiktokBtn" style="border-color:#e7e9ea; color:#e7e9ea;">TikTok</button>
+            <button type="button" class="btn" id="shareThreadsBtn" style="border-color:#e7e9ea; color:#e7e9ea;">Threads</button>
+            <button type="button" class="btn" id="shareTwitterBtn" style="border-color:#e7e9ea; color:#e7e9ea;">X (Twitter)</button>
+            <button type="button" class="btn" id="shareInstagramBtn" style="border-color:#E1306C; color:#E1306C;">Instagram</button>
+            <button type="button" class="btn" id="shareWechatBtn" style="border-color:#07C160; color:#07C160;">WeChat</button>
+            <button type="button" class="btn btn-primary" id="shareMoreBtn" style="display:none;">📲 Autres applis</button>
+            <span id="customSocialButtons" style="display:contents;"></span>
+            <button type="button" class="btn btn-amber" id="addSocialToggleBtn" title="Ajouter un réseau social">＋ Ajouter</button>
+          </div>
+
+          <div id="addSocialForm" style="display:none; margin-top:0.9rem; padding-top:0.9rem; border-top:1px solid var(--line);">
+            <div class="form-grid">
+              <div class="field" style="margin-bottom:0;">
+                <label for="newSocialName">Nom du réseau</label>
+                <input id="newSocialName" type="text" placeholder="Ex : Snapchat">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="newSocialUrl">Lien de partage</label>
+                <input id="newSocialUrl" type="text" placeholder="https://exemple.com/partager?url={lien}&texte={message}">
+              </div>
+            </div>
+            <p style="font-size:0.72rem; color:var(--muted); margin-top:0.5rem; line-height:1.5;">
+              Utilisez <code>{lien}</code> et/ou <code>{message}</code> dans l'URL : ils seront remplacés
+              automatiquement par votre lien d'invitation et le message. Si le réseau ne propose pas
+              d'URL de partage, laissez ce champ vide : le message sera simplement copié.
+            </p>
+            <button type="button" class="btn btn-primary btn-sm" id="saveSocialBtn" style="width:auto; margin-top:0.6rem;">Enregistrer ce réseau</button>
+            <span id="addSocialStatus" style="font-size:0.78rem; color:var(--muted); margin-left:0.6rem;"></span>
+          </div>
+
+          <p style="font-size:0.72rem; color:var(--muted); margin-top:0.7rem; line-height:1.5;">
+            Instagram, TikTok et WeChat ne permettent pas de préremplir un message depuis un site web : votre
+            message est copié automatiquement, il ne reste qu'à le coller dans la discussion.
+          </p>
+        </div>
+      </section>
+
+      <!-- ---- NOUS CONTACTER (visible aux clients ET à l'admin) ---- -->
+      <section class="section" id="section-contact">
+        <div class="section-head">
+          <div>
+            <h2>Nous contacter</h2>
+            <p>Une question, un souci ? Écrivez-nous directement sur l'un de ces réseaux.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Contactez le service client</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:1rem;">
+            Bokotra telo ihany : antso, antso video, fizarana. Rehefa maro ny canal
+            misokatra dia asehoina ny lisitra mba hisafidiananao.
+          </p>
+
+          <div class="actions-row" id="contactMainActions" style="flex-wrap:wrap; gap:0.6rem;"></div>
+
+          <p class="empty-hint" id="contactButtonsEmptyHint" style="display:none;">
+            Aucun canal de contact n'a encore été configuré. Revenez bientôt !
+          </p>
+        </div>
+
+        <div class="panel" id="contactAdminPanel" style="display:none;">
+          <h3>⚙️ Configurer vos canaux de contact (admin — vous uniquement)</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
+            Renseignez vos comptes réels : ces boutons seront visibles par <strong>tous vos clients</strong>
+            dans « Nous contacter », pour qu'ils puissent vous écrire directement.
+          </p>
+          <div class="field">
+            <label for="contactSiteUrlInput">Adresse publique du site (URL partagée à vos clients)</label>
+            <input id="contactSiteUrlInput" type="text" placeholder="https://tokiniaina-tanjona.netlify.app/gestion-stockage">
+            <p class="local-link-warning" id="adminLinkWarning" style="display:none;"></p>
+          </div>
+
+          <div class="form-grid">
+            <div class="field" style="margin-bottom:0;">
+              <label for="contactWhatsappInput">Numéro WhatsApp (avec indicatif, chiffres uniquement)</label>
+              <input id="contactWhatsappInput" type="text" placeholder="261340000000">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="contactFacebookInput">Page Facebook (URL)</label>
+              <input id="contactFacebookInput" type="text" placeholder="https://facebook.com/votrepage">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="contactInstagramInput">Profil Instagram (URL)</label>
+              <input id="contactInstagramInput" type="text" placeholder="https://instagram.com/votrecompte">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="contactTiktokInput">Profil TikTok (URL)</label>
+              <input id="contactTiktokInput" type="text" placeholder="https://tiktok.com/@votrecompte">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="contactThreadsInput">Profil Threads (URL)</label>
+              <input id="contactThreadsInput" type="text" placeholder="https://threads.net/@votrecompte">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="contactTwitterInput">Profil X / Twitter (URL)</label>
+              <input id="contactTwitterInput" type="text" placeholder="https://x.com/votrecompte">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="contactWechatInput">Identifiant WeChat</label>
+              <input id="contactWechatInput" type="text" placeholder="ID WeChat">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="saveContactChannelsBtn" style="width:auto; margin-top:0.8rem;">Enregistrer</button>
+          <span id="contactChannelsStatus" style="font-size:0.78rem; color:var(--muted); margin-left:0.6rem;"></span>
+
+          <div style="margin-top:1.2rem; padding-top:1.2rem; border-top:1px solid var(--line);">
+            <h3 style="font-size:0.95rem;">Ajouter un autre canal</h3>
+            <div class="form-grid">
+              <div class="field" style="margin-bottom:0;">
+                <label for="newContactName">Nom</label>
+                <input id="newContactName" type="text" placeholder="Ex : Viber">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="newContactUrl">Lien ou identifiant</label>
+                <input id="newContactUrl" type="text" placeholder="https://... (laisser vide = simple copie)">
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm" id="addContactChannelBtn" style="width:auto; margin-top:0.6rem;">Ajouter ce canal</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---- LIVE DIRECT ---- -->
+      <!-- Séparé des appels : montrer sa marchandise à tout le monde et
+           appeler une personne sont deux gestes différents, qui n'arrivent
+           pas au même moment. -->
+      <section class="section" id="section-live">
+        <div class="section-head">
+          <div>
+            <h2>🔴 Live direct</h2>
+            <p>Mampiseho ny entanao mivantana amin'ny olona rehetra mijery ankehitriny.</p>
+          </div>
+        </div>
+
+        <!-- Ce que les autres diffusent, en premier : c'est ce qu'on vient
+             voir le plus souvent. Le bouton pour diffuser soi-même vient après. -->
+        <div class="panel" id="liveNoticePanel" style="border-left:4px solid var(--red); margin-bottom:1rem;">
+          <h3>👁️ Live mandeha izao</h3>
+          <p class="community-sub" style="margin-top:0.2rem;">Tsindrio « Mijery » amin'izay tianao harahina.</p>
+          <div id="liveActiveList" style="margin-top:0.8rem;"></div>
+          <p class="empty-hint" id="liveActiveEmpty" style="display:none;">Tsy misy live mandeha ankehitriny. Hiseho eto ho azy izy raha vao misy manomboka.</p>
+        </div>
+
+            <div class="panel" style="margin-top:0;">
+
+              <div id="liveIdleControls">
+                <div id="liveJoinChoices" style="display:none;"></div>
+                <button type="button" class="btn btn-red" id="startLiveBtn">🔴 Manomboka Live</button>
+                <div class="actions-row" style="flex-wrap:wrap; gap:0.5rem; margin-top:0.7rem;">
+                  <button type="button" class="btn btn-sm" id="shareLiveBeforeBtn" style="width:auto;">↗️ Zarao mialoha ny rohy</button>
+                  <button type="button" class="btn btn-sm" id="copyLiveLinkBeforeBtn" style="width:auto;">📋 Adikao ny rohy</button>
+                </div>
+                <p style="font-size:0.74rem; color:var(--muted); margin:0.5rem 0 0;">
+                  Ny mpanjifa manokatra io rohy io dia miandry eo, ary <strong>tafiditra ho azy</strong>
+                  raha vao manomboka ianao — tsy mila mitady na inona na inona.
+                </p>
+                <p style="font-size:0.74rem; color:var(--muted); margin:0.5rem 0 0;">
+                  ⚠️ Ity bokotra ity dia manokatra ny <strong>kameranao</strong> ary manomboka
+                  live ataonao manokana. Raha te-hijery ny live an'olon-kafa ianao dia ny
+                  bokotra <strong>« Mijery »</strong> etsy ambony no tsindrio.
+                </p>
+              </div>
+
+              <div id="liveBroadcasterView" style="display:none;">
+                <div style="position:relative; width:100%; max-width:480px;">
+                  <video id="liveBroadcasterVideo" autoplay muted playsinline style="width:100%; border-radius:10px; background:#000; display:block;"></video>
+                  <span class="live-onair-badge">🔴 MIVANTANA</span>
+                </div>
+                <p class="live-reach" id="liveReachInfo">—</p>
+                <div style="margin-top:0.6rem; display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                  <span style="font-size:0.8rem; color:var(--muted);">👁️ <span id="liveViewerCount">0</span> mijery</span>
+                  <button type="button" class="btn btn-red btn-sm" id="stopLiveBtn">Ajanona ny Live</button>
+                  <button type="button" class="btn btn-sm" id="shareLiveBtn" style="width:auto;">↗️ Zarao ny rohy</button>
+                  <button type="button" class="btn btn-sm" id="copyLiveLinkBtn" style="width:auto;">📋 Adikao</button>
+                </div>
+              </div>
+
+              <div id="liveViewerView" style="display:none;">
+                <video id="liveViewerVideo" autoplay playsinline style="width:100%; max-width:480px; border-radius:10px; background:#000;"></video>
+                <div style="margin-top:0.6rem; display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap;">
+                  <span style="font-size:0.8rem; color:var(--muted);">Mijery ny live an'i <strong id="liveViewerHost">—</strong></span>
+                  <button type="button" class="btn btn-sm" id="leaveLiveBtn">Miala</button>
+                </div>
+              </div>
+
+              <div id="liveChatBox" style="display:none; margin-top:0.8rem; border-top:1px solid var(--line); padding-top:0.8rem;">
+                <div id="liveChatMessages" style="max-height:180px; overflow-y:auto; font-size:0.8rem; margin-bottom:0.5rem;"></div>
+                <div style="display:flex; gap:0.5rem;">
+                  <input type="text" id="liveChatInput" placeholder="Soraty hafatra..." style="flex:1; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.82rem;">
+                  <button type="button" class="btn btn-sm" id="liveChatSendBtn">Alefa</button>
+                </div>
+              </div>
+            </div>
+      </section>
+
+      <!-- ---- ANTSO MIVANTANA ---- -->
+      <section class="section" id="section-appels">
+        <div class="section-head">
+          <div>
+            <h2>📞 Antso mivantana</h2>
+            <p>Antso feo na video amin'ny mpanjifa iray, ao anaty appli.</p>
+          </div>
+        </div>
+
+            <div class="panel" style="margin-top:0;">
+              <p class="community-sub" style="margin-top:0;">Ireo olona miditra ao amin'ny app ankehitriny. Tsindrio hiantso azy.</p>
+              <div id="onlineUsersList"></div>
+              <p class="empty-hint" id="onlineUsersEmpty" style="display:none;">Tsy misy olona miditra ankehitriny.</p>
+
+              <div style="margin-top:0.9rem; padding-top:0.9rem; border-top:1px solid var(--line);">
+                <p style="font-size:0.74rem; color:var(--muted); margin:0 0 0.6rem;">
+                  Zarao ity rohy ity : ny olona manokatra azy dia tafiditra avy hatrany
+                  amin'ny antso aminao, tsy mila mitady na inona na inona.
+                </p>
+                <div class="actions-row" style="flex-wrap:wrap; gap:0.5rem;">
+                  <button type="button" class="btn btn-sm" id="shareCallLinkBtn" style="width:auto;">↗️ Rohy antso video</button>
+                  <button type="button" class="btn btn-sm" id="copyCallLinkBtn" style="width:auto;">📋 Adikao</button>
+                </div>
+              </div>
+            </div>
+      </section>
+
+      <!-- ---- PORTEFEUILLE ---- -->
+      <section class="section" id="section-wallet">
+        <div class="section-head">
+          <div>
+            <h2>Portefeuille électronique</h2>
+            <p>Votre solde en ariary, à dépenser ou à retirer vers votre compte.</p>
+          </div>
+        </div>
+
+        <!-- vue non-connectée -->
+        <div class="panel" id="walletAuthPanel">
+          <h3>Vérification requise</h3>
+          <p style="font-size:0.85rem; color:var(--muted); line-height:1.6; margin-bottom:1rem;">
+            Ressaisissez votre nom et votre email — s'ils correspondent à ceux utilisés
+            lors de votre connexion, votre portefeuille s'ouvrira automatiquement.
+          </p>
+          <form id="walletVerifyForm">
+            <div class="field">
+              <label for="walletVerifyName">Nom</label>
+              <input id="walletVerifyName" type="text" placeholder="Votre nom" required>
+            </div>
+            <div class="field">
+              <label for="walletVerifyEmail">Email</label>
+              <input id="walletVerifyEmail" type="email" placeholder="Votre email" required>
+            </div>
+            <button type="submit" class="btn btn-primary" id="walletVerifyBtn">
+              Ouvrir mon portefeuille
+            </button>
+          </form>
+          <p id="walletAuthStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem;"></p>
+
+          <div style="margin-top:1.4rem; padding-top:1.2rem; border-top:1px solid var(--line);">
+            <h3 style="font-size:0.95rem;">Paiement en ligne — PayPal</h3>
+            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin:0.4rem 0 1rem;">
+              Reliez un compte PayPal pour pouvoir payer en ligne depuis votre portefeuille.
+            </p>
+            <div id="paypalNoAccountBlock">
+              <a class="btn btn-sm" href="https://www.paypal.com/signup" target="_blank" rel="noopener">
+                Je n'ai pas de compte PayPal — Créer un compte
+              </a>
+            </div>
+            <div style="margin-top:0.8rem;">
+              <form id="paypalConnectForm" style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:flex-end;">
+                <div class="field" style="margin-bottom:0; flex:1; min-width:200px;">
+                  <label for="paypalEmailInput">J'ai déjà un compte — email PayPal</label>
+                  <input id="paypalEmailInput" type="email" placeholder="votre-email@paypal.com" required>
+                </div>
+                <button type="submit" class="btn btn-sm" id="paypalConnectBtn">Connecter</button>
+              </form>
+              <p id="paypalConnectStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.6rem;"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- vue connectée -->
+        <div id="walletContent" style="display:none;">
+          <div class="panel">
+            <h3>Solde</h3>
+            <div class="line-grid">
+              <div>
+                <div class="plan-note">Compte vérifié</div>
+                <div class="plan-price" id="walletVerifiedEmail" style="font-size:1rem;">—</div>
+              </div>
+              <div>
+                <div class="plan-note">Solde disponible</div>
+                <div class="plan-price" id="walletBalance" style="font-size:1.4rem; color:var(--cyan);">0 Ar</div>
+                <div class="plan-note" id="walletBalanceCredits" style="margin-top:0.2rem;">—</div>
+              </div>
+              <div>
+                <div class="plan-note">PayPal</div>
+                <div class="plan-price" id="walletPaypalStatus" style="font-size:1rem;">Non relié</div>
+              </div>
+            </div>
+
+            <!-- Le même solde, dans la devise du pays où l'argent doit arriver. -->
+            <div style="margin-top:1rem; border-top:1px solid var(--line); padding-top:0.9rem;">
+              <div class="plan-note" style="margin-bottom:0.5rem;">Voir dans une autre devise</div>
+              <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center;">
+                <select id="walletCurrency" style="width:auto; min-width:150px; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.9rem;">
+                  <option value="MGA">Ariary (MGA)</option>
+                  <option value="EUR">Euro (EUR)</option>
+                  <option value="USD">Dollar (USD)</option>
+                  <option value="ZAR">Rand sud-africain (ZAR)</option>
+                  <option value="MUR">Roupie mauricienne (MUR)</option>
+                  <option value="GBP">Livre sterling (GBP)</option>
+                  <option value="CAD">Dollar canadien (CAD)</option>
+                </select>
+                <strong id="walletConverted" style="font-family:var(--font-mono); font-size:1.1rem; color:var(--text);">—</strong>
+              </div>
+              <p id="walletRateNote" style="font-size:0.74rem; color:var(--muted); margin-top:0.5rem; line-height:1.5;"></p>
+            </div>
+
+            <button type="button" class="btn btn-sm" id="walletSignOutBtn" style="margin-top:1rem;">Se déconnecter du portefeuille</button>
+          </div>
+
+          <!-- ---- RETRAIT VERS UN COMPTE EXTÉRIEUR ---- -->
+          <div class="panel" id="walletPayoutPanel">
+            <h3>💸 Retirer vers mon compte</h3>
+            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1rem;">
+              Indiquez où envoyer l'argent : votre compte PayPal, votre compte bancaire, ou votre
+              Mobile Money. La somme quitte votre solde dès la demande, et le propriétaire l'envoie
+              vers ce compte. Vous êtes prévenu tous les deux dès que c'est parti.
+            </p>
+            <div class="form-grid">
+              <div class="field" style="margin-bottom:0;">
+                <label for="payoutAmount">Montant à retirer (Ar)</label>
+                <input id="payoutAmount" type="number" min="0" step="1000" placeholder="20000">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="payoutMethod">Où l'envoyer</label>
+                <select id="payoutMethod">
+                  <option value="paypal">PayPal</option>
+                  <option value="card">Compte bancaire / carte</option>
+                  <option value="mobile">Mobile Money</option>
+                  <option value="cash">Espèces — point cash / Western Union</option>
+                  <option value="wallet">Autre portefeuille (Wise, Payoneer, Skrill…)</option>
+                  <option value="merchant">Payer un achat à l'étranger</option>
+                </select>
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="payoutCurrency">Devise à l'arrivée</label>
+                <select id="payoutCurrency">
+                  <option value="MGA">Ariary (MGA)</option>
+                  <option value="EUR">Euro (EUR)</option>
+                  <option value="USD">Dollar (USD)</option>
+                  <option value="ZAR">Rand sud-africain (ZAR)</option>
+                  <option value="MUR">Roupie mauricienne (MUR)</option>
+                  <option value="GBP">Livre sterling (GBP)</option>
+                  <option value="CAD">Dollar canadien (CAD)</option>
+                </select>
+              </div>
+            </div>
+            <div class="field" style="margin-top:1rem;">
+              <label for="payoutDestination" id="payoutDestinationLabel">Votre email PayPal</label>
+              <input id="payoutDestination" type="text" placeholder="vous@paypal.com">
+            </div>
+            <div class="field" id="payoutLinkField" style="display:none;">
+              <label for="payoutLink" id="payoutLinkLabel">Lien du service</label>
+              <input id="payoutLink" type="text" placeholder="https://…">
+              <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">
+                L'adresse à ouvrir pour faire l'envoi : votre portefeuille, la page du marchand,
+                le point cash. Elle évite d'avoir à le chercher.
+              </p>
+            </div>
+            <div class="field" id="payoutInstructionsField" style="display:none;">
+              <label for="payoutInstructions">Marche à suivre</label>
+              <input id="payoutInstructions" type="text" placeholder="Ex : ouvrir le lien, choisir « Envoyer », mettre mon nom et mon numéro de pièce d'identité">
+              <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">
+                Expliquez pas à pas ce qu'il faut faire. Un canal que l'application ne connaît pas
+                ne se devine pas : sans consigne, la somme partirait au hasard.
+              </p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="payoutRequestBtn" style="width:auto;">Demander le retrait</button>
+            <p id="payoutStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem; line-height:1.5;"></p>
+
+            <div style="margin-top:1.2rem; padding-top:1rem; border-top:1px solid var(--line);">
+              <h3 style="font-size:0.95rem;">Mes retraits</h3>
+              <div id="payoutList" style="margin-top:0.7rem;"></div>
+              <p class="empty-hint" id="payoutEmpty" style="display:none;">Aucun retrait demandé.</p>
+            </div>
+
+            <!-- Ce qui est ENTRÉ. Un versement annoncé et pas encore confirmé
+                 doit se voir : sans cela, la personne qui vient de payer croit
+                 que rien n'est arrivé et paie une seconde fois. -->
+            <div style="margin-top:1.2rem; padding-top:1rem; border-top:1px solid var(--line);">
+              <h3 style="font-size:0.95rem;">Mes versements</h3>
+              <div id="depositList" style="margin-top:0.7rem;"></div>
+              <p class="empty-hint" id="depositEmpty" style="display:none;">Aucun versement reçu.</p>
+            </div>
+          </div>
+
+          <!-- ---- FILE DES RETRAITS À ENVOYER (propriétaire uniquement) ---- -->
+          <div class="panel" id="walletQueuePanel" style="display:none;">
+            <h3>📤 Retraits à envoyer</h3>
+            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1rem;">
+              Envoyez la somme vers le compte indiqué, puis marquez la demande comme envoyée : le
+              client en est prévenu aussitôt. Un refus lui rend son solde.
+            </p>
+            <div id="walletQueueList"></div>
+            <p class="empty-hint" id="walletQueueEmpty" style="display:none;">Aucun retrait en attente.</p>
+          </div>
+
+          <!-- ---- DÉPENSER LE SOLDE ---- -->
+          <!-- Trois usages, dans l'ordre où ils se posent : l'abonnement qui
+               fait tourner l'application, ce qui s'achète dedans, et ce qui
+               s'achète dehors. -->
+          <div class="panel" id="walletBuyPanel">
+            <h3>💳 Dépenser votre solde</h3>
+            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1.2rem;">
+              Réglé depuis votre portefeuille, sans code à demander ni argent à envoyer.
+            </p>
+
+            <h3 style="font-size:0.95rem;">Abonnement</h3>
+            <div class="line-grid" style="margin-top:0.7rem;">
+              <div class="plan-card" style="cursor:default;">
+                <div class="plan-name">Mensuel</div>
+                <div class="plan-price">15 000 Ar</div>
+                <div class="plan-note">30 jours</div>
+                <button type="button" class="btn btn-sm buy-site-item" data-item="sub_month" style="width:100%; margin-top:0.7rem;">Payer</button>
+              </div>
+              <div class="plan-card" style="cursor:default;">
+                <div class="plan-name">Annuel</div>
+                <div class="plan-price">150 000 Ar</div>
+                <div class="plan-note">365 jours — 2 mois offerts</div>
+                <button type="button" class="btn btn-sm buy-site-item" data-item="sub_year" style="width:100%; margin-top:0.7rem;">Payer</button>
+              </div>
+              <div class="plan-card" style="cursor:default;">
+                <div class="plan-name">Jours de réserve</div>
+                <div class="plan-price">+7 jours</div>
+                <div class="plan-note">20 000 Ar — ajoutés au prochain paiement</div>
+                <button type="button" class="btn btn-sm buy-site-item" data-item="sub_days" style="width:100%; margin-top:0.7rem;">Payer</button>
+              </div>
+            </div>
+
+            <h3 style="font-size:0.95rem; margin-top:1.4rem;">Achat dans le site</h3>
+            <div class="line-grid" style="margin-top:0.7rem;">
+              <div class="plan-card" style="cursor:default;">
+                <div class="plan-name">Essai gratuit</div>
+                <div class="plan-price">+1 jour</div>
+                <div class="plan-note">10 000 Ar</div>
+                <button type="button" class="btn btn-sm buy-site-item" data-item="trial_day" style="width:100%; margin-top:0.7rem;">Payer</button>
+              </div>
+              <div class="plan-card" style="cursor:default;">
+                <div class="plan-name">Booster</div>
+                <div class="plan-price">Live 24 h</div>
+                <div class="plan-note">5 000 Ar</div>
+                <button type="button" class="btn btn-sm buy-site-item" data-item="booster" style="width:100%; margin-top:0.7rem;">Payer</button>
+              </div>
+            </div>
+
+            <h3 style="font-size:0.95rem; margin-top:1.4rem;">Achat hors du site</h3>
+            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin:0.5rem 0 0.8rem;">
+              Payer un marchand à l'étranger, ou faire passer la somme par un autre portefeuille
+              international — Wise, Payoneer, Skrill, PayPal, un point cash. Vous donnez le lien et
+              la marche à suivre ; le propriétaire exécute et vous êtes prévenus tous les deux.
+            </p>
+            <button type="button" class="btn btn-sm" id="goToPayoutBtn" style="width:auto;">Choisir où envoyer l'argent</button>
+
+            <p id="walletBuyStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:1rem; line-height:1.5;"></p>
+            <p id="walletRedeemStatus" style="display:none;"></p>
+          </div>
+
+          <div class="panel" id="walletBoosterPanel" style="display:none;">
+            <h3>Booster actif</h3>
+            <p style="font-size:0.85rem; color:var(--muted); margin-bottom:0.8rem;">
+              Valable jusqu'au <strong id="walletBoosterUntil" style="color:var(--text);">—</strong>.
+            </p>
+            <button type="button" class="btn btn-violet" id="goLiveFacebookBtn">📹 Aller en direct sur Facebook</button>
+          </div>
+
+          <div class="panel" id="walletSubCreditPanel" style="display:none;">
+            <h3>Jours bancarisés pour l'abonnement</h3>
+            <p style="font-size:0.85rem; color:var(--muted);">
+              <strong id="walletSubCreditDays" style="color:var(--text);">0</strong> jour(s) seront
+              ajoutés automatiquement à votre prochain paiement d'abonnement.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---- ESPACE ADMIN (propriétaire uniquement) ---- -->
+      <section class="section" id="section-admin">
+        <div class="section-head">
+          <div>
+            <h2>Espace admin</h2>
+            <p>Vue d'ensemble réservée au propriétaire : clients, argent, codes et sécurité.</p>
+          </div>
+          <div class="actions-row">
+            <button class="btn btn-sm" id="refreshAdminBtn">↻ Actualiser</button>
+          </div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-label">Clients inscrits</div><div class="kpi-value" id="adminKpiClients">0</div></div>
+          <div class="kpi-card"><div class="kpi-label">Argent déclaré</div><div class="kpi-value" id="adminKpiMoney">0 Ar</div></div>
+          <div class="kpi-card"><div class="kpi-label">Codes changés / déblocages</div><div class="kpi-value" id="adminKpiUnlocks">0</div></div>
+          <div class="kpi-card"><div class="kpi-label">Alertes de sécurité</div><div class="kpi-value" id="adminKpiAlerts">0</div></div>
+        </div>
+
+        <div class="panel">
+          <h3>🆕 Clients vaovao</h3>
+          <div class="table-scroll">
+            <table id="adminClientsTable">
+              <thead><tr><th>Date</th><th>Nom</th><th>Email</th><th>Téléphone</th></tr></thead>
+              <tbody id="adminClientsBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-hint" id="adminClientsEmpty" style="display:none;">Aucune inscription pour le moment.</p>
+        </div>
+
+        <div class="panel">
+          <h3>💰 Vola miditra (déclaré)</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
+            Paiements annoncés par les clients (déblocages réglés sur PayPal). Le solde réel de votre
+            compte PayPal se consulte chez PayPal : l'application ne peut pas le lire.
+          </p>
+          <div class="table-scroll">
+            <table id="adminMoneyTable">
+              <thead><tr><th>Date</th><th>Client</th><th>Montant</th><th>Référence</th><th>État</th></tr></thead>
+              <tbody id="adminMoneyBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-hint" id="adminMoneyEmpty" style="display:none;">Aucun paiement déclaré.</p>
+        </div>
+
+        <div class="panel">
+          <h3>🔑 Codes changés &amp; déblocages payés</h3>
+          <div id="adminUnlocksList"></div>
+          <p class="empty-hint" id="adminUnlocksEmpty" style="display:none;">Aucun déblocage pour le moment.</p>
+        </div>
+
+        <div class="panel">
+          <h3>🛡️ Tentatives sur les comptes clients</h3>
+          <div class="table-scroll">
+            <table id="adminClientAlertsTable">
+              <thead><tr><th>Date</th><th>Type</th><th>Compte visé</th><th>Détail</th><th>État</th></tr></thead>
+              <tbody id="adminClientAlertsBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-hint" id="adminClientAlertsEmpty" style="display:none;">Aucune tentative détectée.</p>
+        </div>
+
+        <div class="panel">
+          <h3>🛡️ Tentatives sur votre compte (admin)</h3>
+          <div class="table-scroll">
+            <table id="adminOwnerAlertsTable">
+              <thead><tr><th>Date</th><th>Type</th><th>Détail</th><th>État</th></tr></thead>
+              <tbody id="adminOwnerAlertsBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-hint" id="adminOwnerAlertsEmpty" style="display:none;">Aucune tentative détectée.</p>
+        </div>
+
+        <div class="panel">
+          <h3>⛔ Comptes bloqués</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
+            Un compte bloqué ne peut plus ouvrir l'application. Le client reçoit une alerte et vous
+            contacte ; dès que vous avez vérifié son identité, le déblocage prend effet
+            <strong style="color:var(--text);">immédiatement</strong> — il n'y a aucun délai à attendre.
+          </p>
+          <div id="adminBlockedList"></div>
+          <p class="empty-hint" id="adminBlockedEmpty" style="display:none;">Aucun compte bloqué.</p>
+        </div>
+      </section>
+
+      <!-- ---- PARAMÈTRES ---- -->
+      <!-- L'abonnement se consultait seulement quand il bloquait. Il a sa page,
+           comme les autres : on y voit où l'on en est sans attendre d'y être
+           forcé. L'écran qui bloque à la fin de l'essai, lui, ne bouge pas. -->
+      <!-- Mpiasa -->
+      <section class="section" id="section-mpiasa">
+        <div class="section-head">
+          <div>
+            <h2>👷 Mpiasa</h2>
+            <p>Ny olona miasa aminao ao an-toerana.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panneau-titre">Hanampy</div>
+          <div class="field">
+            <label for="mpiasaNom">Anarana</label>
+            <input id="mpiasaNom" type="text" placeholder="RABE Koto">
+          </div>
+          <div class="field">
+            <label for="mpiasaTel">Laharana finday</label>
+            <input id="mpiasaTel" type="tel" inputmode="tel" placeholder="034 00 000 00">
+          </div>
+          <div class="field">
+            <label for="mpiasaOra">Ora fiasana andrasana isan'andro</label>
+            <input id="mpiasaOra" type="number" inputmode="decimal" min="0" max="24" step="0.5" placeholder="8">
+          </div>
+          <div class="field">
+            <label for="mpiasaEmail">Email (tsy voatery)</label>
+            <input id="mpiasaEmail" type="email" placeholder="koto@exemple.mg">
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="mpiasaAjouterBtn">Hampiditra</button>
+          <p id="mpiasaStatut" style="font-size:0.8rem; color:var(--cyan); margin-top:0.7rem; line-height:1.5;"></p>
+        </div>
+
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Ny lisitra</div>
+          <div id="mpiasaListe" style="margin-top:0.7rem;"></div>
+          <p class="empty-hint" id="mpiasaVide" style="display:none;">Mbola tsy misy voasoratra.</p>
+        </div>
+      </section>
+
+      <!-- Livreur -->
+      <section class="section" id="section-livreur">
+        <div class="section-head">
+          <div>
+            <h2>🛵 Livreur</h2>
+            <p>Ny mpitondra entana, sy ny fandefasana ampanaovina azy ireo.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panneau-titre">Hanampy</div>
+          <div class="field">
+            <label for="livreurNom">Anarana</label>
+            <input id="livreurNom" type="text" placeholder="RABE Koto">
+          </div>
+          <div class="field">
+            <label for="livreurTel">Laharana finday</label>
+            <input id="livreurTel" type="tel" inputmode="tel" placeholder="034 00 000 00">
+          </div>
+          <div class="field">
+            <label for="livreurOra">Ora fiasana andrasana isan'andro</label>
+            <input id="livreurOra" type="number" inputmode="decimal" min="0" max="24" step="0.5" placeholder="8">
+          </div>
+          <div class="field">
+            <label for="livreurEmail">Email (tsy voatery)</label>
+            <input id="livreurEmail" type="email" placeholder="koto@exemple.mg">
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="livreurAjouterBtn">Hampiditra</button>
+          <p id="livreurStatut" style="font-size:0.8rem; color:var(--cyan); margin-top:0.7rem; line-height:1.5;"></p>
+        </div>
+
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Ny lisitra</div>
+          <div id="livreurListe" style="margin-top:0.7rem;"></div>
+          <p class="empty-hint" id="livreurVide" style="display:none;">Mbola tsy misy voasoratra.</p>
+        </div>
+
+        <!-- Où ils sont. La carte ne s'affiche que si une clé Google Maps a
+             été posée ; sans elle, la liste en dessous dit la même chose en
+             mots, et chaque ligne s'ouvre dans Google Maps d'un doigt. -->
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Aiza izy ireo</div>
+          <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0 0 0.8rem;">
+            Ny toerana farany nalefan'ny livreur tsirairay avy amin'ny rohiny. Izy no manaiky aloha ao amin'ny findainy.
+          </p>
+          <div id="carteLivreur" style="height:320px; border-radius:10px; overflow:hidden; border:1px solid var(--line); display:none;"></div>
+          <p id="carteSansCle" style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0 0 0.8rem; display:none;"></p>
+          <div id="positionsListe" style="margin-top:0.8rem;"></div>
+          <p class="empty-hint" id="positionsVide" style="display:none;">Mbola tsy nisy nandefa ny toerana misy azy.</p>
+
+          <details style="margin-top:1rem;">
+            <summary style="cursor:pointer; font-size:0.8rem; color:var(--muted);">Clé Google Maps</summary>
+            <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0.7rem 0;">
+              Ny sarintany tena izy dia mila clé alaina ao amin'ny Google Cloud. Raha tsy misy clé, ny lisitra etsy ambony ihany no miseho.
+              Tehirizina miaraka amin'ny kaontinao izy : iray ihany ho an'ny findainao rehetra, ary izy koa no manome sarintany ny mpanjifa manaraka ny entany.
+            </p>
+            <div class="field">
+              <label for="carteCle">Clé</label>
+              <input id="carteCle" type="text" autocomplete="off" spellcheck="false" placeholder="AIza…">
+            </div>
+            <button type="button" class="btn btn-sm" id="carteCleBtn">Tehirizo</button>
+            <p id="carteCleStatut" style="font-size:0.8rem; color:var(--cyan); margin-top:0.7rem; line-height:1.5;"></p>
+          </details>
+        </div>
+
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Fandefasana vaovao</div>
+          <div class="field">
+            <label for="livraisonQuoi">Entana</label>
+            <input id="livraisonQuoi" type="text" placeholder="Fonosana 2 — savony">
+          </div>
+          <div class="field">
+            <label for="livraisonClient">Mpanjifa</label>
+            <input id="livraisonClient" type="text" placeholder="RASOA Hanta">
+          </div>
+          <div class="field">
+            <label for="livraisonAdresse">Adiresy</label>
+            <input id="livraisonAdresse" type="text" placeholder="Analakely, lot II M 12">
+          </div>
+          <div class="field">
+            <label for="livraisonTel">Laharana finday</label>
+            <input id="livraisonTel" type="tel" inputmode="tel" placeholder="033 00 000 00">
+          </div>
+          <div class="field">
+            <label for="livraisonLivreur">Livreur</label>
+            <select id="livraisonLivreur"></select>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="livraisonAjouterBtn">Hampiditra</button>
+          <p id="livraisonStatut" style="font-size:0.8rem; color:var(--cyan); margin-top:0.7rem; line-height:1.5;"></p>
+        </div>
+
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Ny fandefasana</div>
+          <div id="livraisonListe" style="margin-top:0.7rem;"></div>
+          <p class="empty-hint" id="livraisonVide" style="display:none;">Mbola tsy misy fandefasana.</p>
+        </div>
+      </section>
+
+      <!-- La fenêtre d'UNE personne. Une seule pour tout le monde : on la
+           remplit de celle qu'on vient d'ouvrir. Un élément par personne
+           vivrait dans la page pour rien — on n'en regarde qu'une à la fois.
+
+           Elle n'est pas dans le menu : on y entre en pressant un nom. -->
+      <section class="section" id="section-personne">
+        <div class="section-head">
+          <div>
+            <h2 id="personneNom">—</h2>
+            <p id="personneRole">—</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panneau-titre">Anio</div>
+          <p id="personneEtat" style="font-size:0.9rem; line-height:1.7; margin:0;">—</p>
+          <div class="actions-row" style="margin-top:0.9rem;">
+            <button type="button" class="btn btn-primary btn-sm" id="personneTongaBtn" style="width:auto;">Tonga</button>
+            <button type="button" class="btn btn-sm" id="personneLasaBtn">Lasa</button>
+          </div>
+          <p id="personnePointageStatut" style="font-size:0.8rem; color:var(--cyan); margin-top:0.7rem; line-height:1.5;"></p>
+        </div>
+
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Ora niasana</div>
+          <div style="display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:0.5rem;">
+            <div>
+              <div class="plan-note">Anio</div>
+              <div class="plan-price" id="personneHeuresJour" style="font-size:1.2rem; color:var(--cyan);">—</div>
+            </div>
+            <div>
+              <div class="plan-note">Herinandro</div>
+              <div class="plan-price" id="personneHeuresSemaine" style="font-size:1.2rem; color:var(--cyan);">—</div>
+              <div class="plan-note" id="personneJoursSemaine" style="margin-top:0.2rem;">—</div>
+            </div>
+          </div>
+          <p id="personneEcart" style="font-size:0.85rem; color:var(--muted); margin:0.9rem 0 0; line-height:1.6;"></p>
+        </div>
+
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Ny rohiny</div>
+          <p style="font-size:0.8rem; color:var(--muted); line-height:1.6; margin:0 0 0.7rem;">
+            Ity rohy ity no alefa aminy. Ny articles no hitany, tsy azony ovaina.
+          </p>
+          <p id="personneLien" style="font-size:0.78rem; color:var(--cyan); word-break:break-all; margin:0 0 0.7rem;">—</p>
+          <button type="button" class="btn btn-sm" id="personneLienBtn">Hamorona rohy</button>
+        </div>
+
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Ny articles hitany</div>
+          <p style="font-size:0.8rem; color:var(--muted); line-height:1.6; margin:0 0 0.7rem;">
+            Fijerena ihany — na ho anao eto, na ho azy amin'ny rohiny.
+          </p>
+          <div id="personneArticles"></div>
+        </div>
+
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Ny fivezivezena</div>
+          <div id="personnePointages" style="margin-top:0.7rem;"></div>
+          <p class="empty-hint" id="personnePointagesVide" style="display:none;">Mbola tsy nisy pointage.</p>
+        </div>
+      </section>
+
+      <section class="section" id="section-abonnement">
+        <div class="section-head">
+          <div>
+            <h2>Abonnement</h2>
+            <p>Où en est votre accès, et comment le prolonger.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panneau-titre">État de votre accès</div>
+          <p id="abonnementEtat" style="font-size:0.9rem; line-height:1.6; margin:0;">—</p>
+        </div>
+
+        <div class="panel" style="margin-top:1rem;">
+          <div class="panneau-titre">Les deux formules</div>
+          <div class="paywall-plans">
+            <div class="plan-card">
+              <div class="plan-name">Mensuel</div>
+              <div class="plan-price">15 000 Ar</div>
+              <div class="plan-note">par mois</div>
+            </div>
+            <div class="plan-card">
+              <div class="plan-name">Annuel</div>
+              <div class="plan-price">150 000 Ar</div>
+              <div class="plan-note">par an (2 mois offerts)</div>
+            </div>
+          </div>
+          <p style="font-size:0.8rem; color:var(--muted); line-height:1.6; margin:0.9rem 0 0;">
+            Deux voies : votre <strong>portefeuille</strong>, et l'abonnement démarre dans la seconde ;
+            ou <strong>MVola, Orange Money, Airtel Money</strong> au <strong data-owner="phone"></strong>
+            (<strong data-owner="name"></strong>), puis le code de déverrouillage que le vendeur vous donne.
+          </p>
+          <button type="button" class="btn btn-primary btn-sm" id="abonnementOuvrirBtn" style="margin-top:1rem;">Payer ou saisir mon code</button>
+        </div>
+      </section>
+
+      <section class="section" id="section-fond">
+        <div class="section-head">
+          <div>
+            <h2>Fond d'écran</h2>
+            <p>Une image de votre appareil habille le fond de l'application. Elle remplit l'écran quelle qu'en soit la taille, et ne quitte jamais l'appareil.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <input type="file" id="fondFichier" accept="image/*" style="display:none;">
+          <div class="actions-row">
+            <button type="button" class="btn btn-primary btn-sm" id="fondChoisirBtn">Choisir une image</button>
+            <button type="button" class="btn btn-sm" id="fondRetirerBtn">Retirer le fond</button>
+          </div>
+          <p id="fondEtat" style="color:var(--muted); font-size:0.85rem; margin-top:0.8rem;">—</p>
+          <div id="fondApercu" class="fond-apercu vide"></div>
+        </div>
+      </section>
+
+      <section class="section" id="section-connexions">
+        <div class="section-head">
+          <div>
+            <h2>Paramètres</h2>
+            <p>Vos informations et préférences.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>👤 Mon profil</h3>
+          <p style="font-size:0.8rem; color:var(--muted); margin-bottom:0.8rem;">
+            Ces informations apparaissent sur vos factures.
+          </p>
+          <div style="display:flex; align-items:center; gap:0.9rem; margin-bottom:1.1rem;">
+            <img id="profilePhotoPreview" alt="Photo de profil" style="width:64px; height:64px; border-radius:50%; object-fit:cover; background:var(--panel-2); border:1px solid var(--line); display:none;">
+            <div id="profilePhotoPlaceholder" style="width:64px; height:64px; border-radius:50%; background:var(--panel-2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:1.7rem;">👤</div>
+            <div>
+              <div style="font-size:0.82rem; color:var(--text);">Photo / logo de profil</div>
+              <div style="font-size:0.74rem; color:var(--muted);">Choisissez une image dans votre dossier ci-dessous.</div>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field" style="margin-bottom:0;">
+              <label for="profileName">Nom</label>
+              <input id="profileName" type="text">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="profileCompany">Nom de la société</label>
+              <input id="profileCompany" type="text" placeholder="Ex: Ma Société SARL">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="profileEmail">Email</label>
+              <input id="profileEmail" type="email">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="profilePhone">Téléphone</label>
+              <input id="profilePhone" type="tel">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="profileNif">NIF</label>
+              <input id="profileNif" type="text" placeholder="Ex: 1234567890">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="profileStat">STAT</label>
+              <input id="profileStat" type="text" placeholder="Ex: 12345 11 2020 0 12345">
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="profileAccessCode">Nouveau mot de passe</label>
+              <input id="profileAccessCode" type="password" minlength="6" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password">
+              <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Pour remplacer un code reçu par email : saisissez le vôtre puis « Enregistrer ». Il est utilisable aussitôt.</p>
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label for="profileLogo">Logo (image)</label>
+              <input id="profileLogo" type="file" accept="image/*">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="saveProfileBtn" style="width:auto; margin-top:0.8rem;">Enregistrer</button>
+
+          <div style="margin-top:1.4rem; border-top:1px solid var(--line); padding-top:1.2rem;">
+            <h3 style="font-size:0.95rem;">🪪 Pièce d'identité</h3>
+            <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem; line-height:1.5;">
+              Conservées sur cet appareil et dans votre compte. Elles ne sont transmises au
+              propriétaire que si une alerte de sécurité concerne votre compte.
+            </p>
+            <div class="form-grid">
+              <div class="field" style="margin-bottom:0;">
+                <label for="profileIdNumber">Numéro CIN ou passeport</label>
+                <input id="profileIdNumber" type="text" placeholder="Ex : 101 234 567 890">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="profileIdDate">Date de la CIN / du passeport</label>
+                <input id="profileIdDate" type="date">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="profileBirthDate">Date de naissance</label>
+                <input id="profileBirthDate" type="date">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="profileBirthPlace">Lieu de naissance</label>
+                <input id="profileBirthPlace" type="text" placeholder="Ex : Antananarivo">
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="saveIdentityBtn" style="width:auto; margin-top:0.8rem;">Enregistrer la pièce d'identité</button>
+            <p id="profileIdentityStatus" style="font-size:0.78rem; color:var(--cyan); margin-top:0.6rem;"></p>
+          </div>
+          <span id="profileSaveStatus" style="font-size:0.78rem; color:var(--muted); margin-left:0.6rem;"></span>
+        </div>
+
+        <div class="panel" id="adminVisitsPanel" style="display:none;">
+          <h3>🌐 Visiteurs du site</h3>
+          <p style="font-size:0.8rem; color:var(--muted); margin-bottom:0.8rem;">
+            Dernières visites enregistrées sur le site (page consultée, provenance, appareil).
+          </p>
+          <table>
+            <thead><tr><th>Date</th><th>Page</th><th>Provenance</th><th>Appareil</th></tr></thead>
+            <tbody id="siteVisitsTableBody"></tbody>
+          </table>
+          <p class="empty-hint" id="siteVisitsEmptyHint" style="display:none;">Aucune visite enregistrée pour le moment.</p>
+        </div>
+
+        <div class="panel" id="adminLoginsPanel" style="display:none;">
+          <div class="section-head" style="margin-bottom:0.6rem;">
+            <div>
+              <h3 style="font-family:var(--font-mono); font-size:0.85rem; color:var(--cyan);">🗝️ Connexions à l'application</h3>
+            </div>
+            <div class="actions-row">
+              <button class="btn btn-red btn-sm" id="clearLoginsBtn">Vider l'historique</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>Nom</th><th>Email</th><th>Date &amp; heure</th></tr></thead>
+            <tbody id="loginsTableBody"></tbody>
+          </table>
+          <p class="empty-hint" id="loginsEmptyHint" style="display:none;">Aucune connexion enregistrée.</p>
+        </div>
+
+        <div class="panel" id="signupsPanel" style="display:none;">
+          <h3>🆕 Nouvelles inscriptions (admin — vous uniquement)</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
+            Chaque personne qui crée son compte apparaît ici automatiquement, avec ses coordonnées.
+            Elle entre directement dans l'application : rien à valider de votre part.
+          </p>
+          <div class="table-scroll">
+            <table id="signupsTable">
+              <thead>
+                <tr><th>Date</th><th>Nom</th><th>Email</th><th>Téléphone</th></tr>
+              </thead>
+              <tbody id="signupsTableBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-hint" id="signupsEmpty" style="display:none;">Aucune inscription pour le moment.</p>
+          <button type="button" class="btn btn-sm" id="refreshSignupsBtn" style="width:auto; margin-top:0.8rem;">↻ Actualiser</button>
+        </div>
+
+        <div class="panel" id="unlockRequestsPanel" style="display:none;">
+          <h3>🔓 Demandes de déblocage (admin — vous uniquement)</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
+            Chaque client ayant oublié son mot de passe règle <strong style="color:var(--text);">20 000 Ar</strong>
+            sur votre PayPal puis envoie sa demande ici. Vérifiez la réception du paiement puis cliquez sur
+            <strong style="color:var(--text);">Confirmer le paiement</strong> : l'accès se rouvre tout seul
+            sur l'appareil du client. Aucun code ne circule, rien à transmettre.
+          </p>
+          <div id="unlockRequestsList"></div>
+          <p class="empty-hint" id="unlockRequestsEmpty" style="display:none;">Aucune demande pour le moment.</p>
+          <button type="button" class="btn btn-sm" id="refreshUnlockRequestsBtn" style="width:auto; margin-top:0.8rem;">↻ Actualiser</button>
+        </div>
+
+        <div class="panel" id="masterCodePanel" style="display:none;">
+          <h3>🔑 Codes de déverrouillage (admin — vous uniquement)</h3>
+          <p style="font-size:0.8rem; color:var(--muted); margin-bottom:0.8rem;">
+            Chaque client bloqué reçoit automatiquement son propre code (généré quand il clique sur
+            « Signaler mon paiement »). Le code est valable <strong>30 minutes</strong> et accepte
+            <strong>3 essais</strong> maximum ; passé ce délai ou ces essais, un nouveau code est généré
+            automatiquement. Retrouvez ici le code actif à communiquer à chaque client après vérification
+            de son paiement.
+          </p>
+          <table>
+            <thead><tr><th>Client (email)</th><th>Code actif</th><th>Généré à</th><th>Expire dans</th><th>Essais</th><th></th></tr></thead>
+            <tbody id="clientCodesTableBody"></tbody>
+          </table>
+          <p class="empty-hint" id="clientCodesEmptyHint" style="display:none;">Aucun code en attente pour le moment.</p>
+
+          <div style="margin-top:1.2rem; padding-top:1.2rem; border-top:1px solid var(--line);">
+            <h3 style="font-size:0.95rem;">Générer un code manuellement</h3>
+            <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.6rem;">
+              Utile si le client vous contacte directement sans passer par « Signaler mon paiement ».
+            </p>
+            <div class="form-grid">
+              <div class="field" style="margin-bottom:0;">
+                <label for="manualCodeEmailInput">Email du client</label>
+                <input id="manualCodeEmailInput" type="email" placeholder="client@exemple.com">
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="generateManualCodeBtn" style="width:auto; margin-top:0.8rem;">Générer un nouveau code</button>
+            <span id="manualCodeStatus" style="font-size:0.78rem; color:var(--muted); margin-left:0.6rem;"></span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="gestion-stockage-js/common.js?v=0bed4320"></script>
+<script src="gestion-stockage-js/stock.js?v=275a327a"></script>
+<script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
+<script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
+<script src="gestion-stockage-js/factures.js?v=cf29cfb7"></script>
+<script src="gestion-stockage-js/inviter.js?v=dd603f54"></script>
+<script src="gestion-stockage-js/contact.js?v=5b213ad8"></script>
+<script src="gestion-stockage-js/live.js?v=aa8bc9b9"></script>
+<script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
+<script src="gestion-stockage-js/parametres.js?v=ccebdd78"></script>
+<script src="gestion-stockage-js/identite.js?v=32177fac"></script>
+<script src="gestion-stockage-js/fond.js?v=9130e24f"></script>
+<script src="gestion-stockage-js/equipe.js?v=3f05a366"></script>
+<script src="gestion-stockage-js/vue-mpiasa.js?v=fd4ce9be"></script>
+<script src="gestion-stockage-js/vue-suivi.js?v=f1457ece"></script>
+<script src="gestion-stockage-js/securite.js?v=9b276532"></script>
+
+
+
+</body>
+</html>

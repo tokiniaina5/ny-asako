@@ -1,0 +1,463 @@
+MISE EN SERVICE — Supabase + Admin
+====================================
+
+CE QUI A ÉTÉ CORRIGÉ
+---------------------
+- "header (1).html" renommé en "header.html" (les liens le cherchaient
+  sous ce nom).
+- avatar.png et tanjona-tokiniaina-cv.pdf étaient au mauvais endroit
+  (un dossier au-dessus) — copiés dans "my portfolio/" où le site
+  les cherche réellement.
+- Ajout de "index.html" dans "my portfolio/" : sans lui, l'adresse
+  racine du site (https://votresite.netlify.app/) n'affichait rien.
+  Il redirige maintenant automatiquement vers header.html.
+- "setmap.xml" (faute de frappe) renommé "sitemap.xml" et son contenu
+  mis à jour avec les pages réelles du site (l'ancien listait des
+  pages qui n'existent plus : a-propos.html, blog.html...).
+- package.json / package-lock.json supprimés : ils référençaient un
+  faux paquet ("espress") sans script de build, ce qui pouvait faire
+  échouer un déploiement automatique. Le site est 100% statique,
+  aucun de ces fichiers n'est nécessaire.
+- Le formulaire de contact n'ouvrait qu'un email (à une adresse
+  provisoire) sans rien enregistrer de fiable. Il enregistre
+  maintenant chaque message dans Supabase, visible dans l'admin.
+
+
+ÉTAPE 1 — Créer les tables dans Supabase
+------------------------------------------
+1. Ouvrez votre projet sur https://supabase.com
+2. Allez dans "SQL Editor"
+3. Collez tout le contenu du fichier "supabase/sql/supabase-schema.sql" et exécutez-le.
+   Cela crée 3 tables : site_visits, contact_messages, site_content,
+   avec les règles de sécurité (RLS) déjà configurées.
+
+
+ÉTAPE 2 — Créer votre compte propriétaire
+--------------------------------------------
+1. Toujours dans Supabase : "Authentication" > "Users" > "Add user"
+2. Entrez votre email et un mot de passe (c'est CE compte qui vous
+   servira à vous connecter sur /admin.html du site).
+3. Dans "Authentication" > "Providers" > "Email", désactivez
+   "Allow new users to sign up" — pour qu'aucune autre personne ne
+   puisse créer un compte et accéder à votre admin.
+
+
+ÉTAPE 3 — Déployer le site
+------------------------------
+Déployez uniquement le contenu du dossier "my portfolio/" (c'est lui
+qui doit être à la racine de votre site — sur Netlify, réglez
+"Publish directory" sur "my portfolio").
+
+
+ÉTAPE 4 — Utiliser l'admin
+------------------------------
+Allez sur : https://votresite.netlify.app/admin.html
+Connectez-vous avec le compte créé à l'étape 2. Vous y verrez :
+- Visiteurs : les pages consultées, avec compteur du jour et total
+- Messages : les messages reçus via le formulaire de contact
+- Contenu du site : modifiez certains textes du site directement
+  (la liste des zones modifiables est affichée dans l'admin)
+
+Cette page /admin.html n'apparaît dans aucun menu du site — seule
+une personne qui connaît l'adresse (vous) peut y accéder, et seul
+votre compte peut s'y connecter.
+
+
+REMARQUE
+------------------------------
+Le lien "Envoyer un email directement" en bas de la page Contact
+utilise encore une adresse provisoire (contact@tanjona.mg). Le
+formulaire principal, lui, fonctionne déjà pleinement via Supabase.
+Donnez-moi votre vraie adresse email quand vous voulez que je mette
+aussi ce lien à jour.
+
+
+CONNEXION DE L'APPLICATION "GESTION DE STOCKAGE"
+------------------------------
+La connexion à gestion-stockage.html utilise maintenant les vrais
+comptes Supabase (Authentication) :
+- 1ère connexion : nom, email, téléphone, logo + un MOT DE PASSE
+  (6 caractères minimum). Le compte est créé dans Supabase, le mot
+  de passe y est conservé chiffré (haché) — jamais sur l'appareil.
+- Ouvertures suivantes : email + mot de passe seulement. La
+  connexion se valide toute seule dès que la saisie est complète,
+  et fonctionne depuis n'importe quel téléphone ou ordinateur.
+- Le mot de passe se change dans Paramètres > Mon profil >
+  "Nouveau mot de passe".
+
+RÉGLAGE À FAIRE UNE FOIS dans Supabase :
+  Dashboard > Authentication > Sign In / Providers > Email
+  - "Confirm email" DÉSACTIVÉ  -> le client entre directement
+    après avoir créé son compte (recommandé).
+  - Si vous le laissez ACTIVÉ, le client reçoit un mail de
+    confirmation ; l'application le lui dit et lui demande de se
+    reconnecter ensuite. Pensez alors à renseigner l'URL du site
+    dans Authentication > URL Configuration > Site URL.
+
+À SAVOIR :
+- Seule la CONNEXION est partagée entre les appareils. Les données
+  (articles, mouvements, factures, clients) restent enregistrées
+  dans le navigateur de chaque appareil : en vous connectant sur un
+  autre téléphone, le stock y sera vide.
+- Le logo reste lui aussi sur l'appareil (il n'est pas envoyé au
+  serveur). Sur un nouvel appareil, la connexion rapide
+  (email + mot de passe) fonctionne quand même.
+- Si Supabase est injoignable (hors ligne), l'application retombe
+  sur l'ancien code d'accès local pour ne pas bloquer l'utilisateur.
+
+
+PORTEFEUILLE EN ARIARY — RETRAIT VERS UN COMPTE
+------------------------------
+Le portefeuille tient un solde EN ARIARY, consultable dans la devise
+de son choix au taux du jour, et retirable vers un compte extérieur :
+PayPal, compte bancaire, ou Mobile Money.
+
+À exécuter dans Supabase (SQL Editor) : le fichier
+"supabase/sql/supabase-portefeuille.sql". Puis, dans le Terminal :
+  supabase functions deploy wallet
+(AVEC vérification du jeton, donc SANS --no-verify-jwt : c'est ce qui
+garantit que celui qui retire est bien celui qu'il prétend être.)
+
+Réglages facultatifs (Terminal) :
+  supabase secrets set AR_PER_REFERRAL=1000   (ce que rapporte un parrainage)
+  supabase secrets set MIN_PAYOUT_AR=10000    (retrait minimum)
+  supabase secrets set RATE_EUR_MGA=5000      (votre taux, sinon celui du jour)
+
+LE SOLDE N'EST PAS STOCKÉ : il se déduit de ce qui est déjà en base —
+parrainages gagnés, moins les retraits, moins les déblocages payés.
+Un solde écrit quelque part se désynchronise, et un solde calculé par
+la page serait un solde que la page peut s'inventer. Ici, il n'y a
+aucun chiffre à falsifier.
+
+Comment ça se passe :
+1. Le client ouvre Portefeuille, voit son solde en ariary et peut le
+   lire en euros, dollars, rands, roupies…
+2. Il demande un retrait : montant, moyen (PayPal / banque / Mobile
+   Money), où l'envoyer, et la devise voulue à l'arrivée. La somme
+   quitte son solde AUSSITÔT — sinon la même somme pourrait être
+   demandée deux fois.
+3. Vous êtes prévenu, et la demande apparaît dans votre propre
+   Portefeuille, sous "Retraits à envoyer", avec la somme déjà
+   convertie et le compte de destination.
+4. VOUS ENVOYEZ L'ARGENT depuis votre PayPal, votre banque ou votre
+   Mobile Money, puis vous cliquez sur "Argent envoyé".
+5. Les deux côtés sont prévenus : vous tout de suite, le client à sa
+   prochaine ouverture même s'il avait fermé la page. Un refus lui
+   rend son solde et lui dit pourquoi.
+
+FAIRE ENTRER DE L'ARGENT DANS LE PORTEFEUILLE
+Jusqu'ici le solde ne pouvait que descendre : il naissait du
+parrainage, puis sortait en retraits ou se dépensait dans
+l'application. Rien ne pouvait y entrer. Maintenant si.
+
+Ce qu'il y a à faire, dans l'ordre :
+
+1. SQL. Dans Supabase > SQL Editor > New query, collez tout le
+   contenu de "supabase/sql/supabase-portefeuille-depots.sql" et exécutez.
+   La requête de fin doit afficher les colonnes de la table.
+
+2. Un secret, que vous inventez. C'est le mot de passe entre votre
+   fournisseur de paiement et Supabase. Prenez-le long et au hasard.
+   Dans le Terminal :
+     supabase secrets set WALLET_WEBHOOK_SECRET=votre-secret-tres-long
+
+   NE L'ÉCRIVEZ NULLE PART D'AUTRE. Ni dans un message, ni dans une
+   page : celui qui l'a peut créditer n'importe quel compte.
+
+3. Les deux fonctions. Dans le Terminal :
+     supabase functions deploy wallet
+     supabase functions deploy wallet-encaisse --no-verify-jwt
+
+   Le --no-verify-jwt n'est PAS un oubli : c'est une machine qui
+   appelle "wallet-encaisse", pas une personne connectée. Elle n'a
+   pas de jeton d'utilisateur à présenter. C'est le secret de
+   l'étape 2 qui tient la porte à sa place.
+
+POUR ESSAYER SANS AUCUN CONTRAT
+La fonction accepte une forme générique. Dans le Terminal, en
+remplaçant l'adresse du projet, le secret, et l'email par celui d'un
+compte qui existe :
+
+  curl -X POST https://VOTRE-PROJET.supabase.co/functions/v1/wallet-encaisse \
+    -H "Content-Type: application/json" \
+    -H "x-secret-encaisse: votre-secret-tres-long" \
+    -d '{"provider":"essai","ref":"T-1","amountAr":5000,"email":"client@exemple.mg","status":"confirme"}'
+
+Ouvrez ensuite Portefeuille : le versement apparaît sous "Mes
+versements" et le solde a monté de 5 000 Ar. Relancez la même
+commande : rien ne bouge — c'est la référence "T-1" qui l'empêche,
+et c'est voulu.
+
+CE QUI EST GARDÉ, ET CE QUI NE L'EST PAS
+- Le solde ne compte que les versements CONFIRMÉS. Un versement
+  annoncé et pas encore vérifié ne vaut rien : sinon l'annonce
+  suffirait à dépenser. Il se voit quand même dans la page, pour que
+  celui qui vient de payer sache que c'est arrivé et ne paie pas
+  deux fois.
+- Un versement adressé à un compte inconnu n'est crédité à personne.
+  Il attend, avec la notification entière, pour être rattaché à la
+  main.
+- Personne n'écrit dans la table depuis une page : elle n'a aucune
+  policy d'insertion. Seule la clé de service, qui ne quitte jamais
+  le serveur, peut y toucher.
+
+QUAND VOUS AUREZ UN VRAI FOURNISSEUR
+MVola, Orange, Airtel et PayPal parlent chacun leur langue. Tout est
+déjà en place sauf la traduction : la fonction "normaliser", au début
+de "supabase/functions/wallet-encaisse/index.ts", ramène la
+notification à la même forme. C'est le seul endroit à toucher, et
+c'est quelques lignes. Donnez-moi la documentation du fournisseur et
+je les écris.
+
+ACHETER DANS L'APPLICATION AVEC LE PORTEFEUILLE
+L'abonnement se règle depuis le solde, sans code à demander ni
+argent à envoyer : la somme quitte le portefeuille et le droit est
+acquis dans la seconde. Deux endroits pour le faire :
+- l'écran "Abonnement requis", bouton "Payer avec mon solde" ;
+- Portefeuille > "Acheter dans l'application".
+
+LES PRIX SONT DANS LA FONCTION, PAS DANS LA PAGE : le navigateur
+n'envoie que le nom de l'article. Sinon chacun pourrait s'abonner
+pour un ariary. Pour les changer, modifiez SITE_ITEMS dans
+"supabase/functions/wallet/index.ts" et redéployez.
+
+Les jours mis de côté par le parrainage ("jours bancarisés")
+s'ajoutent à l'achat, comme avec un paiement par code.
+
+PAR QUEL CANAL L'ARGENT SORT
+Six choix, et la liste n'a pas besoin d'être fermée :
+  PayPal · compte bancaire / carte · Mobile Money
+  Espèces (point cash, Western Union...)
+  Autre portefeuille (Wise, Payoneer, Skrill...)
+  Payer un achat à l'étranger (chez un marchand)
+
+Pour les trois derniers, le client donne EN PLUS :
+- le LIEN du service ou de la page à payer, pour aller droit au but ;
+- la MARCHE À SUIVRE, mot pour mot. Elle est obligatoire : un canal
+  que l'application ne connaît pas ne se devine pas, et sans consigne
+  la somme partirait au hasard. Le serveur refuse la demande sans elle.
+
+Vous retrouvez les deux dans « Retraits à envoyer », le lien étant
+cliquable.
+
+CE QUI EST MANUEL, ET POURQUOI ÇA LE RESTE
+C'est vous qui envoyez l'argent, puis qui cliquez sur « Argent
+envoyé ». Aucune application ne peut faire autrement sans devenir un
+établissement de paiement :
+- verser automatiquement sur le compte de quelqu'un demande un compte
+  marchand habilité aux versements (PayPal Payouts, Stripe Connect),
+  avec vérification d'identité et contrat ;
+- payer un achat depuis un solde demande d'ÉMETTRE UNE CARTE
+  (Stripe Issuing, Marqeta) : c'est un métier réglementé ;
+- retirer à un point cash demande un réseau d'agents, ou une carte
+  acceptée aux distributeurs ;
+- aucun Mobile Money malgache n'ouvre son API pour cela.
+
+À Madagascar, tout cela suppose un agrément d'établissement de
+monnaie électronique auprès de la Banque centrale, avec les
+obligations qui vont avec (connaissance du client, lutte contre le
+blanchiment, fonds cantonnés).
+
+Tout le reste — solde, conversion au taux du jour, demande, lien,
+consignes, notifications des deux côtés — est automatique. Le seul
+geste qui vous revient est celui qu'aucun code ne peut faire à votre
+place : envoyer réellement l'argent.
+
+
+DÉBLOCAGE PAYÉ AVEC LE PORTEFEUILLE
+------------------------------
+Deux dépannages SÉPARÉS sur l'écran de connexion « Bon retour » :
+- « Mot de passe oublié ? » : le compte reste ouvert, un lien part par
+  email pour choisir un nouveau mot de passe. Rien à payer.
+- « Mon compte est bloqué — demander un déblocage » : la procédure
+  décrite ci-dessous.
+
+Le déblocage se règle avec les CRÉDITS DU PORTEFEUILLE, et non plus
+avec de l'argent envoyé au dehors. Il n'y a donc plus rien à
+configurer : ni PayPal, ni carte, ni Mobile Money, ni RIB.
+
+1. Le client ouvre « Mon compte est bloqué », voit le solde de son
+   portefeuille et le coût (20 crédits), et clique sur « Payer avec
+   mes crédits et débloquer ».
+2. Les crédits sont retirés de son portefeuille et son accès se
+   rouvre AUSSITÔT, sur cet appareil. Rien à envoyer, rien à
+   attendre, aucune référence à recopier.
+3. Vous recevez la notification « X s'est débloqué avec 20 crédits
+   de son portefeuille — ils sont passés au vôtre », et la ligne
+   apparaît dans Paramètres > « Demandes de déblocage ».
+4. S'il n'a pas assez de crédits, le message dit combien il en
+   manque. Les crédits viennent du parrainage : chaque personne qui
+   ouvre l'application avec son lien d'invitation lui en rapporte un.
+
+Le montant se change dans « gestion-stockage-js/common.js »,
+constante UNLOCK_COST_CREDITS.
+
+Le déblocage n'est possible que sur un appareil où le compte est déjà
+enregistré : c'est là que se trouvent les données de l'application, et
+c'est ce qui empêche quelqu'un d'autre de s'en servir à sa place.
+
+SÉCURITÉ : aucun code ne circule, il n'y a donc rien à intercepter
+ni à partager. Le déblocage se fait sur l'appareil même, avec des
+crédits qui appartiennent déjà à la personne.
+
+
+NOUVELLES INSCRIPTIONS — envoi automatique au propriétaire
+------------------------------
+Dès qu'une personne crée son compte (première connexion), ses
+coordonnées partent automatiquement chez le propriétaire :
+- table "client_signups" : visible dans Paramètres >
+  "Nouvelles inscriptions" (date, nom, email, téléphone), avec une
+  notification quand il y en a de nouvelles ;
+- table "contact_messages" : la même information apparaît aussi
+  dans /admin.html, sous le nom "... (nouvelle inscription)".
+Le client, lui, entre directement dans l'application : il n'y a
+rien à valider de votre part.
+
+À exécuter dans Supabase : la fin de "supabase/sql/supabase-schema.sql"
+(table "client_signups").
+
+
+ESPACE ADMIN & SÉCURITÉ
+------------------------------
+Un menu "Espace admin" apparaît uniquement pour le propriétaire
+(reconnu par son email). Les clients ne le voient jamais. Il réunit :
+- les clients inscrits ;
+- l'argent déclaré (déblocages payés sur PayPal) et son total ;
+- les codes changés et les déblocages ;
+- les tentatives détectées sur les comptes clients ;
+- les tentatives détectées sur le compte du propriétaire ;
+- les comptes bloqués, avec un bouton pour prévenir la personne
+  et un autre pour lever le blocage (effet immédiat).
+
+Ce qui déclenche un blocage automatique :
+1. "Compte n°2" : quelqu'un s'inscrit avec le nom ou le numéro d'un
+   client déjà enregistré, sous un autre email. Le nouveau compte est
+   bloqué immédiatement, l'application se referme et le propriétaire
+   est prévenu.
+2. Entrées forcées : 5 codes erronés en moins de 15 minutes sur le
+   même email. Le compte visé est bloqué.
+Le compte du PROPRIÉTAIRE n'est jamais bloqué automatiquement : il
+serait enfermé dehors. Ses tentatives sont journalisées et lui sont
+signalées.
+
+À exécuter dans Supabase : la fin de "supabase/sql/supabase-schema.sql"
+(tables "security_events" et "blocked_accounts").
+
+LIMITE : le solde réel PayPal n'est pas lisible par l'application ;
+seuls les paiements déclarés par les clients apparaissent. Le message au client peut être envoyé d'un bouton (mailto) ; l'alerte
+au propriétaire, elle, part automatiquement dès que la fonction
+"send-alert" est déployée.
+
+
+ÉTAPE 2 — PIÈCE D'IDENTITÉ & ALERTE PAR EMAIL AUTOMATIQUE
+------------------------------
+Après s'être connecté, le client passe par une étape 2 obligatoire :
+numéro CIN ou passeport, date du document, date et lieu de naissance.
+Tant qu'elle n'est pas remplie, l'application ne s'ouvre pas. Ensuite
+il peut les corriger dans Paramètres > "Pièce d'identité".
+
+Où sont conservées ces informations : sur l'appareil du client et
+dans son compte Supabase (user_metadata, lisible par lui seul). Elles
+ne sont écrites dans AUCUNE table publique — un numéro de CIN et une
+date de naissance ne doivent pas être exposés.
+
+Quand une alerte de sécurité concerne un compte (second compte sous
+une identité existante, entrées forcées), l'application appelle la
+fonction "send-alert" qui vous envoie un mail contenant le compte
+visé ET cette pièce d'identité.
+
+DÉPLOYER L'ENVOI AUTOMATIQUE (une fois) :
+1. Créez un compte sur https://resend.com et générez une clé API.
+   (100 mails/jour gratuits ; l'expéditeur onboarding@resend.dev
+   fonctionne sans domaine à vérifier.)
+2. Installez la CLI Supabase : npm i -g supabase
+3. Dans le dossier du projet :
+     supabase login
+     supabase link --project-ref ezpsapvthujkhttbfhlr
+     supabase secrets set RESEND_API_KEY=re_xxxxxxxx
+     supabase secrets set OWNER_EMAIL=rasolofonirainytokiniaina@gmail.com
+     supabase functions deploy send-alert --no-verify-jwt
+4. C'est tout : les alertes partent seules.
+
+Le code de la fonction est dans supabase/functions/send-alert/index.ts.
+Tant qu'elle n'est pas déployée, rien n'est perdu : l'alerte reste
+visible dans l'espace admin et en notification, et le blocage
+s'applique quand même.
+
+
+DÉBLOCAGE PAR LE PROPRIÉTAIRE — NOUVEAU CODE ENVOYÉ AU CLIENT
+------------------------------
+Quand une alerte arrive :
+1. Vous recevez le mail (compte visé + pièce d'identité déclarée) ET
+   une notification dans l'application vous invitant à vérifier que
+   cette identité correspond bien au titulaire du compte.
+2. Si c'est bien lui : espace admin > "Comptes bloqués" >
+   "🔑 Débloquer et envoyer un nouveau code". L'application :
+   - pose un nouveau code comme mot de passe du compte,
+   - lève le blocage,
+   - envoie le code au client par email.
+   Si le mail ne part pas, le code s'affiche à l'écran pour que vous
+   le transmettiez vous-même.
+3. Le client se connecte avec son email et ce code, entre directement
+   dans le site, puis choisit son propre code dans
+   Paramètres > Mon profil > "Nouveau mot de passe".
+Le bouton "🔓 Lever le blocage seulement" reste disponible quand le
+client se souvient de son code.
+
+DÉPLOYER CETTE FONCTION (une fois) :
+   supabase secrets set OWNER_NAME="Rasolofonirainy Tokiniaina Tanjona"
+   supabase functions deploy reset-code
+ATTENTION : déployez "reset-code" SANS --no-verify-jwt. C'est la
+vérification du jeton qui garantit que seul votre compte peut
+changer le mot de passe d'un client. La clé de service
+(SUPABASE_SERVICE_ROLE_KEY) est fournie automatiquement à la
+fonction par Supabase : ne la copiez jamais dans le site.
+
+
+SI L'ALERTE VISE VOTRE PROPRE COMPTE (ADMIN)
+------------------------------
+Votre compte n'est jamais bloqué : vous ne devez jamais rester
+dehors. À la place :
+1. Une notification vous prévient dans l'application.
+2. Le mail d'alerte vous apporte un NOUVEAU CODE : la fonction
+   "send-alert" le pose elle-même sur votre compte (clé de service,
+   côté serveur). Vous vous connectez avec votre email et ce code,
+   depuis n'importe quel appareil.
+3. Vous le remplacez ensuite par le vôtre :
+   Paramètres > Mon profil > "Nouveau mot de passe" > Enregistrer.
+   Le nouveau code est utilisable immédiatement.
+Une remise à zéro n'est refaite qu'après un quart d'heure, pour
+qu'un acharné ne puisse pas la déclencher en boucle.
+
+Même principe pour un client : le code que vous lui envoyez depuis
+l'espace admin devient son mot de passe ; il peut le changer dans
+Paramètres et s'en servir aussitôt.
+
+
+TRADUCTION DES APPELS (fournisseurs internationaux)
+------------------------------
+Le lien "Appel vidéo", au centre de la rangée Accueil / Articles,
+sert à parler directement à un fournisseur : envoyez-lui le lien, il
+l'ouvre, l'appel démarre.
+
+Pendant l'appel, un bandeau "Traduire" apparaît :
+- chacun choisit sa langue (14 langues, dont chinois, anglais,
+  espagnol, arabe, hindi, portugais…) ;
+- ce que vous dites est reconnu, envoyé, puis traduit chez lui ;
+- ce qu'il dit s'affiche en sous-titre dans VOTRE langue et se lit
+  à voix haute.
+
+Limite : la reconnaissance de la parole n'existe que dans Chrome,
+Edge et Safari macOS récent. Ailleurs l'appel fonctionne, seule la
+traduction reste muette — l'application le dit clairement.
+
+DÉPLOYER LA TRADUCTION (une fois) :
+   supabase functions deploy translate --no-verify-jwt
+
+Sans clé, la fonction utilise MyMemory : gratuit, sans compte, mais
+limité en volume et de qualité moyenne. Pour une bien meilleure
+traduction, créez une clé sur https://www.deepl.com/pro-api (offre
+gratuite : 500 000 caractères/mois) puis :
+   supabase secrets set DEEPL_API_KEY=xxxxxxxx:fx
+La fonction prend alors DeepL, et retombe sur MyMemory en cas de
+problème.

@@ -1,0 +1,30 @@
+# Ce qui n'appartient pas au site public.
+#
+# L'envoi vers Netlify téléverse le dossier entier : le schéma de la base, le
+# code des fonctions Edge, les outils et le mode d'emploi partiraient donc en
+# ligne avec la page, et se téléchargeraient à qui connaîtrait leur nom.
+# Aucun mot de passe ne s'y trouve — ils vivent dans les secrets Supabase —
+# mais ces fichiers disent exactement quelles tables existent, quelles règles
+# les gardent et à partir de combien d'essais un compte se ferme. Autant ne
+# pas le publier.
+#
+# Ils restent dans le dépôt, là où ils servent. Ici, ils ne répondent plus.
+#
+# Le point d'exclamation n'est pas décoratif : sans lui, un fichier qui existe
+# vraiment l'emporte sur la règle, et la règle ne sert à rien.
+#
+# Les fichiers SQL vivent sous supabase/ et non plus à la racine : une liste
+# nommant chaque fichier laissait passer le suivant, celui qu'on écrirait
+# demain. Un dossier, lui, couvre ce qui n'existe pas encore.
+#
+# La page de refus est gestion-stockage.html : ce dépôt n'a pas d'index.html,
+# et une règle qui renvoie vers un fichier absent ne renvoie rien du tout.
+
+/supabase/*              /gestion-stockage.html  404!
+/outils/*                /gestion-stockage.html  404!
+/LISEZ-MOI-SUPABASE.txt  /gestion-stockage.html  404!
+/README.md               /gestion-stockage.html  404!
+
+# L'application ne vit plus sous un portfolio : la racine du site n'a aucune
+# page à montrer. Elle conduit là où l'on allait de toute façon.
+/                        /gestion-stockage.html  302

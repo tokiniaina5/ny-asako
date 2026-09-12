@@ -1,0 +1,454 @@
+  :root{
+    --bg: #0a0d10;
+    --panel: #131a20;
+    --panel-2: #182129;
+    --line: #1f2a30;
+    --cyan: #4fd8e0;
+    --amber: #f2a33c;
+    --violet: #8b93ff;
+    --red: #ef6a6a;
+    --text: #eaf1f0;
+    --muted: #7c8b92;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ background:var(--bg); color:var(--text); font-family:var(--font-body); min-height:100vh; }
+  button, input, select{ font-family: inherit; }
+
+  /* ---------- login ---------- */
+  #loginScreen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 2rem;
+  }
+  .login-card{
+    width:100%;
+    max-width: 380px;
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius: 14px;
+    padding: 2.4rem 2rem;
+  }
+  .login-card .eyebrow{
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing:0.12em;
+    color: var(--cyan);
+    text-transform:uppercase;
+    margin-bottom:0.8rem;
+  }
+  .login-card h1{
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .login-card p.sub{
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 1.6rem;
+    line-height:1.5;
+  }
+  .field{ margin-bottom: 1rem; }
+  input[readonly]{ opacity:0.65; cursor:not-allowed; }
+  .field label{
+    display:block;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+  /* les listes déroulantes suivent la même mise en forme que les champs texte,
+     sinon le navigateur les dessine en clair au milieu du fond sombre */
+  .field input, .field select{
+    width:100%;
+    padding: 0.7rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  .field input:focus, .field select:focus{ outline:none; border-color: var(--cyan); }
+
+  /* ---------- abonnement / paywall ---------- */
+  .paywall-plans{ display:flex; gap:0.8rem; margin-bottom:1.2rem; }
+  .plan-card{
+    flex:1;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:1rem 0.8rem;
+    cursor:pointer;
+    text-align:center;
+    background: var(--bg);
+    transition: border-color 0.12s ease, background 0.12s ease;
+  }
+  .plan-card:hover{ border-color: var(--cyan); }
+  .plan-card.selected{ border-color: var(--cyan); background: var(--panel-2); }
+  .plan-card .plan-name{
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color: var(--muted);
+  }
+  .plan-card .plan-price{
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    margin: 0.4rem 0 0.2rem;
+    color: var(--text);
+  }
+  .plan-card .plan-note{ font-size:0.72rem; color: var(--muted); }
+  .paywall-pay{
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1.2rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .paywall-pay strong{ color: var(--text); }
+  .notif-item{
+    padding: 0.65rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.78rem;
+    color: var(--text);
+    line-height:1.5;
+  }
+  .notif-item:last-child{ border-bottom:none; }
+  .notif-item .notif-icon{ margin-right:0.35rem; }
+  .notif-item .notif-date{ display:block; font-size:0.68rem; color: var(--muted); margin-top:0.15rem; }
+  .notif-empty{ padding: 1.2rem 0.9rem; text-align:center; font-size:0.8rem; color: var(--muted); }
+
+  .search-result-group{ padding:0.5rem 0.9rem; font-family:var(--font-mono); font-size:0.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
+  .search-result-item{ padding:0.55rem 0.9rem; cursor:pointer; font-size:0.82rem; border-bottom:1px dashed var(--line); }
+  .search-result-item:hover{ background:var(--panel-2); }
+  .search-result-item:last-child{ border-bottom:none; }
+  .search-result-item .muted{ color:var(--muted); font-size:0.76rem; }
+  @keyframes searchFlash{ 0%{ background: rgba(79,216,224,0.35); } 100%{ background:transparent; } }
+  .search-highlight{ animation: searchFlash 1.8s ease; }
+
+  .btn{
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.03em;
+    padding: 0.75rem 1.2rem;
+    border-radius: 8px;
+    cursor:pointer;
+    border:1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  }
+  .btn:hover{ border-color: var(--cyan); }
+  .btn-primary{
+    background: var(--cyan);
+    color: #04191b;
+    border-color: transparent;
+    font-weight:600;
+    width:100%;
+  }
+  .btn-primary:hover{ transform: translateY(-1px); }
+  .btn-amber{ border-color: var(--amber); color: var(--amber); }
+  .btn-amber:hover{ background: rgba(242,163,60,0.1); }
+  .btn-violet{ border-color: var(--violet); color: var(--violet); }
+  .btn-violet:hover{ background: rgba(139,147,255,0.1); }
+  .btn-red{ border-color: var(--red); color: var(--red); }
+  .btn-red:hover{ background: rgba(239,106,106,0.1); }
+  .btn-sm{ padding: 0.4rem 0.7rem; font-size: 0.72rem; }
+  .btn-icon{ width:2.15rem; height:2.15rem; padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:1rem; line-height:1; }
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:1rem; }
+  .table-scroll table{ margin-top:0; min-width:640px; }
+  #movementsTableBody tr{ touch-action: pan-y; }
+
+  /* ---------- app shell ---------- */
+  #appScreen{ display:none; min-height:100vh; }
+  .shell{
+    display:grid;
+    grid-template-columns: 1fr;
+    /* Deux rangées : la barre garde la hauteur de son contenu, le contenu
+       prend le reste. Sans cela, la grille répartit la place libre entre les
+       deux — et depuis que l'Accueil s'ouvre en fenêtre, hors du flux, il
+       n'en reste que trop : la barre du haut gonflait jusqu'à repousser la
+       bannière d'essai au milieu de l'écran. */
+    grid-template-rows: auto 1fr;
+    min-height:100vh;
+  }
+  /* sans min-width:0, un tableau large étire toute la grille au lieu de
+     défiler dans son propre conteneur (.table-scroll) */
+  .shell > *{ min-width: 0; }
+  /* La barre du haut — le nom « Ny asako » et son sous-titre — s'en va. Elle
+     ne portait plus rien d'autre : la cloche et les achats sont descendus dans
+     la rangée, le menu et le hamburger vivent dans le corps de la page. Un
+     bandeau qui ne fait que se nommer prend le haut de l'écran sans rien y
+     mettre, et les fenêtres remontent d'autant.
+
+     Un seul mot la ramènerait — display:flex — le reste de son habillage
+     attend ici. */
+  .sidebar{
+    background: var(--panel);
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 1rem 1.2rem;
+    display:none;
+    flex-direction:column;
+    align-items:stretch;
+    /* la barre reste visible pendant le défilement */
+    position: sticky;
+    top: 0;
+    z-index: 90;
+  }
+  .brand{
+    font-family: var(--font-display);
+    font-weight:700;
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
+  }
+  .brand span{ color: var(--cyan); }
+  .brand-sub{
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+  }
+  .nav-item{
+    display:flex; align-items:center; gap:0.6rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 0.88rem;
+    cursor:pointer;
+    margin-bottom: 0.3rem;
+    border: 1px solid transparent;
+  }
+  .nav-item:hover{ color: var(--text); background: var(--panel-2); }
+  .nav-item.active{ color: var(--cyan); background: rgba(79,216,224,0.08); border-color: rgba(79,216,224,0.3); }
+
+  /* Les achats internationaux sont une action, pas une section : ils
+     n'ouvrent aucune page et ne portent donc pas la classe .nav-item, a
+     laquelle est accrochee toute la navigation. Ils en reprennent l'aspect. */
+  .nav-action{
+    display:block;
+    width:100%;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.3rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .nav-action:hover{ color: var(--text); background: var(--panel-2); }
+  /* Une entree qui porte un compteur le pousse a l autre bout de la ligne. */
+  .nav-action:has(#notifBadge){ display:flex; align-items:center; justify-content:space-between; gap:0.5rem; }
+  .nav-spacer{ flex-grow:1; }
+
+  /* ---------- hamburger (foana, tsy mobile ihany) ---------- */
+  .menu-toggle{
+    display:flex;
+    align-items:center; justify-content:center;
+    width:38px; height:38px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size:1.1rem;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  /* La barre du haut ne porte plus que le nom : il se tient au milieu. Le
+     'space-between' d'avant le poussait à gauche pour laisser la droite aux
+     boutons, qui sont tous descendus dans la rangée du bas. */
+  .sidebar-top{ display:flex; align-items:center; justify-content:center; }
+  .brand-sub{ display:none; }
+  .nav-spacer{ display:none; }
+
+  .nav-list{
+    display:none;
+    flex-direction:column;
+    margin-top: 1rem;
+  }
+  .nav-list.open{ display:flex; }
+
+  /* Les bords sûrs du téléphone : encoche en haut, barre d'accueil en bas.
+     Les panneaux les relisent pour ne jamais s'y glisser — visibles, mais
+     hors d'atteinte du doigt. */
+  :root{
+    --sur-haut: env(safe-area-inset-top, 0px);
+    --sur-bas: env(safe-area-inset-bottom, 0px);
+    --sur-gauche: env(safe-area-inset-left, 0px);
+    --sur-droite: env(safe-area-inset-right, 0px);
+  }
+
+  /* touch-action:none : sans cela le doigt fait défiler la page au lieu de
+     déplacer le bouton, et rien ne bouge. */
+  .menu-toggle.floating{
+    position: fixed;
+    z-index: 120;
+    touch-action: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+  .menu-toggle.floating.dragging{
+    cursor: grabbing;
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+
+  /* La rangée du bas est partout : elle portait les icônes sous le pouce d'un
+     téléphone, elle les porte aussi sous la souris. Le hamburger reste — les
+     deux ne se gênent pas, l'un est posé où l'on veut, l'autre tient le bas de
+     l'écran.
+
+     Le champ de recherche du menu, lui, ne sert qu'aux écrans étroits : au
+     large, la liste tient sous les yeux. */
+
+  /* Une seule porte pour le menu, et c'est le hamburger. La loupe faisait
+     double emploi avec lui et prenait une place dans la rangée ; elle s'en va.
+     Le hamburger paraît donc partout — sans quoi un téléphone se retrouverait
+     sans aucun moyen d'ouvrir le menu. */
+  #stockMainTabs #menuToggle{ display:none; }
+  #menuFlottant{ display:flex; }
+  /* 768 pixels : une tablette debout en fait 768 ou 810. C'est la largeur qui
+     décide, pas l'appareil. */
+  @media (min-width: 768px){
+    .menu-recherche, .menu-vide{ display:none !important; }
+  }
+
+  /* Le champ de recherche du menu : il tient la première ligne, là où le
+     pouce arrive après avoir touché la loupe. */
+  .menu-recherche{
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    margin-bottom: 0.6rem;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.82rem;
+    box-sizing: border-box;
+  }
+  .menu-recherche:focus{ outline:none; border-color: var(--cyan); }
+  .menu-vide{ font-size:0.75rem; color: var(--muted); margin:0.4rem 0.2rem; }
+  /* Le panneau suit le bouton : ouvert en bas de l'écran, il doit s'ouvrir
+     vers le haut, sinon il sort par le bas et devient inatteignable. */
+  .nav-list.floating{
+    position: fixed;
+    z-index: 119;
+    width: 230px;
+    max-height: 70vh;
+    overflow-y: auto;
+    margin-top: 0;
+    padding: 0.6rem;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  }
+
+  .user-chip{
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+    margin-top: 1rem;
+  }
+  .user-chip strong{ color: var(--text); display:block; margin-bottom:0.3rem; }
+
+  /* overflow-x:clip (et non auto) : protège du débordement horizontal sans
+     créer de conteneur de défilement, ce qui casserait position:sticky. */
+  /* Le bas de la page se réserve la hauteur de la rangée : posée par-dessus,
+     elle cacherait sinon les dernières lignes, hors d'atteinte du défilement. */
+  .content{
+    padding: 2.4rem 3vw;
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    overflow-x:clip;
+  }
+
+  /* Actualiser / Appel vidéo / Stock : une rangée fixée en bas de l'écran,
+     là où le pouce arrive sans que la main se déplace. */
+  /* Sélecteur porté par l’identifiant : .dash-tabs, dans components.css,
+     est chargée après base.css et l’emporterait à égalité de poids — sa marge
+     basse de 1.4rem décollait la rangée du bord de l’écran. */
+  #stockMainTabs.dash-tabs-main{
+    position: fixed;
+    left: 0; right: 0; bottom: 0; top: auto;
+    z-index: 100;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    border-bottom: none;
+    margin-bottom: 0;
+    padding: 0.3rem 3vw;
+    /* La barre d'accueil du téléphone mange le bas de l'écran : sans cette
+       réserve, la rangée se retrouve dessous et ne répond plus au doigt. */
+    padding-bottom: calc(0.3rem + env(safe-area-inset-bottom, 0px));
+  }
+  /* Les deux bandes s'effacent quand on descend dans la page et reviennent dès
+     qu'on remonte. Elles occupaient en permanence un cinquième de l'écran d'un
+     téléphone ; on les retrouve d'un simple geste vers le haut.
+     Un déplacement, et non un display:none : la barre garde sa place dans la
+     mise en page, et le contenu ne saute pas au moment où elle disparaît. */
+  .sidebar,
+  #stockMainTabs.dash-tabs-main{
+    transition: transform 0.22s ease;
+  }
+  .sidebar.barre-cachee{ transform: translateY(-100%); }
+  #stockMainTabs.dash-tabs-main.barre-cachee{ transform: translateY(100%); }
+
+  /* Réglage système « moins d'animations » : le résultat compte, pas le
+     glissement. */
+  @media (prefers-reduced-motion: reduce){
+    .sidebar, #stockMainTabs.dash-tabs-main{ transition: none; }
+  }
+
+  .section{ display:none; }
+  .section.active{ display:block; }
+
+  .section-head{
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;
+    margin-bottom: 1.6rem;
+  }
+  .section-head h2{
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+  }
+  .section-head p{ color: var(--muted); font-size: 0.9rem; margin-top:0.3rem; }
+  .actions-row{ display:flex; gap:0.6rem; flex-wrap:wrap; }
+
+  table{ width:100%; border-collapse: collapse; margin-top: 1rem; }
+  th, td{ text-align:left; padding: 0.7rem 0.8rem; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+  th{ font-family: var(--font-mono); font-size: 0.72rem; text-transform:uppercase; letter-spacing:0.05em; color: var(--muted); }
+  tr:hover td{ background: var(--panel-2); }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1.4rem;
+    margin-top: 1.2rem;
+  }
+  .panel h3{ font-family: var(--font-mono); font-size: 0.85rem; color: var(--cyan); margin-bottom: 1rem; letter-spacing:0.03em; }
+
+  .form-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:0.8rem; align-items:end; }
+
+  .empty-hint{ color: var(--muted); font-size: 0.88rem; padding: 1.2rem 0; }
+
+  .invoice-line{ display:flex; align-items:center; gap:0.8rem; padding:0.5rem 0; border-bottom:1px dashed var(--line); }
+  .invoice-line .name{ flex-grow:1; font-size:0.9rem; }
+  .invoice-line input{ width: 70px; padding:0.4rem; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--text); }
+
+  .total-row{ display:flex; justify-content:space-between; margin-top:1rem; font-family:var(--font-mono); font-size:1.1rem; color: var(--cyan); }
+
+  .invite-box{ display:flex; gap:0.6rem; flex-wrap:wrap; }
+  .invite-box input{ flex-grow:1; min-width:220px; padding:0.7rem 0.85rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); }
+
