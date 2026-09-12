@@ -12,7 +12,7 @@ Elle vivait jusqu'ici dans le dépôt du portfolio, à côté de pages qui n'ont
 
 | Chemin                  | Ce que c'est                                                      |
 | ----------------------- | ----------------------------------------------------------------- |
-| `gestion-stockage.html` | La page — tout le balisage de l'application                       |
+| `index.html`            | La page — tout le balisage de l'application                       |
 | `gestion-stockage-css/` | `base.css` (socle, thème) et `components.css` (écrans, éléments)  |
 | `gestion-stockage-js/`  | Un fichier par domaine : stock, factures, équipe, live, sécurité…  |
 | `supabase/sql/`         | Le schéma des tables et les règles qui les gardent                |
@@ -33,7 +33,7 @@ N'importe quel serveur de fichiers statiques suffit :
 npx serve .
 ```
 
-Puis ouvrir `/gestion-stockage.html`.
+Puis ouvrir la racine : l'application est la page d'accueil du site.
 
 ## Avant chaque mise en ligne
 

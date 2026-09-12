@@ -17,14 +17,12 @@
 # nommant chaque fichier laissait passer le suivant, celui qu'on écrirait
 # demain. Un dossier, lui, couvre ce qui n'existe pas encore.
 #
-# La page de refus est gestion-stockage.html : ce dépôt n'a pas d'index.html,
-# et une règle qui renvoie vers un fichier absent ne renvoie rien du tout.
+# Ces règles ne valent que sur Netlify. Sur un hébergement sans redirections —
+# GitHub Pages, par exemple — ce fichier ne ferme rien du tout : les SQL et le
+# mode d'emploi s'y téléchargent. C'est une raison de plus de n'en publier
+# qu'ici.
 
-/supabase/*              /gestion-stockage.html  404!
-/outils/*                /gestion-stockage.html  404!
-/LISEZ-MOI-SUPABASE.txt  /gestion-stockage.html  404!
-/README.md               /gestion-stockage.html  404!
-
-# L'application ne vit plus sous un portfolio : la racine du site n'a aucune
-# page à montrer. Elle conduit là où l'on allait de toute façon.
-/                        /gestion-stockage.html  302
+/supabase/*              /index.html  404!
+/outils/*                /index.html  404!
+/LISEZ-MOI-SUPABASE.txt  /index.html  404!
+/README.md               /index.html  404!
