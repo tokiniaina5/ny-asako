@@ -21,6 +21,17 @@
   if (!jeton) return;
   try { if (new URLSearchParams(location.search).get('mpiasa')) return; } catch (e) {}
 
+  // Ces appels passent toujours avec la clé publique du site, jamais avec la
+  // session d'un compte ouvert dans ce navigateur. Ouvert chez le patron,
+  // connecté, le lien envoyait le jeton de son compte : Supabase le refusait
+  // avant même la fonction, sans en-tête CORS, et le navigateur ne voyait
+  // qu'un « Failed to fetch » — « Tsy mety ny rohy ». Le jeton du lien suffit,
+  // la fonction n'attend rien d'autre.
+  function entetes() {
+    const cle = window.__sb && window.__sb.supabaseKey;
+    return cle ? { Authorization: 'Bearer ' + cle } : {};
+  }
+
   const STATUTS = {
     miandry: { texte: 'Miandry ny livreur', couleur: 'var(--muted)', note: 'Mbola tsy nalain’ny livreur ny entanao.' },
     nalaina: { texte: 'Efa an-tanan’ny livreur', couleur: 'var(--amber)', note: 'Nalain’ny livreur ny entanao.' },
@@ -262,7 +273,7 @@
       majRecherche();
     };
 
-    client.functions.invoke('suivi', { body: { jeton: jeton, action: 'tadiavo' } }).then(function (res) {
+    client.functions.invoke('suivi', { headers: entetes(), body: { jeton: jeton, action: 'tadiavo' } }).then(function (res) {
       if (!res || res.error || !res.data || !res.data.ok) {
         fin('Tsy azo nitadiavana izao. Andramo indray afaka kelikely.');
         return;
@@ -326,7 +337,7 @@
       erreur('Tsy tafaraka amin’ny Supabase. Andramo indray.');
       return;
     }
-    return client.functions.invoke('suivi', { body: { jeton: jeton } }).then(function (res) {
+    return client.functions.invoke('suivi', { headers: entetes(), body: { jeton: jeton } }).then(function (res) {
       if (res && res.error) {
         pourquoi(res.error, 'Tsy mahazo alalana ity rohy ity.').then(erreur);
         return;

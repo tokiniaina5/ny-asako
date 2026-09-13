@@ -25,6 +25,17 @@
   // Pas de jeton : l'application se comporte comme d'habitude.
   if (!jeton) return;
 
+  // Ces appels passent toujours avec la clé publique du site, jamais avec la
+  // session d'un compte ouvert dans ce navigateur. Ouvert chez le patron,
+  // connecté, le lien envoyait le jeton de son compte : Supabase le refusait
+  // avant même la fonction, sans en-tête CORS, et le navigateur ne voyait
+  // qu'un « Failed to fetch » — « Tsy mety ny rohy ». Le jeton du lien suffit,
+  // la fonction n'attend rien d'autre.
+  function entetes() {
+    const cle = window.__sb && window.__sb.supabaseKey;
+    return cle ? { Authorization: 'Bearer ' + cle } : {};
+  }
+
   const ROLES = { mpiasa: 'Mpiasa', livreur: 'Livreur' };
   const STATUTS = {
     miandry: 'Miandry', nalaina: 'Nalaina', an_dalana: 'An-dalana',
@@ -264,7 +275,7 @@
     const client = window.__sb;
     if (!client || !client.functions) return;
     dernierEnvoi = Date.now();
-    client.functions.invoke('mpiasa', {
+    client.functions.invoke('mpiasa', { headers: entetes(),
       body: {
         jeton: jeton,
         action: 'position',
@@ -368,7 +379,7 @@
       if (!entre || suivi === null || !navigator.geolocation) return;
       const client = window.__sb;
       if (!client || !client.functions) return;
-      client.functions.invoke('mpiasa', { body: { jeton: jeton, action: 'attente' } }).then(function (res) {
+      client.functions.invoke('mpiasa', { headers: entetes(), body: { jeton: jeton, action: 'attente' } }).then(function (res) {
         const demande = res && res.data && res.data.demande;
         if (!demande || new Date(demande).getTime() <= dernierEnvoi) return;
         // Marqué tout de suite : la prochaine question, dans quinze secondes,
@@ -443,7 +454,7 @@
       if (!entre) erreur('Tsy tafaraka amin\'ny Supabase. Andramo indray.');
       return;
     }
-    client.functions.invoke('mpiasa', { body: { jeton: jeton } }).then(function (res) {
+    client.functions.invoke('mpiasa', { headers: entetes(), body: { jeton: jeton } }).then(function (res) {
       if (res && res.error) {
         // Sans réponse du serveur — réseau coupé —, on garde ce qu'on a :
         // le lien n'y est pour rien. Avec une réponse, c'est lui qui parle.
@@ -470,7 +481,7 @@
     const client = window.__sb;
     const echec = function (message) { return { data: null, error: { message: message } }; };
     if (!client || !client.functions) return Promise.resolve(echec('Tsy tafaraka amin\'ny Supabase.'));
-    return client.functions.invoke('mpiasa', {
+    return client.functions.invoke('mpiasa', { headers: entetes(),
       body: { jeton: jeton, action: 'table', requete: demande }
     }).then(function (res) {
       if (res && res.error) {
@@ -545,7 +556,7 @@
     const recents = movements.slice()
       .sort(function (a, b) { return new Date(b.date) - new Date(a.date); })
       .slice(0, MOUVEMENTS_ENVOYES);
-    client.functions.invoke('mpiasa', {
+    client.functions.invoke('mpiasa', { headers: entetes(),
       body: { jeton: jeton, action: 'stock', articles: items, mouvements: recents }
     }).then(function () {}, function () {});
   }
