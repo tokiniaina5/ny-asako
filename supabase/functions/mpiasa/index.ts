@@ -190,6 +190,19 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true });
   }
 
+  // ---- « Est-ce qu'on me cherche ? » ----
+  // La page d'un livreur pose la question toutes les quinze secondes. La
+  // réponse est l'heure de la dernière demande « Tadiavo » ; plus récente que
+  // sa dernière position envoyée, il en envoie une sur-le-champ. Lue à part
+  // plutôt qu'avec la personne : sans supabase-livreur-tadiavo.sql, la
+  // colonne manque, et c'est cette question-là seule qui doit échouer — pas
+  // le lien entier.
+  if (action === "attente") {
+    const { data, error } = await admin.from("equipe")
+      .select("position_demandee_at").eq("id", personne.id).maybeSingle();
+    return json({ demande: error ? null : (data?.position_demandee_at ?? null) });
+  }
+
   // ---- « Voici mon stock » ----
   // Le stock de l'employé vit dans son navigateur. Il en envoie une copie
   // pour que son patron la suive — la sienne, et celle de personne d'autre :

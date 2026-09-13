@@ -69,6 +69,12 @@
   let cleConnue = '';
   let carteLibre = null;
   let repereLibre = null;
+  // La recherche « Tadiavo » en cours, et ce qu'elle a dit en dernier : la
+  // page se redessine pendant qu'elle cherche, le bouton et la phrase doivent
+  // survivre au redessin.
+  let dernierAt = null;
+  let recherche = null;
+  let messageRecherche = '';
 
   function chargerGoogleMaps(cle) {
     if (window.google && window.google.maps && window.google.maps.Map) return Promise.resolve(true);
@@ -177,6 +183,13 @@
         '<div class="panneau-titre">Aiza izy izao</div>' +
         '<div id="suiviCarte" style="height:300px; border-radius:10px; overflow:hidden; border:1px solid var(--line); display:none; margin-bottom:0.8rem;"></div>';
     }
+    // Chercher n'a de sens que pour une course en route, confiée à quelqu'un.
+    if (enCours && d.livreur) {
+      sortie += '<div class="actions-row" style="margin:0 0 0.6rem;">' +
+        '<button type="button" class="btn btn-primary btn-sm" id="suiviTadiavoBtn" style="width:auto;">📍 Tadiavo</button>' +
+        '</div>' +
+        '<p id="suiviTadiavoStatut" style="font-size:0.8rem; color:var(--muted); line-height:1.5; margin:0 0 0.6rem;"></p>';
+    }
     if (pos) {
       sortie += '<p style="font-size:0.85rem; line-height:1.7; margin:0;">' +
         'Toerana farany : <strong style="color:var(--cyan);">' + html(depuis(pos.at)) + '</strong>' +
@@ -194,6 +207,63 @@
 
     ecran.innerHTML = sortie;
     if (document.getElementById('suiviCarte')) poserLaCarte(pos, d.livreur);
+    dernierAt = pos ? pos.at : null;
+    const tadiavoBtn = document.getElementById('suiviTadiavoBtn');
+    if (tadiavoBtn) tadiavoBtn.addEventListener('click', tadiavo);
+    majRecherche();
+  }
+
+  // ---------- Chercher le livreur ----------
+  // La position ne vient que du téléphone du livreur, sa page ouverte et son
+  // accord donné. « Tadiavo » ne la devine pas : il lui demande d'en envoyer
+  // une tout de suite, puis relit toutes les cinq secondes. Au bout de 45
+  // secondes sans rien, on le dit, plutôt que de laisser croire qu'on cherche
+  // encore.
+  function majRecherche() {
+    const b = document.getElementById('suiviTadiavoBtn');
+    if (b) {
+      b.disabled = !!recherche;
+      b.textContent = recherche ? 'Mitady…' : '📍 Tadiavo';
+    }
+    const s = document.getElementById('suiviTadiavoStatut');
+    if (s) s.textContent = messageRecherche;
+  }
+
+  function tadiavo() {
+    const client = window.__sb;
+    if (recherche || !client || !client.functions) return;
+    const avant = dernierAt;
+    recherche = true;
+    messageRecherche = 'Angatahina ny toerana misy azy…';
+    majRecherche();
+
+    const fin = function (message) {
+      if (recherche && recherche !== true) clearInterval(recherche);
+      recherche = null;
+      messageRecherche = message;
+      majRecherche();
+    };
+
+    client.functions.invoke('suivi', { body: { jeton: jeton, action: 'tadiavo' } }).then(function (res) {
+      if (!res || res.error || !res.data || !res.data.ok) {
+        fin('Tsy azo nitadiavana izao. Andramo indray afaka kelikely.');
+        return;
+      }
+      let tours = 0;
+      recherche = setInterval(function () {
+        tours += 1;
+        Promise.resolve(demander()).then(function (d) {
+          const at = d && d.position ? d.position.at : null;
+          if (at && at !== avant) {
+            fin('Hita : ' + new Date(at).toLocaleTimeString('fr-FR') + '.');
+          } else if (tours >= 9) {
+            fin('Tsy namaly ny findain’ny livreur : mety tsy misokatra ny pejiny, na tsy misy internet. Andramo indray afaka kelikely.');
+          }
+        });
+      }, 5000);
+    }, function () {
+      fin('Tsy tafita ny fangatahana.');
+    });
   }
 
   // ---------- Dire pourquoi ----------
@@ -238,7 +308,7 @@
       erreur('Tsy tafaraka amin’ny Supabase. Andramo indray.');
       return;
     }
-    client.functions.invoke('suivi', { body: { jeton: jeton } }).then(function (res) {
+    return client.functions.invoke('suivi', { body: { jeton: jeton } }).then(function (res) {
       if (res && res.error) {
         pourquoi(res.error, 'Tsy mahazo alalana ity rohy ity.').then(erreur);
         return;
@@ -246,6 +316,7 @@
       const d = res && res.data;
       if (!d || d.error) { erreur('Tsy mahazo alalana ity rohy ity.'); return; }
       dessiner(d);
+      return d;
     }, function () {
       erreur('Tsy tafita ny fangatahana.');
     });

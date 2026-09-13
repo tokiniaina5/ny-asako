@@ -192,7 +192,7 @@
         '<div class="panneau-titre">Ny toerana misy anao</div>' +
         '<p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0 0 0.7rem;">' +
         'Manontany alalana ny finday rehefa misokatra ity pejy ity. Raha manaiky ianao, hitanao eto amin\'ny sarintany ny toerana misy anao, ' +
-        'ary alefa isaky ny iray minitra izy mba hahitan\'ny patron sy ny mpanjifa anao. ' +
+        'ary hitan\'ny patron sy ny mpanjifa izy : alefa isaky ny iray minitra, ary avy hatrany rehefa mitady anao izy ireo. ' +
         'Azonao esorina na oviana na oviana ao amin\'ny réglages ny finday.' +
         '</p>' +
         '<div id="maCarte" style="height:260px; border-radius:10px; overflow:hidden; border:1px solid var(--line); margin:0 0 0.8rem;"></div>' +
@@ -253,14 +253,17 @@
   // où il est à mesure qu'il avance.
   function recevoirPosition(pos) {
     montrerMaPosition(pos);
-    const client = window.__sb;
-    if (!client || !client.functions) return;
     // Elle ne part qu'une fois par minute au plus : un téléphone qui parle sans
     // cesse se vide, et une position à la seconde n'apprend rien de plus au
-    // patron qu'une à la minute.
-    const maintenant = Date.now();
-    if (maintenant - dernierEnvoi < 60000) return;
-    dernierEnvoi = maintenant;
+    // patron qu'une à la minute. Sauf quand on le cherche (plus bas).
+    if (Date.now() - dernierEnvoi < 60000) return;
+    envoyerPosition(pos);
+  }
+
+  function envoyerPosition(pos) {
+    const client = window.__sb;
+    if (!client || !client.functions) return;
+    dernierEnvoi = Date.now();
     client.functions.invoke('mpiasa', {
       body: {
         jeton: jeton,
@@ -345,6 +348,40 @@
         ? 'Tsy nomena alalana. Sokafy ao amin\'ny réglages ny toerana, dia tsindrio ny bokotra etsy ambany.'
         : 'Tsy hita ny toerana amin\'izao fotoana izao.';
     }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 });
+    ecouterLesDemandes();
+  }
+
+  // ---------- Quand on le cherche ----------
+  // Le patron ou le client pressent « Tadiavo ». La page du livreur ne peut
+  // pas être appelée de loin : c'est elle qui demande, toutes les quinze
+  // secondes, si quelqu'un le cherche. Si la demande est plus récente que sa
+  // dernière position envoyée, il en prend une neuve — pas la dernière
+  // connue, qui peut dater s'il n'a pas bougé — et l'envoie aussitôt.
+  //
+  // Seulement tant qu'il a accepté d'être suivi : sans accord, il n'y a rien
+  // à envoyer, et la question ne se pose pas.
+  let ecouteDemandes = null;
+
+  function ecouterLesDemandes() {
+    if (ecouteDemandes) return;
+    ecouteDemandes = setInterval(function () {
+      if (!entre || suivi === null || !navigator.geolocation) return;
+      const client = window.__sb;
+      if (!client || !client.functions) return;
+      client.functions.invoke('mpiasa', { body: { jeton: jeton, action: 'attente' } }).then(function (res) {
+        const demande = res && res.data && res.data.demande;
+        if (!demande || new Date(demande).getTime() <= dernierEnvoi) return;
+        // Marqué tout de suite : la prochaine question, dans quinze secondes,
+        // ne doit pas relancer une recherche déjà partie.
+        dernierEnvoi = Date.now();
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          montrerMaPosition(pos);
+          envoyerPosition(pos);
+        }, function () {
+          if (dernierePosition) envoyerPosition(dernierePosition);
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+      }, function () {});
+    }, 15000);
   }
 
   // ---------- Dire pourquoi ----------

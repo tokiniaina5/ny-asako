@@ -483,6 +483,16 @@
       rohy.addEventListener('click', function () { donnerLeLien(p, rohy); });
       actions.appendChild(rohy);
 
+      if (p.role === 'livreur' && p.actif) {
+        const chercher = document.createElement('button');
+        chercher.type = 'button';
+        chercher.className = 'btn btn-sm';
+        chercher.textContent = '📍 Tadiavo';
+        chercher.title = 'Angataho avy hatrany ny toerana misy azy';
+        chercher.addEventListener('click', function () { tadiavo([p.id], chercher); });
+        actions.appendChild(chercher);
+      }
+
       const bascule = document.createElement('button');
       bascule.type = 'button';
       bascule.className = 'btn btn-sm';
@@ -769,6 +779,59 @@
     }, function () {
       dire('carteCleStatut', 'Tsy tafita ny fangatahana.', true);
     });
+  }
+
+  // ---------- Chercher un livreur ----------
+  // La position ne peut venir que du téléphone du livreur, sa page ouverte et
+  // son accord donné. « Tadiavo » lui demande d'en envoyer une sur-le-champ —
+  // l'heure de la demande va dans equipe.position_demandee_at, que sa page
+  // guette — puis relit toutes les cinq secondes. Au bout de 45 secondes, on
+  // nomme ceux qui n'ont pas répondu, plutôt que de chercher sans fin.
+  let recherche = null;
+
+  function tadiavo(ids, bouton) {
+    const client = sb();
+    const email = monEmail();
+    if (!ids.length) { dire('tadiavoStatut', 'Tsy misy livreur miasa hotadiavina.', true); return; }
+    if (!client || !email) { dire('tadiavoStatut', 'Midira aloha.', true); return; }
+    if (recherche) return;
+
+    const avant = {};
+    positions.forEach(function (x) { avant[x.equipe_id] = x.at; });
+    recherche = true;
+    if (bouton) bouton.disabled = true;
+    dire('tadiavoStatut', 'Angatahina ny toerana misy ' + (ids.length > 1 ? 'azy ireo' : 'azy') + '…');
+
+    const fin = function (message, erreur) {
+      if (recherche && recherche !== true) clearInterval(recherche);
+      recherche = null;
+      if (bouton) bouton.disabled = false;
+      dire('tadiavoStatut', message, erreur);
+    };
+
+    client.from('equipe').update({ position_demandee_at: new Date().toISOString() }).in('id', ids)
+      .then(function (res) {
+        if (res && res.error) { fin('Tsy tafita : ' + res.error.message, true); return; }
+        let tours = 0;
+        recherche = setInterval(function () {
+          tours += 1;
+          Promise.resolve(charger()).then(function () {
+            const hita = ids.filter(function (id) {
+              return positions.some(function (x) { return x.equipe_id === id && x.at !== avant[id]; });
+            });
+            if (hita.length === ids.length) {
+              fin('Hita ' + (ids.length > 1 ? 'daholo izy ireo' : 'izy') + ' — ' + new Date().toLocaleTimeString('fr-FR') + '.');
+            } else if (tours >= 9) {
+              const noms = ids.filter(function (id) { return hita.indexOf(id) < 0; }).map(function (id) {
+                return (equipe.filter(function (x) { return x.id === id; })[0] || {}).nom || '?';
+              });
+              fin('Tsy namaly : ' + noms.join(', ') + '. Mety tsy misokatra ny rohiny, na tsy nanaiky ny toerana, na tsy misy internet.', true);
+            }
+          });
+        }, 5000);
+      }, function () {
+        fin('Tsy tafita ny fangatahana.', true);
+      });
   }
 
   // Le rôle ne se choisit plus dans une liste : il est celui de la page où
@@ -1372,6 +1435,12 @@
     if (cleBtn) cleBtn.addEventListener('click', garderLaCle);
     const cleChamp = document.getElementById('carteCle');
     if (cleChamp) cleChamp.value = cleMaps();
+
+    const tadiavoTous = document.getElementById('tadiavoBtn');
+    if (tadiavoTous) tadiavoTous.addEventListener('click', function () {
+      const livreurs = equipe.filter(function (p) { return p.role === 'livreur' && p.actif; });
+      tadiavo(livreurs.map(function (p) { return p.id; }), tadiavoTous);
+    });
 
     const tonga = document.getElementById('personneTongaBtn');
     if (tonga) tonga.addEventListener('click', pointerArrivee);

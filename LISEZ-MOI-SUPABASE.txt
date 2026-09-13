@@ -491,3 +491,21 @@ de doute, "Hampiato" le coupe aussitôt.
      supabase functions deploy mpiasa --no-verify-jwt
 Sans l'étape 2, ses pages Mpiasa et Livreur restent vides, avec un
 message qui le dit.
+
+
+« TADIAVO » : CHERCHER UN LIVREUR MAINTENANT
+------------------------------
+Sur la page Livreur (et sur la page du client qui suit sa livraison),
+le bouton "📍 Tadiavo" demande tout de suite une position fraîche au
+livreur, au lieu d'attendre la minute suivante. Réponse en 15 à 30
+secondes.
+
+Ça ne marche que si la page du livreur est ouverte sur son téléphone
+et qu'il a accepté la localisation : une position ne peut venir que
+de lui. Sinon, l'application le dit au bout de 45 secondes.
+
+À FAIRE UNE FOIS :
+1. Dans Supabase (SQL Editor) : "supabase/sql/supabase-livreur-tadiavo.sql".
+2. Dans le Terminal :
+     supabase functions deploy mpiasa --no-verify-jwt
+     supabase functions deploy suivi --no-verify-jwt
