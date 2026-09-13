@@ -36,8 +36,15 @@
   let carte = null;
   let reperes = {};
   let mapsDemandee = null;
+  // La carte gratuite (carte-libre.js), quand il n'y a pas de clé Google.
+  let carteLibre = null;
+  let reperesLibres = {};
 
   function sb() {
+    // L'employé entré par son lien n'a pas de compte : ce qu'il lit et écrit
+    // ici passe par la fonction « mpiasa », au nom de son patron. Le client
+    // qui l'y envoie est posé par vue-mpiasa.js.
+    if (typeof MODE_MPIASA !== 'undefined' && MODE_MPIASA) return window.__sbMpiasa || null;
     return window.__sb || null;
   }
   // common.js n'est pas enveloppé : son « let currentUser » vit dans la portée
@@ -136,21 +143,45 @@
   }
 
   // ---------- La copie du stock ----------
-  // Les articles vivent dans le téléphone du patron. L'employé, qui n'a pas
-  // de compte, ne les verrait jamais : on en dépose une copie à chaque
-  // ouverture, et c'est elle qu'il regarde. Il ne peut rien y changer — il
-  // n'écrit nulle part.
+  // Les articles vivent dans le téléphone du patron. On en dépose une copie à
+  // chaque ouverture, mouvements compris : c'est elle que reçoit un employé
+  // la première fois qu'il ouvre son lien, pour partir du même stock. Ensuite
+  // le sien vit chez lui, et ce que l'un change ne touche pas l'autre.
+  //
+  // Les mille mouvements les plus récents suffisent : le tableau de bord
+  // regarde des jours et des semaines, pas l'histoire entière de la boutique.
+  const MOUVEMENTS_COPIES = 1000;
+
   function deposerLeStock() {
+    // L'employé a son propre stock : le déposer écraserait celui du patron.
+    if (typeof MODE_MPIASA !== 'undefined' && MODE_MPIASA) return;
     const client = sb();
     const email = monEmail();
     if (!client || !email || typeof loadItems !== 'function') return;
     let articles = [];
     try { articles = loadItems() || []; } catch (e) { return; }
-    client.from('stock_partage').upsert({
+    let mouvements = [];
+    try {
+      mouvements = (typeof loadMovements === 'function' ? loadMovements() : [])
+        .slice()
+        .sort(function (a, b) { return new Date(b.date) - new Date(a.date); })
+        .slice(0, MOUVEMENTS_COPIES);
+    } catch (e) { mouvements = []; }
+    const ligne = {
       owner_email: email,
       articles: articles,
+      mouvements: mouvements,
       maj: new Date().toISOString()
-    }, { onConflict: 'owner_email' }).then(function () {}, function () {});
+    };
+    client.from('stock_partage').upsert(ligne, { onConflict: 'owner_email' }).then(function (res) {
+      // La colonne « mouvements » vient de supabase-mpiasa-copie.sql. Tant
+      // qu'il n'a pas été passé, on dépose au moins les articles.
+      if (res && res.error && /mouvements/.test(res.error.message || '')) {
+        delete ligne.mouvements;
+        client.from('stock_partage').upsert(ligne, { onConflict: 'owner_email' })
+          .then(function () {}, function () {});
+      }
+    }, function () {});
   }
 
   // ---------- Le lien d'un employé ----------
@@ -260,6 +291,28 @@
   function envoyerLeLienParMail(personne, bouton) {
     creerLeJeton(personne, bouton).then(function (jeton) {
       if (jeton) mailDuLien(personne, jeton);
+    });
+  }
+
+  // ---------- Le lien par n'importe quel canal ----------
+  // shareContent, d'inviter.js, ouvre la feuille de partage du système quand
+  // le téléphone en a une — WhatsApp, SMS, Messenger, ce qui est installé —
+  // et sinon dessine son propre menu. Rien à réécrire ici.
+  //
+  // Une réserve, qui tient au contenu et non au code : ce lien est une clé.
+  // Il ouvre la page de l'employé sans mot de passe. Les réseaux du menu qui
+  // publient — Facebook, X, Threads — le mettraient sous les yeux de tous.
+  // Le message le rappelle à celui qui partage ; le choix reste le sien.
+  function partagerLeLien(personne, bouton) {
+    creerLeJeton(personne, bouton).then(function (jeton) {
+      if (!jeton) return;
+      if (typeof shareContent !== 'function') { montrerLeLien(personne, jeton); return; }
+      shareContent({
+        title: 'Ny rohinao — Ny asako',
+        text: 'Salama ' + personne.nom + ', ity ny rohy hidiranao amin\'ny asako. ' +
+          'Tsy mila tenimiafina — koa aza azarana amin\'ny olon-kafa.',
+        url: lienDe(jeton)
+      });
     });
   }
 
@@ -391,7 +444,7 @@
       rohy.type = 'button';
       rohy.className = 'btn btn-sm';
       rohy.textContent = p.jeton ? 'Rohy' : 'Hamorona rohy';
-      rohy.title = 'Ny rohy hasehoana azy ny stock — tsy azony ovaina';
+      rohy.title = 'Ny rohy hidirany amin\'ny Ny asako feno — stock azy manokana, ekipanao iraisana';
       rohy.addEventListener('click', function () { donnerLeLien(p, rohy); });
       actions.appendChild(rohy);
 
@@ -525,32 +578,78 @@
     return mapsDemandee;
   }
 
+  // ---------- La carte gratuite ----------
+  // OpenStreetMap, sans clé ni facturation. Elle se pose quand il n'y a pas
+  // de clé Google, ou que la clé est refusée : une carte vaut toujours mieux
+  // qu'une liste de coordonnées.
+  function poserLaCarteLibre(boite, lignes) {
+    if (typeof chargerCarteLibre !== 'function') { boite.style.display = 'none'; return; }
+    chargerCarteLibre().then(function (prete) {
+      if (!prete) { boite.style.display = 'none'; return; }
+      const L = window.L;
+      // Google occupait la boîte : sa carte n'y est plus.
+      if (carte) { carte = null; reperes = {}; boite.innerHTML = ''; }
+      if (!carteLibre) {
+        carteLibre = L.map(boite);
+        fondCarteLibre(carteLibre);
+      }
+      carteLibre.invalidateSize();
+
+      const points = [];
+      const vivants = {};
+      lignes.forEach(function (l) {
+        const point = [Number(l.pos.lat), Number(l.pos.lng)];
+        const texte = '<strong>' + html(l.p.nom) + '</strong><br>' + html(depuis(l.pos.at)) + '<br>' +
+          new Date(l.pos.at).toLocaleString('fr-FR');
+        points.push(point);
+        vivants[l.p.id] = true;
+        let m = reperesLibres[l.p.id];
+        if (!m) {
+          m = repereCarteLibre(point).addTo(carteLibre);
+          m.bindTooltip(html(l.p.nom), { permanent: true, direction: 'top', offset: [0, -10] });
+          m.bindPopup(texte);
+          reperesLibres[l.p.id] = m;
+        } else {
+          m.setLatLng(point);
+          m.setTooltipContent(html(l.p.nom));
+          m.setPopupContent(texte);
+        }
+      });
+      // Celui qu'on a retiré de l'équipe ne doit pas rester planté là.
+      Object.keys(reperesLibres).forEach(function (id) {
+        if (!vivants[id]) { reperesLibres[id].remove(); delete reperesLibres[id]; }
+      });
+      if (points.length === 1) carteLibre.setView(points[0], 15);
+      else carteLibre.fitBounds(points, { padding: [30, 30] });
+      // La page s'ouvre en fenêtre, qui ne prend sa taille qu'un instant
+      // après : mesurée trop tôt, la carte ne remplirait qu'un coin.
+      setTimeout(function () { if (carteLibre) carteLibre.invalidateSize(); }, 300);
+    });
+  }
+
   function poserLaCarte(lignes) {
     const boite = document.getElementById('carteLivreur');
     const note = document.getElementById('carteSansCle');
     if (!boite) return;
 
-    if (!cleMaps()) {
-      boite.style.display = 'none';
-      if (note) {
-        note.style.display = 'block';
-        note.textContent = 'Tsy mbola misy clé Google Maps : ny lisitra ihany no miseho. Ny rohy isaky ny anarana dia manokatra ny Google Maps.';
-      }
-      return;
-    }
     if (note) note.style.display = 'none';
     if (!lignes.length) { boite.style.display = 'none'; return; }
     boite.style.display = 'block';
 
+    // Pas de clé : la carte gratuite, sans rien demander à personne.
+    if (!cleMaps()) { poserLaCarteLibre(boite, lignes); return; }
+
     chargerGoogleMaps().then(function (prete) {
       if (!prete) {
-        boite.style.display = 'none';
         if (note) {
           note.style.display = 'block';
-          note.textContent = 'Tsy nety ny clé Google Maps. Jereo ao amin\'ny Google Cloud raha mandeha ny Maps JavaScript API sy ny facturation.';
+          note.textContent = 'Tsy nety ny clé Google Maps (jereo ao amin\'ny Google Cloud raha mandeha ny Maps JavaScript API sy ny facturation) : sarintany maimaim-poana no miseho.';
         }
+        poserLaCarteLibre(boite, lignes);
         return;
       }
+      // La carte gratuite occupait la boîte : Google prend sa place.
+      if (carteLibre) { carteLibre.remove(); carteLibre = null; reperesLibres = {}; }
       const g = window.google.maps;
       const premier = { lat: Number(lignes[0].pos.lat), lng: Number(lignes[0].pos.lng) };
       if (!carte) {
@@ -881,7 +980,7 @@
     if (fond) fond.classList.add('active');
     section.classList.add('active');
     dessinerLienPersonne(p);
-    dessinerArticlesPersonne();
+    dessinerTableauPersonne();
     chargerPersonne(p.id);
   }
 
@@ -902,29 +1001,159 @@
     }
   }
 
-  // Les mêmes articles que ceux qu'il verra : c'est la copie déposée à
-  // l'ouverture, donc ce que l'application a sous la main. Aucun champ, aucun
-  // bouton — on regarde, on ne change rien.
-  function dessinerArticlesPersonne() {
-    const boite = document.getElementById('personneArticles');
+  // ---------- Le tableau de bord d'une personne ----------
+  // Entré par son lien, un employé a son propre stock, qui vit dans son
+  // navigateur. Son application en dépose une copie après chaque changement
+  // (vue-mpiasa.js) : c'est elle qu'on lit ici. Ce qu'on voit date donc de
+  // son dernier envoi — et la date est écrite en tête, sans quoi un stock
+  // d'il y a trois jours passerait pour celui de maintenant.
+  function chargerTableauPersonne(id) {
+    const client = sb();
+    const email = monEmail();
+    if (!client || !email) return;
+    client.from('stock_mpiasa').select('articles,mouvements,maj')
+      .eq('owner_email', email).eq('equipe_id', id).maybeSingle()
+      .then(function (res) {
+        // Une autre personne a été ouverte entre-temps.
+        if (!personneOuverte || personneOuverte.id !== id) return;
+        if (res && res.error) { dessinerTableauPersonne(null, res.error.message); return; }
+        dessinerTableauPersonne((res && res.data) || null);
+      }, function () {
+        dessinerTableauPersonne(null, 'Tsy tafita ny fangatahana.');
+      });
+  }
+
+  const TYPES_MOUVEMENT = {
+    entree: '<span style="color:#6ee7b7;">▲ Entrée</span>',
+    sortie: '<span style="color:var(--amber);">▼ Sortie</span>',
+    modification: '<span style="color:var(--violet);">✎ Modification</span>'
+  };
+
+  function ariary(n) {
+    return (typeof formatAr === 'function') ? formatAr(n) : Math.round(Number(n) || 0) + ' Ar';
+  }
+
+  // « carte » est déjà pris : c'est la carte des livreurs.
+  function tuile(label, valeur, sous) {
+    return '<div class="kpi-card"><div class="kpi-label">' + html(label) + '</div>' +
+      '<div class="kpi-value">' + html(valeur) + '</div>' +
+      (sous ? '<div class="plan-note" style="margin-top:0.25rem;">' + html(sous) + '</div>' : '') +
+      '</div>';
+  }
+
+  // Sans ligne : en attente (rien de passé), jamais envoyé (null), ou refusé
+  // (un message). Chacun se dit autrement : « rien encore » n'est pas « panne ».
+  function dessinerTableauPersonne(ligne, erreur) {
+    const boite = document.getElementById('personneTableau');
+    const maj = document.getElementById('personneStockMaj');
     if (!boite) return;
-    let articles = [];
-    try { articles = (typeof loadItems === 'function' ? loadItems() : []) || []; } catch (e) { articles = []; }
-    if (!articles.length) {
-      boite.innerHTML = '<p class="empty-hint">Mbola tsy misy article.</p>';
+    if (ligne === undefined && !erreur) {
+      if (maj) maj.textContent = 'Miandry…';
+      boite.innerHTML = '';
       return;
     }
-    let t = '<div class="table-scroll"><table><thead><tr>' +
-      '<th>Article</th><th>Réf.</th><th>Isa</th><th>Vidiny</th></tr></thead><tbody>';
-    articles.forEach(function (a) {
-      const qte = Number(a.qty ?? a.quantity ?? a.quantite ?? 0);
-      const prix = Number(a.price ?? a.prix ?? 0);
-      t += '<tr><td>' + html(a.name ?? a.nom ?? '—') + '</td>' +
-        '<td>' + html(a.ref ?? a.reference ?? '—') + '</td>' +
-        '<td>' + qte.toLocaleString('fr-FR') + '</td>' +
-        '<td>' + (prix ? prix.toLocaleString('fr-FR') + ' Ar' : '—') + '</td></tr>';
-    });
-    t += '</tbody></table></div>';
+    if (erreur) {
+      if (maj) maj.textContent = 'Tsy azo ny tableau de bord : ' + erreur;
+      boite.innerHTML = '';
+      return;
+    }
+    if (!ligne) {
+      if (maj) maj.textContent = 'Mbola tsy nanokatra ny rohiny izy : rehefa manokatra azy, dia hiseho eto ny stock-ny.';
+      boite.innerHTML = '';
+      return;
+    }
+
+    const articles = Array.isArray(ligne.articles) ? ligne.articles : [];
+    const mouvements = (Array.isArray(ligne.mouvements) ? ligne.mouvements : [])
+      .filter(function (m) { return m && m.date && !isNaN(new Date(m.date)); })
+      .sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
+
+    if (maj) {
+      maj.textContent = 'Nohavaozina : ' + new Date(ligne.maj).toLocaleString('fr-FR') +
+        ' (' + depuis(ligne.maj) + ').';
+    }
+
+    const qte = function (a) { return Number(a.qty) || 0; };
+    const prix = function (a) { return Number(a.price) || 0; };
+    const stockTotal = articles.reduce(function (s, a) { return s + qte(a); }, 0);
+    const valeur = articles.reduce(function (s, a) { return s + qte(a) * prix(a); }, 0);
+
+    // La semaine et le jour : ce qu'on demande à quelqu'un qu'on suit, c'est
+    // ce qu'il a fait récemment, pas depuis toujours.
+    const semaine = debutDeSemaine().getTime();
+    const jour = debutDuJour().getTime();
+    const total = function (type, depuisQuand, champ) {
+      return mouvements.reduce(function (s, m) {
+        if (m.type !== type || new Date(m.date).getTime() < depuisQuand) return s;
+        return s + (Number(m[champ]) || 0);
+      }, 0);
+    };
+    const anio = mouvements.filter(function (m) { return new Date(m.date).getTime() >= jour; }).length;
+
+    let t = '<div class="kpi-row">' +
+      tuile('Articles', articles.length.toLocaleString('fr-FR')) +
+      tuile('Stock total', stockTotal.toLocaleString('fr-FR')) +
+      tuile('Valeur du stock', ariary(valeur)) +
+      tuile('Entrées · herinandro', total('entree', semaine, 'qty').toLocaleString('fr-FR'), ariary(total('entree', semaine, 'value'))) +
+      tuile('Sorties · herinandro', total('sortie', semaine, 'qty').toLocaleString('fr-FR'), ariary(total('sortie', semaine, 'value'))) +
+      tuile('Hetsika anio', anio.toLocaleString('fr-FR')) +
+      '</div>';
+
+    // ---- Ce qui manque ----
+    const aRemplir = articles
+      .filter(function (a) { return qte(a) <= Number(a.seuil != null ? a.seuil : 5); })
+      .sort(function (a, b) { return qte(a) - qte(b); });
+    t += '<div class="list-panel" style="margin-top:1rem;"><h4>⚠️ Tokony hofenoina</h4>';
+    if (!aRemplir.length) {
+      t += '<p class="empty-hint" style="padding:0.4rem 0;">Feno tsara ny articles rehetra.</p>';
+    } else {
+      aRemplir.forEach(function (a) {
+        t += '<div class="list-row"><span>' + html(a.name || '—') +
+          ' <span style="color:var(--muted); font-size:0.75rem;">(' + qte(a) + ' ' + html(a.unit || 'pièce') + ')</span></span>' +
+          (qte(a) === 0 ? '<span class="badge-danger">Lany</span>' : '<span class="badge-warn">Stock faible</span>') +
+          '</div>';
+      });
+    }
+    t += '</div>';
+
+    // ---- Ce qu'il a fait en dernier ----
+    t += '<h4 style="font-family:var(--font-mono); font-size:0.7rem; color:var(--cyan); margin:1.2rem 0 0.6rem; font-weight:500;">📜 Hetsika farany</h4>';
+    if (!mouvements.length) {
+      t += '<p class="empty-hint">Mbola tsy nisy hetsika.</p>';
+    } else {
+      t += '<div class="table-scroll"><table><thead><tr>' +
+        '<th>Daty</th><th>Karazany</th><th>Article</th><th>Isa</th><th>Sanda</th><th>Fanamarihana</th>' +
+        '</tr></thead><tbody>';
+      mouvements.slice(0, 15).forEach(function (m) {
+        const d = new Date(m.date);
+        t += '<tr><td>' + d.toLocaleDateString('fr-FR') + ' ' +
+          d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '</td>' +
+          '<td>' + (TYPES_MOUVEMENT[m.type] || html(m.type)) + '</td>' +
+          '<td>' + html(m.name || '—') + '</td>' +
+          '<td>' + (Number(m.qty) || 0).toLocaleString('fr-FR') + '</td>' +
+          '<td>' + ariary(m.value) + '</td>' +
+          '<td>' + html(m.note || '—') + '</td></tr>';
+      });
+      t += '</tbody></table></div>';
+    }
+
+    // ---- Son stock ----
+    t += '<h4 style="font-family:var(--font-mono); font-size:0.7rem; color:var(--cyan); margin:1.2rem 0 0.6rem; font-weight:500;">📦 Ny articles-ny</h4>';
+    if (!articles.length) {
+      t += '<p class="empty-hint">Mbola tsy misy article.</p>';
+    } else {
+      t += '<div class="table-scroll"><table><thead><tr>' +
+        '<th>Article</th><th>Réf.</th><th>Isa</th><th>Vidiny</th><th>Sanda</th></tr></thead><tbody>';
+      articles.forEach(function (a) {
+        t += '<tr><td>' + html(a.name || '—') + '</td>' +
+          '<td>' + html(a.ref || '—') + '</td>' +
+          '<td>' + qte(a).toLocaleString('fr-FR') + '</td>' +
+          '<td>' + ariary(prix(a)) + '</td>' +
+          '<td>' + ariary(qte(a) * prix(a)) + '</td></tr>';
+      });
+      t += '</tbody></table></div>';
+    }
+
     boite.innerHTML = t;
   }
 
@@ -932,6 +1161,8 @@
     const client = sb();
     const email = monEmail();
     if (!client || !email) return;
+    // Relu avec les heures : la fenêtre se rafraîchit d'un seul geste.
+    chargerTableauPersonne(id);
     client.from('pointages').select('*')
       .eq('owner_email', email).eq('equipe_id', id)
       .order('arrivee', { ascending: false }).limit(60)
@@ -1080,6 +1311,11 @@
     const lienMailBtn = document.getElementById('personneLienMailBtn');
     if (lienMailBtn) lienMailBtn.addEventListener('click', function () {
       if (personneOuverte) envoyerLeLienParMail(personneOuverte, lienMailBtn);
+    });
+
+    const lienZaraBtn = document.getElementById('personneLienZaraBtn');
+    if (lienZaraBtn) lienZaraBtn.addEventListener('click', function () {
+      if (personneOuverte) partagerLeLien(personneOuverte, lienZaraBtn);
     });
 
     const cleBtn = document.getElementById('carteCleBtn');

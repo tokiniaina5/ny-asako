@@ -4,10 +4,11 @@
 // pas, et ne verra qu'une chose : sa course. Où en est-elle, qui l'apporte,
 // et — tant qu'elle est en route — où se trouve le livreur.
 //
-// La carte se dessine avec la clé du commerçant, rendue par la fonction :
-// le téléphone du client ne la connaît pas autrement. Sans clé, la page
-// reste utile : le lieu s'écrit en toutes lettres et s'ouvre dans Google
-// Maps d'un doigt.
+// La carte se dessine avec la clé Google du commerçant, rendue par la
+// fonction : le téléphone du client ne la connaît pas autrement. Sans clé,
+// ou si elle est refusée, c'est la carte gratuite d'OpenStreetMap
+// (carte-libre.js). Et le lieu s'écrit toujours en toutes lettres, ouvrable
+// dans Google Maps d'un doigt.
 
 (function () {
   const jeton = (function () {
@@ -66,6 +67,8 @@
   let repere = null;
   let mapsDemandee = null;
   let cleConnue = '';
+  let carteLibre = null;
+  let repereLibre = null;
 
   function chargerGoogleMaps(cle) {
     if (window.google && window.google.maps && window.google.maps.Map) return Promise.resolve(true);
@@ -88,10 +91,16 @@
   function poserLaCarte(pos, nom) {
     const boite = document.getElementById('suiviCarte');
     if (!boite || !pos) return;
-    if (!cleConnue) { boite.style.display = 'none'; return; }
     boite.style.display = 'block';
+    // La page se redessine toutes les 45 secondes, et la boîte avec elle :
+    // une carte restée accrochée à l'ancienne boîte ne se voyait plus.
+    if (carte && carte.getDiv() !== boite) { carte = null; repere = null; }
+    if (carteLibre && carteLibre.getContainer() !== boite) {
+      carteLibre.remove(); carteLibre = null; repereLibre = null;
+    }
+    if (!cleConnue) { poserLaCarteLibre(boite, pos, nom); return; }
     chargerGoogleMaps(cleConnue).then(function (prete) {
-      if (!prete) { boite.style.display = 'none'; return; }
+      if (!prete) { poserLaCarteLibre(boite, pos, nom); return; }
       const g = window.google.maps;
       const point = { lat: Number(pos.lat), lng: Number(pos.lng) };
       if (!carte) {
@@ -103,6 +112,30 @@
       if (!repere) repere = new g.Marker({ map: carte, position: point, title: nom || '' });
       else { repere.setPosition(point); repere.setTitle(nom || ''); }
       carte.setCenter(point);
+    });
+  }
+
+  // OpenStreetMap, sans clé ni facturation (carte-libre.js).
+  function poserLaCarteLibre(boite, pos, nom) {
+    if (typeof chargerCarteLibre !== 'function') { boite.style.display = 'none'; return; }
+    chargerCarteLibre().then(function (prete) {
+      if (!prete) { boite.style.display = 'none'; return; }
+      // Redessinée pendant le chargement : cette boîte-ci n'est plus à l'écran.
+      if (!boite.isConnected) return;
+      const L = window.L;
+      const point = [Number(pos.lat), Number(pos.lng)];
+      if (!carteLibre) {
+        carteLibre = L.map(boite).setView(point, 15);
+        fondCarteLibre(carteLibre);
+      } else {
+        carteLibre.setView(point, carteLibre.getZoom());
+      }
+      if (!repereLibre) {
+        repereLibre = repereCarteLibre(point).addTo(carteLibre);
+        if (nom) repereLibre.bindTooltip(html(nom), { permanent: true, direction: 'top', offset: [0, -10] });
+      } else {
+        repereLibre.setLatLng(point);
+      }
     });
   }
 

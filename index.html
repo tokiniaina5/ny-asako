@@ -46,7 +46,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=d0e9b428">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=4eee254f">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=e12dac4e">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -477,6 +477,9 @@
              tous par ce point. La retirer les laisserait afficher une vue que
              personne ne regarde. -->
         <div class="nav-item active" id="navStock" data-section="stock" style="display:none;">📦 Stock</div>
+        <!-- La page de l'employé entré par son lien : ses heures, ses courses.
+             Le style la retire pour tout autre que lui. -->
+        <div class="nav-item seulement-mpiasa" id="navMoi" data-section="moi">🙋 Ny momba ahy</div>
         <div class="nav-item" data-section="factures">🧾 Factures</div>
         <div class="nav-item" data-section="inviter">✉️ Inviter des amis</div>
         <div class="nav-item" data-section="contact">☎️ Nous contacter</div>
@@ -1619,9 +1622,10 @@
           <p class="empty-hint" id="livreurVide" style="display:none;">Mbola tsy misy voasoratra.</p>
         </div>
 
-        <!-- Où ils sont. La carte ne s'affiche que si une clé Google Maps a
-             été posée ; sans elle, la liste en dessous dit la même chose en
-             mots, et chaque ligne s'ouvre dans Google Maps d'un doigt. -->
+        <!-- Où ils sont. La carte est celle d'OpenStreetMap, gratuite et sans
+             clé ; une clé Google Maps, facultative, la remplace par Google.
+             La liste en dessous dit la même chose en mots, et chaque ligne
+             s'ouvre dans Google Maps d'un doigt. -->
         <div class="panel" style="margin-top:1rem;">
           <div class="panneau-titre">Aiza izy ireo</div>
           <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0 0 0.8rem;">
@@ -1633,10 +1637,11 @@
           <p class="empty-hint" id="positionsVide" style="display:none;">Mbola tsy nisy nandefa ny toerana misy azy.</p>
 
           <details style="margin-top:1rem;">
-            <summary style="cursor:pointer; font-size:0.8rem; color:var(--muted);">Clé Google Maps</summary>
+            <summary style="cursor:pointer; font-size:0.8rem; color:var(--muted);">Clé Google Maps (tsy voatery)</summary>
             <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0.7rem 0;">
-              Ny sarintany tena izy dia mila clé alaina ao amin'ny Google Cloud. Raha tsy misy clé, ny lisitra etsy ambony ihany no miseho.
-              Tehirizina miaraka amin'ny kaontinao izy : iray ihany ho an'ny findainao rehetra, ary izy koa no manome sarintany ny mpanjifa manaraka ny entany.
+              Tsy ilaina ity : raha tsy misy clé, sarintany maimaim-poana (OpenStreetMap) no miseho, ho anao sy ho an'ny mpanjifa manaraka ny entany.
+              Raha tianao kosa ny Google Maps, dia mila clé alaina ao amin'ny Google Cloud, miaraka amin'ny facturation.
+              Tehirizina miaraka amin'ny kaontinao izy : iray ihany ho an'ny findainao rehetra.
             </p>
             <div class="field">
               <label for="carteCle">Clé</label>
@@ -1722,22 +1727,24 @@
         <div class="panel" style="margin-top:1rem;">
           <div class="panneau-titre">Ny rohiny</div>
           <p style="font-size:0.8rem; color:var(--muted); line-height:1.6; margin:0 0 0.7rem;">
-            Ity rohy ity no alefa aminy. Ny articles no hitany, tsy azony ovaina.
+            Ity rohy ity no alefa aminy : manokatra ny Ny asako feno ho azy izy, tsy mila tenimiafina. Manana stock azy manokana izy
+            (dika mitovy amin'ny anao amin'ny fanokafany voalohany) ka afaka manova ny zava-drehetra, ary afaka mampiditra olona ao amin'ny ekipanao.
           </p>
           <p id="personneLien" style="font-size:0.78rem; color:var(--cyan); word-break:break-all; margin:0 0 0.7rem;">—</p>
           <div class="actions-row">
             <button type="button" class="btn btn-sm" id="personneLienBtn">Hamorona rohy</button>
             <button type="button" class="btn btn-sm" id="personneLienMailBtn">Alefa amin'ny mailaka</button>
+            <button type="button" class="btn btn-sm" id="personneLienZaraBtn">↗️ Zarao</button>
           </div>
           <p id="personneLienMailNote" style="font-size:0.78rem; color:var(--muted); margin:0.7rem 0 0; line-height:1.5;"></p>
         </div>
 
         <div class="panel" style="margin-top:1rem;">
-          <div class="panneau-titre">Ny articles hitany</div>
-          <p style="font-size:0.8rem; color:var(--muted); line-height:1.6; margin:0 0 0.7rem;">
-            Fijerena ihany — na ho anao eto, na ho azy amin'ny rohiny.
-          </p>
-          <div id="personneArticles"></div>
+          <div class="panneau-titre">Tableau de bord</div>
+          <!-- Le stock que la personne tient depuis son lien, tel que son
+               application l'a envoyé en dernier : equipe.js le remplit. -->
+          <p id="personneStockMaj" style="font-size:0.8rem; color:var(--muted); line-height:1.6; margin:0 0 0.9rem;">—</p>
+          <div id="personneTableau"></div>
         </div>
 
         <div class="panel" style="margin-top:1rem;">
@@ -1745,6 +1752,13 @@
           <div id="personnePointages" style="margin-top:0.7rem;"></div>
           <p class="empty-hint" id="personnePointagesVide" style="display:none;">Mbola tsy nisy pointage.</p>
         </div>
+      </section>
+
+      <!-- ---- NY MOMBA AHY ----
+           Seulement pour l'employé entré par son lien : vue-mpiasa.js la remplit
+           de ses heures, de ses courses et, pour un livreur, de sa position. -->
+      <section class="section" id="section-moi">
+        <div id="moiContenu"></div>
       </section>
 
       <section class="section" id="section-abonnement">
@@ -1988,22 +2002,23 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=bf340b91"></script>
-<script src="gestion-stockage-js/stock.js?v=275a327a"></script>
+<script src="gestion-stockage-js/common.js?v=ca317878"></script>
+<script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
 <script src="gestion-stockage-js/factures.js?v=cf29cfb7"></script>
-<script src="gestion-stockage-js/inviter.js?v=62dcae8c"></script>
-<script src="gestion-stockage-js/contact.js?v=5b213ad8"></script>
-<script src="gestion-stockage-js/live.js?v=aa8bc9b9"></script>
+<script src="gestion-stockage-js/inviter.js?v=292a6d33"></script>
+<script src="gestion-stockage-js/contact.js?v=2f6072eb"></script>
+<script src="gestion-stockage-js/live.js?v=4abb47d9"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=ccebdd78"></script>
+<script src="gestion-stockage-js/parametres.js?v=ed069670"></script>
 <script src="gestion-stockage-js/identite.js?v=32177fac"></script>
 <script src="gestion-stockage-js/fond.js?v=9130e24f"></script>
-<script src="gestion-stockage-js/equipe.js?v=3f05a366"></script>
-<script src="gestion-stockage-js/vue-mpiasa.js?v=fd4ce9be"></script>
-<script src="gestion-stockage-js/vue-suivi.js?v=f1457ece"></script>
-<script src="gestion-stockage-js/securite.js?v=9b276532"></script>
+<script src="gestion-stockage-js/carte-libre.js?v=5675a440"></script>
+<script src="gestion-stockage-js/equipe.js?v=9110017e"></script>
+<script src="gestion-stockage-js/vue-mpiasa.js?v=398fe3de"></script>
+<script src="gestion-stockage-js/vue-suivi.js?v=18a0a20f"></script>
+<script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
 
 
 

@@ -1,7 +1,23 @@
-const STORAGE_ITEMS = 'stockmanager_items';
-  const STORAGE_LOGINS = 'stockmanager_logins';
-  const STORAGE_MOVEMENTS = 'stockmanager_movements';
-  const STORAGE_SUBSCRIPTION = 'stockmanager_subscription';
+// ---------------- L'EMPLOYÉ ENTRÉ PAR SON LIEN ----------------
+  // « ?mpiasa=<jeton> » : ce n'est pas le patron qui ouvre la page, c'est
+  // quelqu'un de son équipe, sans compte (vue-mpiasa.js). Il reçoit
+  // l'application entière, avec un stock à lui. Ce stock se range sous des
+  // clés à son nom : si ce navigateur est aussi celui du patron, les deux ne
+  // se mélangent jamais.
+  const MODE_MPIASA = (function(){
+    try { return !!new URLSearchParams(window.location.search).get('mpiasa'); }
+    catch(e){ return false; }
+  })();
+  const SUFFIXE_MPIASA = MODE_MPIASA
+    ? '_mpiasa_' + String(new URLSearchParams(window.location.search).get('mpiasa')).slice(0, 16)
+    : '';
+  // Le style s'en sert : sans compte, il n'y a rien dont se déconnecter.
+  if(MODE_MPIASA) document.body.classList.add('mode-mpiasa');
+
+  const STORAGE_ITEMS = 'stockmanager_items' + SUFFIXE_MPIASA;
+  const STORAGE_LOGINS = 'stockmanager_logins' + SUFFIXE_MPIASA;
+  const STORAGE_MOVEMENTS = 'stockmanager_movements' + SUFFIXE_MPIASA;
+  const STORAGE_SUBSCRIPTION = 'stockmanager_subscription' + SUFFIXE_MPIASA;
   const STORAGE_PROFILES = 'stockmanager_profiles';
   const STORAGE_CLIENT_CODES = 'stockmanager_client_codes';
   const CODE_VALID_MS = 30 * 60 * 1000; // 30 minutes
@@ -222,6 +238,9 @@ const STORAGE_ITEMS = 'stockmanager_items';
   }
   // renvoie { status: 'trial'|'active'|'expired', daysLeft, bonusDays }
   function getSubscriptionStatus(){
+    // L'employé entré par son lien travaille pour un patron : ce n'est pas à
+    // lui de s'abonner, ni d'être arrêté par la fin d'un essai.
+    if(MODE_MPIASA) return { status: 'active', daysLeft: 0, bonusDays: 0 };
     const sub = ensureInstallDate();
     // Le propriétaire ne s'abonne pas à sa propre application. L'essai avait
     // fini par expirer sur son appareil et le mettait à la porte de son propre
@@ -294,7 +313,11 @@ const STORAGE_ITEMS = 'stockmanager_items';
     try { return JSON.parse(localStorage.getItem(STORAGE_ITEMS)) || []; }
     catch(e){ return []; }
   }
-  function saveItems(items){ localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items)); }
+  function saveItems(items){
+    localStorage.setItem(STORAGE_ITEMS, JSON.stringify(items));
+    // L'employé entré par son lien : son patron suit ce stock (vue-mpiasa.js).
+    if(MODE_MPIASA && typeof deposerStockMpiasa === 'function') deposerStockMpiasa();
+  }
 
   function loadLogins(){
     try { return JSON.parse(localStorage.getItem(STORAGE_LOGINS)) || []; }
@@ -306,11 +329,14 @@ const STORAGE_ITEMS = 'stockmanager_items';
     try { return JSON.parse(localStorage.getItem(STORAGE_MOVEMENTS)) || []; }
     catch(e){ return []; }
   }
-  function saveMovements(movements){ localStorage.setItem(STORAGE_MOVEMENTS, JSON.stringify(movements)); }
+  function saveMovements(movements){
+    localStorage.setItem(STORAGE_MOVEMENTS, JSON.stringify(movements));
+    if(MODE_MPIASA && typeof deposerStockMpiasa === 'function') deposerStockMpiasa();
+  }
 
   // ---------------- GESTION DE COMPTE : clients & ventes à crédit ----------------
-  const STORAGE_CLIENTS = 'stockmanager_clients';
-  const STORAGE_CREDIT_SALES = 'stockmanager_credit_sales';
+  const STORAGE_CLIENTS = 'stockmanager_clients' + SUFFIXE_MPIASA;
+  const STORAGE_CREDIT_SALES = 'stockmanager_credit_sales' + SUFFIXE_MPIASA;
   function loadClients(){
     try { return JSON.parse(localStorage.getItem(STORAGE_CLIENTS)) || []; }
     catch(e){ return []; }
@@ -322,7 +348,7 @@ const STORAGE_ITEMS = 'stockmanager_items';
   }
   function saveCreditSales(list){ localStorage.setItem(STORAGE_CREDIT_SALES, JSON.stringify(list)); }
 
-  const STORAGE_NOTIFICATIONS = 'stockmanager_notifications';
+  const STORAGE_NOTIFICATIONS = 'stockmanager_notifications' + SUFFIXE_MPIASA;
   function loadNotifications(){
     try { return JSON.parse(localStorage.getItem(STORAGE_NOTIFICATIONS)) || []; }
     catch(e){ return []; }
@@ -521,7 +547,8 @@ const STORAGE_ITEMS = 'stockmanager_items';
     // ny appli ny mpanjifa — ny fanokafana ny rohy no ampy.
     if(typeof runPendingLinkAction === 'function') runPendingLinkAction();
     // étape 2 : pièce d'identité, réclamée tant qu'elle n'est pas renseignée
-    if(typeof requireIdentity === 'function') requireIdentity();
+    // L'employé, le patron le connaît déjà : c'est lui qui l'a inscrit.
+    if(!MODE_MPIASA && typeof requireIdentity === 'function') requireIdentity();
     // le propriétaire est prévenu des alertes enregistrées depuis sa dernière visite
     if(typeof notifyOwnerOfNewAlerts === 'function') notifyOwnerOfNewAlerts();
   }
@@ -1247,6 +1274,8 @@ const STORAGE_ITEMS = 'stockmanager_items';
   const RESCUE_VALID_MS = 30 * 60 * 1000;
 
   function isOwnerEmail(email){
+    // L'espace du propriétaire ne s'ouvre jamais par un lien d'employé.
+    if(MODE_MPIASA) return false;
     return normEmail(email) === normEmail(OWNER_EMAIL);
   }
   function markOwnerDevice(){
@@ -2239,8 +2268,11 @@ const STORAGE_ITEMS = 'stockmanager_items';
 
   // Au chargement : si une session est enregistrée, on rouvre directement
   // l'application (et la vue précédente) ; sinon on affiche l'écran de connexion.
-  const savedSession = loadSession();
-  if(savedSession && savedSession.name && savedSession.email){
+  const savedSession = MODE_MPIASA ? null : loadSession();
+  if(MODE_MPIASA){
+    // L'employé n'entre pas par un compte : vue-mpiasa.js ouvre l'application
+    // pour lui. Ni session du patron à rouvrir, ni écran de connexion.
+  } else if(savedSession && savedSession.name && savedSession.email){
     currentUser = savedSession;
     loginScreen.style.display = 'none';
     document.getElementById('currentUserName').textContent = currentUser.name;
@@ -3690,7 +3722,9 @@ const STORAGE_ITEMS = 'stockmanager_items';
     // il reste dehors, et c'est aussi bien — une sortie n'a rien à faire dans
     // une rangée où le doigt passe.
     function entreesEpinglables(){
-      const hors = ['navStock'];
+      // « Ny momba ahy » n'existe que pour l'employé : ouvert dans le
+      // navigateur du patron, il y laisserait une icône vers une page vide.
+      const hors = ['navStock', 'navMoi'];
       return [].slice.call(document.querySelectorAll('#navList .nav-action, #navList .nav-item[data-section]'))
         .filter(function(e){ return hors.indexOf(e.id) < 0; });
     }

@@ -631,3 +631,9 @@
     .filters-panel{ flex-direction:column; gap:1rem; }
     .filter-clear{ align-self:flex-start; margin-left:0; }
   }
+
+  /* ---- L'employé entré par son lien ----
+     Il a toute l'application, mais pas de compte : il n'y a rien dont se
+     déconnecter. Et « Ny momba ahy » n'existe que pour lui. */
+  body.mode-mpiasa #logoutBtn{ display:none !important; }
+  body:not(.mode-mpiasa) .seulement-mpiasa{ display:none !important; }

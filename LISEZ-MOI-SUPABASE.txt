@@ -461,3 +461,33 @@ gratuite : 500 000 caractères/mois) puis :
    supabase secrets set DEEPL_API_KEY=xxxxxxxx:fx
 La fonction prend alors DeepL, et retombe sur MyMemory en cas de
 problème.
+
+
+LE LIEN D'UN EMPLOYÉ : L'APPLICATION ENTIÈRE
+------------------------------
+Le lien d'un employé (Mpiasa > Sokafy > "Ny rohiny") ouvre
+l'application entière, sans mot de passe.
+
+- Son stock est à lui. La première fois, il part d'une copie du vôtre
+  (celle déposée à votre dernière ouverture). Ensuite il ajoute,
+  modifie, efface chez lui : votre stock n'est pas touché. Vous suivez
+  le sien dans sa fenêtre (Mpiasa > Sokafy > "Tableau de bord") : son
+  application vous l'envoie après chaque changement.
+- Votre équipe est commune. Il peut inscrire des mpiasa et des
+  livreurs, leur faire des liens, pointer, confier des courses, les
+  suspendre ou les retirer — vous voyez tout dans vos pages.
+- Ce qui demande un vrai compte ne marche pas par un lien : changer de
+  mot de passe, le portefeuille (retraits), aimer une publication.
+  L'abonnement ne lui est jamais demandé.
+
+Le lien vaut une clé : quiconque l'a entre dans votre équipe. En cas
+de doute, "Hampiato" le coupe aussitôt.
+
+À FAIRE UNE FOIS :
+1. Dans Supabase (SQL Editor) : "supabase/sql/supabase-mpiasa-copie.sql"
+   puis "supabase/sql/supabase-mpiasa-tableau.sql"
+   (après "supabase-mpiasa-lien.sql").
+2. Dans le Terminal :
+     supabase functions deploy mpiasa --no-verify-jwt
+Sans l'étape 2, ses pages Mpiasa et Livreur restent vides, avec un
+message qui le dit.
