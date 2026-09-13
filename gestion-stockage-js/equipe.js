@@ -42,6 +42,9 @@
   // La carte sans personne est posée sur Antananarivo une fois, pas à chaque
   // relecture : celui qui l'a déplacée entre-temps ne doit pas y être ramené.
   let vueVide = false;
+  // Vrai dès que Google a refusé la clé : jusqu'au rechargement, plus de
+  // Google, la carte gratuite à sa place.
+  let googleRefuse = false;
 
   function sb() {
     // L'employé entré par son lien n'a pas de compte : ce qu'il lit et écrit
@@ -605,6 +608,19 @@
   // Google Maps ne se charge que si une clé existe : un script appelé sans
   // clé ne rend qu'un rectangle gris barré d'un avertissement.
   function chargerGoogleMaps() {
+    // Une clé refusée — facturation absente, API non activée, site non
+    // autorisé — laisse le script se charger, et c'est Google qui remplace
+    // ensuite la carte par « A small problem… An error has occurred ». Il ne
+    // prévient que par gm_authFailure : on y reprend la carte gratuite, dans
+    // une boîte neuve, car l'ancienne appartient encore à la carte en panne.
+    window.gm_authFailure = function () {
+      googleRefuse = true;
+      carte = null;
+      reperes = {};
+      const boite = document.getElementById('carteLivreur');
+      if (boite && boite.parentNode) boite.parentNode.replaceChild(boite.cloneNode(false), boite);
+      dessinerCarte();
+    };
     if (window.google && window.google.maps && window.google.maps.Map) return Promise.resolve(true);
     if (mapsDemandee) return mapsDemandee;
     if (!cleMaps()) return Promise.resolve(false);
@@ -688,8 +704,16 @@
     // pose sur Antananarivo.
     boite.style.display = 'block';
 
-    // Pas de clé : la carte gratuite, sans rien demander à personne.
-    if (!cleMaps()) { poserLaCarteLibre(boite, lignes); return; }
+    // Pas de clé, ou une clé que Google a refusée : la carte gratuite.
+    if (!cleMaps() || googleRefuse) {
+      if (googleRefuse && note) {
+        note.style.display = 'block';
+        note.textContent = 'Nolavin\'i Google ny clé Google Maps (tsy misy facturation, na tsy nalefa ny Maps JavaScript API, na tsy nahazo alalana ny site) : sarintany maimaim-poana no miseho. ' +
+          'Raha tsy ilainao ilay clé, fafao ao amin\'ny « Clé Google Maps » eto ambany dia tsindrio « Tehirizo ».';
+      }
+      poserLaCarteLibre(boite, lignes);
+      return;
+    }
 
     chargerGoogleMaps().then(function (prete) {
       if (!prete) {
@@ -760,6 +784,7 @@
     } catch (e) {}
     // Une clé qu'on change demande un nouveau chargement du script.
     mapsDemandee = null; carte = null; reperes = {};
+    googleRefuse = false;
     dessinerCarte();
 
     const client = sb();

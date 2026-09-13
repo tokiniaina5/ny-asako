@@ -75,8 +75,25 @@
   let dernierAt = null;
   let recherche = null;
   let messageRecherche = '';
+  // Google a refusé la clé du commerçant : la carte gratuite, jusqu'au
+  // rechargement. Et ce qu'on montrait, pour le remontrer sans attendre.
+  let googleRefuse = false;
+  let derniereCarte = null;
 
   function chargerGoogleMaps(cle) {
+    // Une clé refusée laisse le script se charger ; Google remplace ensuite la
+    // carte par un message d'erreur, et ne prévient que par gm_authFailure.
+    // On y reprend la carte gratuite, dans une boîte neuve.
+    window.gm_authFailure = function () {
+      googleRefuse = true;
+      carte = null;
+      repere = null;
+      const boite = document.getElementById('suiviCarte');
+      if (!boite || !boite.parentNode || !derniereCarte) return;
+      const neuve = boite.cloneNode(false);
+      boite.parentNode.replaceChild(neuve, boite);
+      poserLaCarteLibre(neuve, derniereCarte.pos, derniereCarte.nom);
+    };
     if (window.google && window.google.maps && window.google.maps.Map) return Promise.resolve(true);
     if (mapsDemandee) return mapsDemandee;
     if (!cle) return Promise.resolve(false);
@@ -104,7 +121,8 @@
     if (carteLibre && carteLibre.getContainer() !== boite) {
       carteLibre.remove(); carteLibre = null; repereLibre = null;
     }
-    if (!cleConnue) { poserLaCarteLibre(boite, pos, nom); return; }
+    derniereCarte = { pos: pos, nom: nom };
+    if (!cleConnue || googleRefuse) { poserLaCarteLibre(boite, pos, nom); return; }
     chargerGoogleMaps(cleConnue).then(function (prete) {
       if (!prete) { poserLaCarteLibre(boite, pos, nom); return; }
       const g = window.google.maps;
