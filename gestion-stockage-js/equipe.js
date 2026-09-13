@@ -211,6 +211,28 @@
     return location.origin + location.pathname;
   }
 
+  // Une écriture que la sécurité des lignes refuse ne rend pas d'erreur : elle
+  // ne touche simplement aucune ligne. Le lien avait l'air créé, se copiait,
+  // partait par SMS — et n'ouvrait rien : « Tsy fantatra ity rohy ity ». On
+  // relit donc ce que la base a vraiment gardé avant de donner le lien.
+  function relireLeJeton(client, table, id, jeton) {
+    return client.from(table).select('jeton').eq('id', id).maybeSingle().then(function (res) {
+      if (res && res.error) return res;
+      return { absent: !(res && res.data && res.data.jeton === jeton) };
+    });
+  }
+
+  // Presque toujours une session Supabase perdue, chez le patron. Chez
+  // l'employé, la fonction écrit avec la clé de service : si rien n'est gardé,
+  // c'est que la ligne n'existe plus.
+  function direLienPerdu(id) {
+    if (typeof MODE_MPIASA !== 'undefined' && MODE_MPIASA) {
+      dire(id, 'Tsy voatahiry ny rohy : mety efa nesorina io. Havaozy ny pejy.', true);
+      return;
+    }
+    direReentrer(id);
+  }
+
   function lienDe(jeton) {
     return base() + '?mpiasa=' + jeton;
   }
@@ -227,8 +249,13 @@
     const jeton = nouveauJeton();
     return client.from('equipe').update({ jeton: jeton }).eq('id', personne.id)
       .then(function (res) {
+        if (res && res.error) return res;
+        return relireLeJeton(client, 'equipe', personne.id, jeton);
+      })
+      .then(function (res) {
         if (bouton) bouton.disabled = false;
         if (res && res.error) { direPartout('Tsy voaforona ny rohy : ' + res.error.message, true); return ''; }
+        if (res && res.absent) { METIERS.forEach(function (r) { direLienPerdu(r + 'Statut'); }); return ''; }
         personne.jeton = jeton;
         if (personneOuverte && personneOuverte.id === personne.id) dessinerLienPersonne(personne);
         charger();
@@ -334,8 +361,13 @@
     const jeton = nouveauJeton();
     client.from('livraisons').update({ jeton: jeton }).eq('id', course.id)
       .then(function (res) {
+        if (res && res.error) return res;
+        return relireLeJeton(client, 'livraisons', course.id, jeton);
+      })
+      .then(function (res) {
         if (bouton) bouton.disabled = false;
         if (res && res.error) { dire('livraisonStatut', 'Tsy voaforona ny rohy : ' + res.error.message, true); return; }
+        if (res && res.absent) { direLienPerdu('livraisonStatut'); return; }
         course.jeton = jeton;
         montrerLienClient(course, jeton);
         charger();
