@@ -90,7 +90,7 @@
 
   function poserLaCarte(pos, nom) {
     const boite = document.getElementById('suiviCarte');
-    if (!boite || !pos) return;
+    if (!boite) return;
     boite.style.display = 'block';
     // La page se redessine toutes les 45 secondes, et la boîte avec elle :
     // une carte restée accrochée à l'ancienne boîte ne se voyait plus.
@@ -102,13 +102,15 @@
     chargerGoogleMaps(cleConnue).then(function (prete) {
       if (!prete) { poserLaCarteLibre(boite, pos, nom); return; }
       const g = window.google.maps;
-      const point = { lat: Number(pos.lat), lng: Number(pos.lng) };
+      // Sans position encore : Antananarivo, sans repère.
+      const point = pos ? { lat: Number(pos.lat), lng: Number(pos.lng) } : centreParDefaut;
       if (!carte) {
         carte = new g.Map(boite, {
-          center: point, zoom: 15,
+          center: point, zoom: pos ? 15 : 12,
           mapTypeControl: false, streetViewControl: false, fullscreenControl: false
         });
       }
+      if (!pos) return;
       if (!repere) repere = new g.Marker({ map: carte, position: point, title: nom || '' });
       else { repere.setPosition(point); repere.setTitle(nom || ''); }
       carte.setCenter(point);
@@ -123,6 +125,14 @@
       // Redessinée pendant le chargement : cette boîte-ci n'est plus à l'écran.
       if (!boite.isConnected) return;
       const L = window.L;
+      if (!pos) {
+        // Sans position encore : Antananarivo, sans repère.
+        if (!carteLibre) {
+          carteLibre = L.map(boite).setView([centreParDefaut.lat, centreParDefaut.lng], 12);
+          fondCarteLibre(carteLibre);
+        }
+        return;
+      }
       const point = [Number(pos.lat), Number(pos.lng)];
       if (!carteLibre) {
         carteLibre = L.map(boite).setView(point, 15);
@@ -158,20 +168,24 @@
       '</div>';
 
     // ---- Où en est le livreur ----
-    if (pos) {
+    // La carte se montre tant que la course n'est pas finie, même avant la
+    // première position : le client voit où le livreur apparaîtra. Finie ou
+    // annulée, la fonction ne rend plus de position, et la carte s'en va.
+    const enCours = d.statut !== 'tonga' && d.statut !== 'foana';
+    if (pos || enCours) {
       sortie += '<div class="panel" style="margin-top:1rem;">' +
         '<div class="panneau-titre">Aiza izy izao</div>' +
-        '<div id="suiviCarte" style="height:300px; border-radius:10px; overflow:hidden; border:1px solid var(--line); display:none; margin-bottom:0.8rem;"></div>' +
-        '<p style="font-size:0.85rem; line-height:1.7; margin:0;">' +
+        '<div id="suiviCarte" style="height:300px; border-radius:10px; overflow:hidden; border:1px solid var(--line); display:none; margin-bottom:0.8rem;"></div>';
+    }
+    if (pos) {
+      sortie += '<p style="font-size:0.85rem; line-height:1.7; margin:0;">' +
         'Toerana farany : <strong style="color:var(--cyan);">' + html(depuis(pos.at)) + '</strong>' +
         (pos.precision_m ? ' <span style="color:var(--muted);">(± ' + Math.round(pos.precision_m) + ' m)</span>' : '') +
         '<br><span style="color:var(--muted);">' + new Date(pos.at).toLocaleString('fr-FR') + '</span>' +
         '<br><a href="https://www.google.com/maps?q=' + Number(pos.lat) + ',' + Number(pos.lng) + '" target="_blank" rel="noopener" style="color:var(--cyan);">Sokafy ao amin’ny Google Maps</a>' +
         '</p></div>';
-    } else if (d.statut !== 'tonga' && d.statut !== 'foana') {
-      sortie += '<div class="panel" style="margin-top:1rem;">' +
-        '<div class="panneau-titre">Aiza izy izao</div>' +
-        '<p class="empty-hint" style="margin:0;">Mbola tsy nandefa ny toerana misy azy ny livreur.</p>' +
+    } else if (enCours) {
+      sortie += '<p class="empty-hint" style="margin:0;">Mbola tsy nandefa ny toerana misy azy ny livreur.</p>' +
         '</div>';
     }
 
@@ -179,7 +193,7 @@
       'Havaozina ho azy isaky ny 45 segondra ity pejy ity.</p>';
 
     ecran.innerHTML = sortie;
-    if (pos) poserLaCarte(pos, d.livreur);
+    if (document.getElementById('suiviCarte')) poserLaCarte(pos, d.livreur);
   }
 
   // ---------- Dire pourquoi ----------

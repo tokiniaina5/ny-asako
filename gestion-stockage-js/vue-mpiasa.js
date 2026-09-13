@@ -135,6 +135,15 @@
     entre = true;
     openApp();
     ouvrirSurLAccueil();
+    // La carte de « Ny momba ahy » se mesure quand la page paraît : cachée,
+    // elle n'avait pas de taille, et n'aurait rempli qu'un coin.
+    const moi = document.getElementById('navMoi');
+    if (moi) moi.addEventListener('click', function () {
+      setTimeout(function () { if (maCarte) maCarte.invalidateSize(); }, 300);
+    });
+    // Un livreur ouvre son lien pour dire où il est et le voir : il arrive
+    // directement sur sa page, la carte sous les yeux.
+    if (p.role === 'livreur' && moi) moi.click();
     // Le patron voit tout de suite où il en est, sans attendre un premier
     // changement.
     envoyerMonStock();
@@ -182,9 +191,11 @@
       sortie += '<div class="panel" style="margin-top:1rem;">' +
         '<div class="panneau-titre">Ny toerana misy anao</div>' +
         '<p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0 0 0.7rem;">' +
-        'Raha manaiky ianao, ny toerana misy anao dia alefa isaky ny iray minitra, mba hahitan\'ny patron hoe aiza ianao. ' +
+        'Manontany alalana ny finday rehefa misokatra ity pejy ity. Raha manaiky ianao, hitanao eto amin\'ny sarintany ny toerana misy anao, ' +
+        'ary alefa isaky ny iray minitra izy mba hahitan\'ny patron sy ny mpanjifa anao. ' +
         'Azonao esorina na oviana na oviana ao amin\'ny réglages ny finday.' +
         '</p>' +
+        '<div id="maCarte" style="height:260px; border-radius:10px; overflow:hidden; border:1px solid var(--line); margin:0 0 0.8rem;"></div>' +
         '<p id="maPosition" style="font-size:0.85rem; line-height:1.6; margin:0 0 0.7rem;">—</p>' +
         '<button type="button" class="btn btn-primary btn-sm" id="maPositionBtn" style="width:auto;">Manaiky — alefaso ny toerako</button>' +
         '</div>';
@@ -212,15 +223,18 @@
 
     // La page se redessine : un suivi déjà accepté ne doit pas redemander
     // l'accord, ni perdre la dernière position affichée.
-    if (dernierePosition) montrerMaPosition(dernierePosition);
     const b = document.getElementById('maPositionBtn');
     if (b) {
       if (suivi !== null) { b.disabled = true; b.textContent = 'Alefa…'; }
-      b.addEventListener('click', function () {
-        b.disabled = true;
-        b.textContent = 'Alefa…';
-        commencerLeSuivi();
-      });
+      b.addEventListener('click', commencerLeSuivi);
+    }
+    if (p.role === 'livreur') {
+      dessinerMaCarte();
+      if (dernierePosition) montrerMaPosition(dernierePosition);
+      // Ouvrir son lien suffit : le livreur n'a pas à chercher le bouton. Le
+      // navigateur demande l'accord lui-même, et un refus reste un refus —
+      // on ne le redemande pas à chaque relecture ; le bouton, lui, reste.
+      if (suivi === null && !suiviRefuse) commencerLeSuivi();
     }
   }
 
@@ -229,14 +243,21 @@
   // personne n'est suivi sans l'avoir accepté, et l'accord se retire dans les
   // réglages du téléphone. On ne contourne rien — on ne le pourrait pas.
   let suivi = null;
+  let suiviRefuse = false;
   let dernierEnvoi = 0;
   let dernierePosition = null;
+  let maCarte = null;
+  let monRepere = null;
 
-  function envoyerPosition(pos) {
+  // Chaque position reçue se montre aussitôt, sur sa carte : le livreur voit
+  // où il est à mesure qu'il avance.
+  function recevoirPosition(pos) {
+    montrerMaPosition(pos);
     const client = window.__sb;
     if (!client || !client.functions) return;
-    // Une fois par minute au plus : un téléphone qui parle sans cesse se vide,
-    // et une position à la seconde n'apprend rien de plus qu'une à la minute.
+    // Elle ne part qu'une fois par minute au plus : un téléphone qui parle sans
+    // cesse se vide, et une position à la seconde n'apprend rien de plus au
+    // patron qu'une à la minute.
     const maintenant = Date.now();
     if (maintenant - dernierEnvoi < 60000) return;
     dernierEnvoi = maintenant;
@@ -249,11 +270,11 @@
         precision: pos.coords.accuracy
       }
     }).then(function () {}, function () {});
-    montrerMaPosition(pos);
   }
 
   function montrerMaPosition(pos) {
     dernierePosition = pos;
+    dessinerMaCarte();
     const el = document.getElementById('maPosition');
     if (!el) return;
     const lat = pos.coords.latitude.toFixed(5);
@@ -263,18 +284,65 @@
       '<span style="color:var(--muted);">' + new Date(pos.timestamp || Date.now()).toLocaleTimeString('fr-FR') + '</span>';
   }
 
+  // Sa carte à lui : Antananarivo tant que le téléphone n'a rien dit, puis
+  // lui, suivi pas à pas. La page se redessine de temps en temps, et la boîte
+  // avec elle : une carte accrochée à l'ancienne boîte est refaite.
+  function dessinerMaCarte() {
+    const boite = document.getElementById('maCarte');
+    if (!boite || typeof chargerCarteLibre !== 'function') return;
+    if (maCarte && maCarte.getContainer() !== boite) { maCarte.remove(); maCarte = null; monRepere = null; }
+    chargerCarteLibre().then(function (prete) {
+      if (!prete) { boite.style.display = 'none'; return; }
+      if (!boite.isConnected) return;
+      const L = window.L;
+      const ici = dernierePosition
+        ? [dernierePosition.coords.latitude, dernierePosition.coords.longitude]
+        : null;
+      if (!maCarte) {
+        maCarte = L.map(boite).setView(ici || [centreParDefaut.lat, centreParDefaut.lng], ici ? 16 : 12);
+        fondCarteLibre(maCarte);
+      }
+      if (ici) {
+        if (!monRepere) {
+          monRepere = repereCarteLibre(ici).addTo(maCarte);
+          monRepere.bindTooltip('Ianao', { permanent: true, direction: 'top', offset: [0, -10] });
+          maCarte.setView(ici, 16);
+        } else {
+          monRepere.setLatLng(ici);
+          maCarte.panTo(ici);
+        }
+      }
+      maCarte.invalidateSize();
+      setTimeout(function () { if (maCarte) maCarte.invalidateSize(); }, 300);
+    });
+  }
+
   function commencerLeSuivi() {
     const el = document.getElementById('maPosition');
     if (!navigator.geolocation) {
       if (el) el.textContent = 'Tsy mahay milaza toerana ity finday ity.';
       return;
     }
-    if (el) el.textContent = 'Miandry ny toerana…';
-    suivi = navigator.geolocation.watchPosition(envoyerPosition, function (e) {
+    if (suivi !== null) return;
+    suiviRefuse = false;
+    const b = document.getElementById('maPositionBtn');
+    if (b) { b.disabled = true; b.textContent = 'Alefa…'; }
+    if (el && !dernierePosition) el.textContent = 'Miandry ny toerana…';
+    suivi = navigator.geolocation.watchPosition(recevoirPosition, function (e) {
+      const refus = !!(e && e.code === 1);
+      if (refus) {
+        // Refusé : on cesse d'écouter, et le bouton redevient le moyen de
+        // redemander, une fois l'accord rendu dans les réglages.
+        navigator.geolocation.clearWatch(suivi);
+        suivi = null;
+        suiviRefuse = true;
+        const bouton = document.getElementById('maPositionBtn');
+        if (bouton) { bouton.disabled = false; bouton.textContent = 'Manaiky — alefaso ny toerako'; }
+      }
       const ici = document.getElementById('maPosition');
       if (!ici) return;
-      ici.textContent = (e && e.code === 1)
-        ? 'Tsy nomena alalana. Sokafy ao amin\'ny réglages ny toerana raha tianao ho hitan\'ny patron.'
+      ici.textContent = refus
+        ? 'Tsy nomena alalana. Sokafy ao amin\'ny réglages ny toerana, dia tsindrio ny bokotra etsy ambany.'
         : 'Tsy hita ny toerana amin\'izao fotoana izao.';
     }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 });
   }

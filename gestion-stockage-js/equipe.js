@@ -39,6 +39,9 @@
   // La carte gratuite (carte-libre.js), quand il n'y a pas de clé Google.
   let carteLibre = null;
   let reperesLibres = {};
+  // La carte sans personne est posée sur Antananarivo une fois, pas à chaque
+  // relecture : celui qui l'a déplacée entre-temps ne doit pas y être ramené.
+  let vueVide = false;
 
   function sb() {
     // L'employé entré par son lien n'a pas de compte : ce qu'il lit et écrit
@@ -624,6 +627,7 @@
       if (!carteLibre) {
         carteLibre = L.map(boite);
         fondCarteLibre(carteLibre);
+        vueVide = false;
       }
       carteLibre.invalidateSize();
 
@@ -651,8 +655,13 @@
       Object.keys(reperesLibres).forEach(function (id) {
         if (!vivants[id]) { reperesLibres[id].remove(); delete reperesLibres[id]; }
       });
-      if (points.length === 1) carteLibre.setView(points[0], 15);
-      else carteLibre.fitBounds(points, { padding: [30, 30] });
+      if (!points.length) {
+        if (!vueVide) { carteLibre.setView([centreParDefaut.lat, centreParDefaut.lng], 12); vueVide = true; }
+      } else {
+        vueVide = false;
+        if (points.length === 1) carteLibre.setView(points[0], 15);
+        else carteLibre.fitBounds(points, { padding: [30, 30] });
+      }
       // La page s'ouvre en fenêtre, qui ne prend sa taille qu'un instant
       // après : mesurée trop tôt, la carte ne remplirait qu'un coin.
       setTimeout(function () { if (carteLibre) carteLibre.invalidateSize(); }, 300);
@@ -665,7 +674,8 @@
     if (!boite) return;
 
     if (note) note.style.display = 'none';
-    if (!lignes.length) { boite.style.display = 'none'; return; }
+    // Toujours là, même avant la première position : sans repère, elle se
+    // pose sur Antananarivo.
     boite.style.display = 'block';
 
     // Pas de clé : la carte gratuite, sans rien demander à personne.
@@ -683,12 +693,15 @@
       // La carte gratuite occupait la boîte : Google prend sa place.
       if (carteLibre) { carteLibre.remove(); carteLibre = null; reperesLibres = {}; }
       const g = window.google.maps;
-      const premier = { lat: Number(lignes[0].pos.lat), lng: Number(lignes[0].pos.lng) };
+      const premier = lignes.length
+        ? { lat: Number(lignes[0].pos.lat), lng: Number(lignes[0].pos.lng) }
+        : centreParDefaut;
       if (!carte) {
         carte = new g.Map(boite, {
-          center: premier, zoom: 14,
+          center: premier, zoom: lignes.length ? 14 : 12,
           mapTypeControl: false, streetViewControl: false, fullscreenControl: false
         });
+        vueVide = !lignes.length;
       }
       const bornes = new g.LatLngBounds();
       const vivants = {};
@@ -717,8 +730,13 @@
       Object.keys(reperes).forEach(function (id) {
         if (!vivants[id]) { reperes[id].setMap(null); delete reperes[id]; }
       });
-      if (lignes.length === 1) { carte.setCenter(premier); carte.setZoom(15); }
-      else carte.fitBounds(bornes);
+      if (!lignes.length) {
+        if (!vueVide) { carte.setCenter(centreParDefaut); carte.setZoom(12); vueVide = true; }
+      } else {
+        vueVide = false;
+        if (lignes.length === 1) { carte.setCenter(premier); carte.setZoom(15); }
+        else carte.fitBounds(bornes);
+      }
     });
   }
 

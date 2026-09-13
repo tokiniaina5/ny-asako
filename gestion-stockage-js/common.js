@@ -2694,6 +2694,9 @@
       'dash-articles', 'section-factures', 'section-inviter', 'section-contact',
       'section-live', 'section-appels', 'section-wallet',
       'section-mpiasa', 'section-livreur', 'section-personne',
+      // « Ny momba ahy », la page de l'employé entré par son lien : posée
+      // sous l'Accueil, sa carte s'ouvrait derrière le fil.
+      'section-moi',
       'section-abonnement',
       'section-fond',
       'section-connexions', 'section-admin'

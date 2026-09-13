@@ -13,6 +13,11 @@
   const BASE = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
   let demande = null;
 
+  // Où se pose une carte qui n'a encore personne à montrer : Antananarivo.
+  // Une carte vide vaut mieux qu'une carte absente — on sait où elle est, et
+  // où les repères viendront.
+  window.centreParDefaut = { lat: -18.8792, lng: 47.5079 };
+
   window.chargerCarteLibre = function () {
     if (window.L && window.L.map) return Promise.resolve(true);
     if (demande) return demande;
