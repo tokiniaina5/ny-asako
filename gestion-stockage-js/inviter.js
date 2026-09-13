@@ -15,6 +15,11 @@
   // « Nous contacter » → « Adresse publique du site ».
   const DEFAULT_PUBLIC_URL = 'https://ny-asako.netlify.app';
 
+  // Toujours terminée par « / » : les liens s'y collent en « ?mpiasa=… »,
+  // « ?suivi=… », « ?invite=… ». Sans la barre, « ny-asako.netlify.app?mpiasa=… »
+  // ne ressemble plus à une adresse : collé dans la barre de recherche de
+  // Google sur un téléphone, il était cherché comme un mot au lieu d'être
+  // ouvert.
   function publicBaseUrl(){
     let configured = '';
     try {
@@ -22,8 +27,8 @@
         configured = (loadContactChannelsLocal().site_url || '').trim();
       }
     } catch(e){}
-    if(configured && /^https?:\/\//i.test(configured)) return configured.replace(/\/+$/, '');
-    return DEFAULT_PUBLIC_URL;
+    const base = (configured && /^https?:\/\//i.test(configured)) ? configured : DEFAULT_PUBLIC_URL;
+    return base.replace(/\/+$/, '') + '/';
   }
 
   function renderLocalLinkWarning(link){
