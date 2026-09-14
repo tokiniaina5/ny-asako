@@ -46,7 +46,9 @@ const PERMIS: Record<string, string[]> = {
   livraisons: ["select"],
   pointages: ["select", "insert", "update", "delete"],
   positions: ["select"],
-  reglages: ["select", "upsert"],
+  // La clé Google Maps se lit — la carte en a besoin — mais c'est le patron
+  // qui la choisit : elle est à son nom, et c'est lui qui paie.
+  reglages: ["select"],
   // Le tableau de bord d'un collègue se lit ; la copie ne s'écrit que par
   // l'action « stock », au nom du porteur du jeton.
   stock_mpiasa: ["select"],

@@ -1643,13 +1643,22 @@
           <div id="positionsListe" style="margin-top:0.8rem;"></div>
           <p class="empty-hint" id="positionsVide" style="display:none;">Mbola tsy nisy nandefa ny toerana misy azy.</p>
 
-          <details style="margin-top:1rem;">
+          <details class="seulement-patron" style="margin-top:1rem;">
             <summary style="cursor:pointer; font-size:0.8rem; color:var(--muted);">Clé Google Maps (tsy voatery)</summary>
             <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0.7rem 0;">
               Tsy ilaina ity : raha tsy misy clé, sarintany maimaim-poana (OpenStreetMap) no miseho, ho anao sy ho an'ny mpanjifa manaraka ny entany.
               Raha tianao kosa ny Google Maps, dia mila clé alaina ao amin'ny Google Cloud, miaraka amin'ny facturation.
               Tehirizina miaraka amin'ny kaontinao izy : iray ihany ho an'ny findainao rehetra.
             </p>
+            <!-- Les deux pages où la clé se fait, sans avoir à les chercher dans
+                 Google Cloud : on l'y crée, on la copie, on la colle ici. -->
+            <ol style="font-size:0.78rem; color:var(--muted); line-height:1.7; margin:0 0 0.8rem; padding-left:1.2rem;">
+              <li>Alefaso ny « Maps JavaScript API » :
+                <a href="https://console.cloud.google.com/apis/library/maps-backend.googleapis.com" target="_blank" rel="noopener" style="color:var(--cyan);">Sokafy ↗</a></li>
+              <li>Mamorona clé : « Create credentials » → « API key » :
+                <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noopener" style="color:var(--cyan);">Sokafy ↗</a></li>
+              <li>Adikao ilay clé (manomboka amin'ny « AIza »), apetaho eto ambany, dia tsindrio « Tehirizo ».</li>
+            </ol>
             <div class="field">
               <label for="carteCle">Clé</label>
               <input id="carteCle" type="text" autocomplete="off" spellcheck="false" placeholder="AIza…">
