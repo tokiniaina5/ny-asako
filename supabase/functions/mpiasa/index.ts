@@ -115,6 +115,10 @@ async function executer(admin: any, owner: string, r: Record<string, unknown>) {
 
   if (op === "select" || op === "update" || op === "delete") {
     q = q.eq("owner_email", owner);
+    // De l'équipe, l'employé ne reçoit que les livreurs : la page « Livreur »
+    // en a besoin. Ses collègues du magasin — noms, téléphones, emails — ne
+    // le regardent pas, et la page « Mpiasa » lui est cachée.
+    if (table === "equipe") q = q.eq("role", "livreur");
     for (const f of filtres) {
       if (!Array.isArray(f) || f.length !== 3) return refus;
       const [colonne, comparaison, valeur] = f;

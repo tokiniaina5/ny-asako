@@ -641,3 +641,12 @@
      quelqu'un ou lui faire un lien revient au patron. La fonction « mpiasa »
      le refuse de toute façon ; on n'offre pas un bouton qui échoue. */
   body.mode-mpiasa .seulement-patron{ display:none !important; }
+  /* La page « Mpiasa » n'existe pas pour l'employé : ni son entrée dans le
+     menu, ni son icône épinglée dans la rangée ou posée sur le fond, ni la
+     page elle-même si elle était la dernière ouverte dans ce navigateur. Les
+     noms, téléphones et emails de ses collègues ne le regardent pas — la
+     fonction « mpiasa » ne les lui envoie d'ailleurs plus. */
+  body.mode-mpiasa #section-mpiasa,
+  body.mode-mpiasa #navList .nav-item[data-section="mpiasa"],
+  body.mode-mpiasa [data-epingle="section:mpiasa"],
+  body.mode-mpiasa .icone-bureau[data-cle="section:mpiasa"]{ display:none !important; }
