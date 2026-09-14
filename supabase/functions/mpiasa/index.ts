@@ -41,7 +41,9 @@ const PERMIS: Record<string, string[]> = {
   // faire un lien revient au patron : un employé pouvait suspendre ses
   // collègues, et se suspendre lui-même sans pouvoir revenir.
   equipe: ["select"],
-  livraisons: ["select", "insert", "update", "delete"],
+  // Les courses aussi : les créer, les faire avancer, les annuler ou les
+  // effacer revient au patron.
+  livraisons: ["select"],
   pointages: ["select", "insert", "update", "delete"],
   positions: ["select"],
   reglages: ["select", "upsert"],
@@ -134,9 +136,9 @@ async function executer(admin: any, owner: string, r: Record<string, unknown>) {
   const { data, error } = await q;
   if (error) return { data: null, error: error.message };
   // Le jeton de chacun est la clé de son lien : le lire, c'est entrer à sa
-  // place. Il ne quitte jamais le serveur, quelles que soient les colonnes
-  // demandées.
-  if (table === "equipe" && data) {
+  // place — ou suivre la course d'un client. Il ne quitte jamais le serveur,
+  // quelles que soient les colonnes demandées.
+  if ((table === "equipe" || table === "livraisons") && data) {
     for (const ligne of Array.isArray(data) ? data : [data]) {
       if (ligne && typeof ligne === "object") delete (ligne as Record<string, unknown>).jeton;
     }

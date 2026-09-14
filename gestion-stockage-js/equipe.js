@@ -1016,7 +1016,10 @@
       });
       actions.appendChild(retirer);
 
-      div.appendChild(actions);
+      // Les courses se lisent aussi sans se toucher : les créer, les faire
+      // avancer, les annuler, en donner le lien au client ou les effacer
+      // revient au patron.
+      if (!(typeof MODE_MPIASA !== 'undefined' && MODE_MPIASA)) div.appendChild(actions);
       liste.appendChild(div);
     });
   }
