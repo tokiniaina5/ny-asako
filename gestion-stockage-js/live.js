@@ -516,6 +516,13 @@
       updateMyPresence({ live: true });
       // (1) Fampandrenesana ao anaty appli ho an'ny mpanjifa/namana rehetra.
       sendLiveSignal({ kind: 'live-started', broadcaster: me.email, name: me.name });
+      // Le canal ne prévient que ceux dont l'application est ouverte. La
+      // boutique — patron et employés — le retrouve aussi dans ses
+      // notifications partagées, avec le même texte que ceux qui l'ont reçu
+      // en direct : common.js n'ajoute pas deux fois la même.
+      if(typeof partagerNotification === 'function'){
+        partagerNotification('live', '🔴 ' + me.name + ' dia manomboka LIVE DIRECT ankehitriny.');
+      }
       updateLiveReachInfo();
       // (2) Fanambarana any amin'ireo lien voarafitra, mba ho hitan'ny olona
       // ivelan'ny appli koa. Menu no aseho fa tsy tabilao maro misokatra ho azy :

@@ -251,6 +251,74 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true });
   }
 
+  // ---- Les notifications de la boutique ----
+  // Ce qui se passe chez l'un se sait chez les autres : une sortie de stock,
+  // un article épuisé, l'argent du portefeuille, un direct. Le patron écrit et
+  // lit la table avec son compte ; l'employé passe par ici, et c'est le jeton
+  // qui signe — la page ne dit ni de qui elle vient, ni pour quelle boutique.
+  if (action === "notifier") {
+    const type = String(body.type ?? "");
+    const message = String(body.message ?? "").trim();
+    if (!["sortie", "rupture", "parrainage", "live"].includes(type) || !message || message.length > 500) {
+      return json({ error: "notification illisible" }, 400);
+    }
+    const { error } = await admin.from("notifications_boutique").insert({
+      owner_email: owner,
+      auteur_id: personne.id,
+      auteur_nom: personne.nom,
+      type,
+      message,
+    });
+    // Presque toujours : supabase-notifications.sql n'a pas été passé.
+    if (error) return json({ error: "notification refusée" }, 500);
+    return json({ ok: true });
+  }
+
+  if (action === "notifications") {
+    const depuis = new Date(String(body.depuis ?? ""));
+    if (isNaN(depuis.getTime())) return json({ error: "date illisible" }, 400);
+    const { data, error } = await admin.from("notifications_boutique")
+      .select("id,type,message,auteur_id,auteur_nom,created_at")
+      .eq("owner_email", owner).gt("created_at", depuis.toISOString())
+      .order("created_at", { ascending: true }).limit(50);
+    if (error) return json({ error: "notifications refusées" }, 500);
+    return json({ notifications: data ?? [] });
+  }
+
+  // ---- « Au nom de quelle boutique » ----
+  // La facture qu'un employé édite sort au nom de la boutique, pas au sien :
+  // société, logo, NIF, STAT, email et téléphone du patron. Ils vivent dans
+  // les informations de son compte, que seule la clé de service lit. Demandé
+  // une fois à l'ouverture : le logo pèse, il n'a pas à voyager toutes les
+  // cinq minutes avec la page.
+  if (action === "boutique") {
+    const cible = String(owner).trim().toLowerCase();
+    // deno-lint-ignore no-explicit-any
+    let compte: any = null;
+    for (let page = 1; page <= 20 && !compte; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) break;
+      const comptes = data?.users ?? [];
+      compte = comptes.find((u: { email?: string }) => (u.email ?? "").toLowerCase() === cible) ?? null;
+      if (comptes.length < 1000) break;
+    }
+    const meta = (compte?.user_metadata ?? {}) as Record<string, unknown>;
+    const texte = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const logo = texte(meta.logo);
+    return json({
+      boutique: {
+        nom: texte(meta.name),
+        societe: texte(meta.company),
+        telephone: texte(meta.phone),
+        email: owner,
+        nif: texte(meta.nif),
+        stat: texte(meta.stat),
+        // Une image, et rien d'autre : elle finit dans un PDF.
+        logo: logo.startsWith("data:image/") ? logo : null,
+      },
+    });
+  }
+
   // ---- La page de l'équipe ----
   if (action === "table") {
     const requete = body.requete;

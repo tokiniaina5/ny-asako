@@ -354,19 +354,113 @@
     catch(e){ return []; }
   }
   function saveNotifications(list){ localStorage.setItem(STORAGE_NOTIFICATIONS, JSON.stringify(list)); }
-  function pushNotification(type, message){
+  // Ajoute une notification à la liste de ce téléphone, sans rien envoyer.
+  function ajouterNotificationLocale(type, message, date){
     const list = loadNotifications();
     list.unshift({
       type: type, message: message,
-      date: new Date().toLocaleString('fr-FR'),
+      date: date || new Date().toLocaleString('fr-FR'),
       read: false
     });
     saveNotifications(list.slice(0, 50));
     renderNotifications();
+  }
+  function pushNotification(type, message){
+    ajouterNotificationLocale(type, message);
+    partagerNotification(type, message);
     // La copie du stock que regardent les employes : on la depose quand
     // l'application s'ouvre, moment ou elle est fraiche.
     if(typeof deposerLeStockPartage === 'function') deposerLeStockPartage();
   }
+
+  // ---------------- NOTIFICATIONS PARTAGÉES ----------------
+  // Chaque téléphone garde ses notifications. Quatre sortes, pourtant,
+  // regardent toute la boutique : une sortie de stock, un article épuisé,
+  // l'argent qui entre ou sort du portefeuille, un direct qui commence. Ce
+  // qui arrive chez le patron se sait chez ses employés, et l'inverse.
+  //
+  // Elles passent par la table notifications_boutique
+  // (supabase-notifications.sql). Le patron y écrit et y lit avec son compte ;
+  // l'employé, qui n'en a pas, passe par la fonction « mpiasa »
+  // (vue-mpiasa.js). Chacun relit toutes les minutes, et en revenant sur la
+  // page. Sans la table, rien ne se partage et rien ne casse.
+  const TYPES_PARTAGES = ['sortie', 'rupture', 'parrainage', 'live'];
+  const STORAGE_NOTIF_VU = 'stockmanager_notif_partage_vu' + SUFFIXE_MPIASA;
+
+  function partagerNotification(type, message){
+    if(TYPES_PARTAGES.indexOf(type) < 0 || !currentUser) return;
+    const texte = String(message || '').slice(0, 500);
+    if(!texte) return;
+    if(MODE_MPIASA){
+      if(window.__mpiasaNotif) window.__mpiasaNotif.envoyer(type, texte);
+      return;
+    }
+    const email = String(currentUser.email || '').trim().toLowerCase();
+    if(!window.__sb || !email) return;
+    window.__sb.from('notifications_boutique').insert({
+      owner_email: email, auteur_nom: currentUser.name || null, type: type, message: texte
+    }).then(function(){}, function(){});
+  }
+
+  // Un direct arrive deux fois à qui a l'application ouverte : par le canal,
+  // et par la table. Même sorte, même texte, parmi les dernières : c'est la
+  // même.
+  function notificationDejaLa(type, message){
+    return loadNotifications().slice(0, 10).some(function(n){
+      return n.type === type && n.message === message;
+    });
+  }
+
+  let lectureNotifEnCours = false;
+  function lireNotificationsPartagees(){
+    if(!currentUser || lectureNotifEnCours) return;
+    let vu = '';
+    try{ vu = localStorage.getItem(STORAGE_NOTIF_VU) || ''; }catch(e){}
+    // La première fois sur ce téléphone, on part de maintenant : remonter
+    // tout l'historique noierait la liste sous des nouvelles d'hier.
+    if(!vu){
+      try{ localStorage.setItem(STORAGE_NOTIF_VU, new Date().toISOString()); }catch(e){}
+      return;
+    }
+    let lecture;
+    if(MODE_MPIASA){
+      if(!window.__mpiasaNotif) return;
+      lecture = window.__mpiasaNotif.lire(vu);
+    } else {
+      const email = String(currentUser.email || '').trim().toLowerCase();
+      if(!window.__sb || !email) return;
+      lecture = window.__sb.from('notifications_boutique')
+        .select('id,type,message,auteur_id,auteur_nom,created_at')
+        .eq('owner_email', email).gt('created_at', vu)
+        .order('created_at', { ascending: true }).limit(50)
+        .then(function(res){ return (res && !res.error && res.data) || []; }, function(){ return []; });
+    }
+    lectureNotifEnCours = true;
+    Promise.resolve(lecture).then(function(rows){
+      lectureNotifEnCours = false;
+      if(!rows || !rows.length) return;
+      const moi = MODE_MPIASA && window.__mpiasaNotif ? window.__mpiasaNotif.id : null;
+      rows.forEach(function(r){
+        // Les siennes, on les a déjà : celles du patron n'ont pas d'auteur,
+        // celles d'un employé portent le sien.
+        const deMoi = MODE_MPIASA ? (r.auteur_id && r.auteur_id === moi) : !r.auteur_id;
+        if(deMoi) return;
+        // Un direct dit déjà qui le fait ; le reste, on le signe.
+        const texte = r.type === 'live' ? r.message : (r.auteur_nom || 'Patron') + ' : ' + r.message;
+        if(notificationDejaLa(r.type, texte) || notificationDejaLa(r.type, r.message)) return;
+        ajouterNotificationLocale(r.type, texte, new Date(r.created_at).toLocaleString('fr-FR'));
+      });
+      try{ localStorage.setItem(STORAGE_NOTIF_VU, rows[rows.length - 1].created_at); }catch(e){}
+      // Cinquante d'un coup : il en reste peut-être.
+      if(rows.length === 50) lireNotificationsPartagees();
+    }, function(){ lectureNotifEnCours = false; });
+  }
+
+  setTimeout(lireNotificationsPartagees, 5000);
+  setInterval(function(){ if(!document.hidden) lireNotificationsPartagees(); }, 60000);
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden) lireNotificationsPartagees();
+  });
   function notifIcon(type){
     if(type === 'sortie') return '📤';
     // 'vente' n'est plus produit, mais les anciennes notifications le portent

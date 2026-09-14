@@ -865,7 +865,9 @@
       const recu = r.paid_amount
         ? Number(r.paid_amount).toLocaleString('fr-FR') + ' ' + (r.paid_currency || '')
         : (Number(r.amount) || 20000).toLocaleString('fr-FR') + ' Ar';
-      pushNotification('info', '💰 Argent reçu sur votre PayPal : ' + recu.trim() + ' de ' +
+      // « parrainage » : l'argent qui entre, que la boutique partage avec ses
+      // employés (common.js), et non une simple information.
+      pushNotification('parrainage', '💰 Argent reçu sur votre PayPal : ' + recu.trim() + ' de ' +
         (r.name || r.email) + '. Son accès a été rétabli automatiquement, il est prévenu de son côté.');
     });
     saveSeenPaidIds(fresh.map(function(r){ return r.id; }).concat(seen));
@@ -997,7 +999,8 @@
         'sans code à transmettre, et il est prévenu à sa prochaine ouverture même s\'il a fermé la page.';
       card.appendChild(box);
       btn.remove();
-      pushNotification('info', 'Argent reçu (' + paymentMethodLabel(row.payment_method) + ') pour ' +
+      // L'argent qui entre : partagé avec les employés, comme le portefeuille.
+      pushNotification('parrainage', 'Argent reçu (' + paymentMethodLabel(row.payment_method) + ') pour ' +
         (row.name || row.email) + ' — accès rétabli, le client est prévenu.');
     }, function(){
       btn.disabled = false;

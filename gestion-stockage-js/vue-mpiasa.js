@@ -120,6 +120,20 @@
     marquer();
   }
 
+  // ---------- La boutique, pour les factures ----------
+  // Une facture éditée ici sort au nom de la boutique : société, logo, NIF,
+  // STAT, email et téléphone du patron (factures.js). Demandés une fois, à
+  // l'entrée ; sans réponse, la facture se contente du nom de l'employé.
+  function chargerLaBoutique() {
+    const client = window.__sb;
+    if (!client || !client.functions) return;
+    client.functions.invoke('mpiasa', { headers: entetes(), body: { jeton: jeton, action: 'boutique' } })
+      .then(function (res) {
+        const b = res && res.data && res.data.boutique;
+        if (b && typeof b === 'object') window.__boutique = b;
+      }, function () {});
+  }
+
   // ---------- Entrer ----------
   // Les appels et le direct reconnaissent les gens à leur email. On lui en
   // donne un qui n'appartient à personne — « .invalid » est réservé à cela —
@@ -132,6 +146,8 @@
   function entrer(d) {
     const p = d.personne || {};
     copierLeStockUneFois(d);
+    chargerLaBoutique();
+    monId = p.id || null;
     currentUser = {
       name: p.nom || 'Mpiasa', email: emailDe(p), phone: p.telephone || '',
       logo: null, company: '', nif: '', stat: ''
@@ -564,6 +580,33 @@
       getSession: function () {
         return Promise.resolve({ data: { session: entre ? { lien: true } : null } });
       }
+    }
+  };
+
+  // ---------- Les notifications de la boutique ----------
+  // common.js partage certaines notifications entre le patron et ses
+  // employés : sorties de stock, articles épuisés, portefeuille, directs.
+  // L'employé n'a pas de compte : elles passent par la fonction « mpiasa », et
+  // c'est le jeton qui dit de qui elles viennent et pour quelle boutique.
+  let monId = null;
+  window.__mpiasaNotif = {
+    // Pour reconnaître les siennes quand elles reviennent du serveur.
+    get id() { return monId; },
+    envoyer: function (type, message) {
+      const client = window.__sb;
+      if (!entre || !client || !client.functions) return;
+      client.functions.invoke('mpiasa', { headers: entetes(),
+        body: { jeton: jeton, action: 'notifier', type: type, message: message }
+      }).then(function () {}, function () {});
+    },
+    lire: function (depuis) {
+      const client = window.__sb;
+      if (!entre || !client || !client.functions) return Promise.resolve([]);
+      return client.functions.invoke('mpiasa', { headers: entetes(),
+        body: { jeton: jeton, action: 'notifications', depuis: depuis }
+      }).then(function (res) {
+        return (res && res.data && res.data.notifications) || [];
+      }, function () { return []; });
     }
   };
 
