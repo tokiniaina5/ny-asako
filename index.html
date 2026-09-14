@@ -1717,11 +1717,13 @@
         <div class="panel">
           <div class="panneau-titre">Anio</div>
           <p id="personneEtat" style="font-size:0.9rem; line-height:1.7; margin:0;">—</p>
-          <div class="actions-row" style="margin-top:0.9rem;">
+          <!-- Pointer revient au patron : l'employé voit ses heures, il ne les
+               écrit pas (la fonction « mpiasa » le refuse aussi). -->
+          <div class="actions-row seulement-patron" style="margin-top:0.9rem;">
             <button type="button" class="btn btn-primary btn-sm" id="personneTongaBtn" style="width:auto;">Tonga</button>
             <button type="button" class="btn btn-sm" id="personneLasaBtn">Lasa</button>
           </div>
-          <p id="personnePointageStatut" style="font-size:0.8rem; color:var(--cyan); margin-top:0.7rem; line-height:1.5;"></p>
+          <p id="personnePointageStatut" class="seulement-patron" style="font-size:0.8rem; color:var(--cyan); margin-top:0.7rem; line-height:1.5;"></p>
         </div>
 
         <div class="panel" style="margin-top:1rem;">

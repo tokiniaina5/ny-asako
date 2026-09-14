@@ -44,7 +44,9 @@ const PERMIS: Record<string, string[]> = {
   // Les courses aussi : les créer, les faire avancer, les annuler ou les
   // effacer revient au patron.
   livraisons: ["select"],
-  pointages: ["select", "insert", "update", "delete"],
+  // Le pointage aussi : dire qui est arrivé ou reparti, et à quelle heure,
+  // revient au patron. Un employé pouvait pointer pour les autres.
+  pointages: ["select"],
   positions: ["select"],
   // La clé Google Maps se lit — la carte en a besoin — mais c'est le patron
   // qui la choisit : elle est à son nom, et c'est lui qui paie.
