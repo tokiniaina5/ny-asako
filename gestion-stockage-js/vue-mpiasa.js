@@ -153,8 +153,9 @@
       setTimeout(function () { if (maCarte) maCarte.invalidateSize(); }, 300);
     });
     // Un livreur ouvre son lien pour dire où il est et le voir : il arrive
-    // directement sur sa page, la carte sous les yeux.
-    if (p.role === 'livreur' && moi) moi.click();
+    // directement sur sa page, la carte sous les yeux. Un employé qui porte
+    // une course aussi — c'est là qu'il voit pourquoi on lui demande où il est.
+    if ((p.role === 'livreur' || aUneCourse(d)) && moi) moi.click();
     // Le patron voit tout de suite où il en est, sans attendre un premier
     // changement.
     envoyerMonStock();
@@ -197,10 +198,17 @@
       '</div>';
 
     // ---- Où il est ----
-    // Seulement pour les livreurs : un employé au magasin n'a pas à être suivi.
-    if (p.role === 'livreur') {
+    // Pour les livreurs, et pour un employé tant qu'il porte une course : au
+    // magasin, sans course, il n'a pas à être suivi.
+    const suivable = p.role === 'livreur' || aUneCourse(d);
+    if (suivable) {
       sortie += '<div class="panel" style="margin-top:1rem;">' +
         '<div class="panneau-titre">Ny toerana misy anao</div>' +
+        (p.role !== 'livreur'
+          ? '<p style="font-size:0.78rem; color:var(--cyan); line-height:1.6; margin:0 0 0.5rem;">' +
+            'Manana fandefasana mbola tsy vita ianao : alefa ny toerana misy anao mandra-pahatongan\'ny entana na mandra-pahafoanany.' +
+            '</p>'
+          : '') +
         '<p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0 0 0.7rem;">' +
         'Manontany alalana ny finday rehefa misokatra ity pejy ity. Raha manaiky ianao, hitanao eto amin\'ny sarintany ny toerana misy anao, ' +
         'ary hitan\'ny patron sy ny mpanjifa izy : alefa isaky ny iray minitra, ary avy hatrany rehefa mitady anao izy ireo. ' +
@@ -239,13 +247,16 @@
       if (suivi !== null) { b.disabled = true; b.textContent = 'Alefa…'; }
       b.addEventListener('click', commencerLeSuivi);
     }
-    if (p.role === 'livreur') {
+    if (suivable) {
       dessinerMaCarte();
       if (dernierePosition) montrerMaPosition(dernierePosition);
       // Ouvrir son lien suffit : le livreur n'a pas à chercher le bouton. Le
       // navigateur demande l'accord lui-même, et un refus reste un refus —
       // on ne le redemande pas à chaque relecture ; le bouton, lui, reste.
       if (suivi === null && !suiviRefuse) commencerLeSuivi();
+    } else {
+      // L'employé n'a plus de course en route : on cesse de dire où il est.
+      arreterLeSuivi();
     }
   }
 
@@ -329,6 +340,22 @@
       maCarte.invalidateSize();
       setTimeout(function () { if (maCarte) maCarte.invalidateSize(); }, 300);
     });
+  }
+
+  // Une course confiée et pas encore arrivée ni annulée. La fonction ne rend
+  // que les courses de celui qui porte le jeton.
+  function aUneCourse(d) {
+    return (d.livraisons || []).some(function (l) {
+      return l.statut !== 'tonga' && l.statut !== 'foana';
+    });
+  }
+
+  // Plus de course : le téléphone cesse d'écouter où il est, et la page
+  // cesse de le demander. Le prochain « Tadiavo » ne trouvera rien à envoyer.
+  function arreterLeSuivi() {
+    if (suivi !== null && navigator.geolocation) navigator.geolocation.clearWatch(suivi);
+    suivi = null;
+    if (maCarte) { maCarte.remove(); maCarte = null; monRepere = null; }
   }
 
   function commencerLeSuivi() {

@@ -438,6 +438,19 @@
     });
   }
 
+  // ---------- Qui se suit sur la carte ----------
+  // Un livreur, toujours. Un employé, le temps d'une course qu'on lui a
+  // confiée : sa page envoie alors sa position comme celle d'un livreur, et
+  // cesse quand la course est arrivée ou annulée (vue-mpiasa.js).
+  function enCourse(p) {
+    return livraisons.some(function (l) {
+      return l.livreur_id === p.id && l.statut !== 'tonga' && l.statut !== 'foana';
+    });
+  }
+  function suivable(p) {
+    return (p.role || 'mpiasa') === 'livreur' || enCourse(p);
+  }
+
   // ---------- Le registre ----------
   function dessinerEquipe() {
     METIERS.forEach(dessinerMetier);
@@ -486,7 +499,7 @@
       rohy.addEventListener('click', function () { donnerLeLien(p, rohy); });
       actions.appendChild(rohy);
 
-      if (p.role === 'livreur' && p.actif) {
+      if (suivable(p) && p.actif) {
         const chercher = document.createElement('button');
         chercher.type = 'button';
         chercher.className = 'btn btn-sm';
@@ -581,7 +594,9 @@
     positions.forEach(function (pos) {
       const gens = equipe.filter(function (x) { return x.id === pos.equipe_id; });
       // Un relevé dont la personne a été retirée ne dit plus de qui il parle.
-      if (gens.length && (gens[0].role || 'mpiasa') === 'livreur') {
+      // Un employé n'y paraît que le temps d'une course : la sienne finie, ses
+      // anciennes positions ne disent plus rien d'utile.
+      if (gens.length && suivable(gens[0])) {
         lignes.push({ p: gens[0], pos: pos });
       }
     });
@@ -1469,7 +1484,7 @@
 
     const tadiavoTous = document.getElementById('tadiavoBtn');
     if (tadiavoTous) tadiavoTous.addEventListener('click', function () {
-      const livreurs = equipe.filter(function (p) { return p.role === 'livreur' && p.actif; });
+      const livreurs = equipe.filter(function (p) { return suivable(p) && p.actif; });
       tadiavo(livreurs.map(function (p) { return p.id; }), tadiavoTous);
     });
 
