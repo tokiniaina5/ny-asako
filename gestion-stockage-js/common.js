@@ -2786,6 +2786,9 @@
     const PAGES = [
       'dash-accueil',
       'dash-articles', 'section-factures', 'section-inviter', 'section-contact',
+      // Les outils de bureau (fitaovana.js).
+      'section-word', 'section-excel', 'section-notes', 'section-kajy',
+      'section-calendrier', 'section-horaire',
       'section-live', 'section-appels', 'section-wallet',
       'section-mpiasa', 'section-livreur', 'section-personne',
       // « Ny momba ahy », la page de l'employé entré par son lien : posée

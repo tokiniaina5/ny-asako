@@ -481,6 +481,14 @@
              Le style la retire pour tout autre que lui. -->
         <div class="nav-item seulement-mpiasa" id="navMoi" data-section="moi">🙋 Ny momba ahy</div>
         <div class="nav-item" data-section="factures">🧾 Factures</div>
+        <!-- Les outils de bureau : ils ne gardent rien ailleurs que dans ce
+             navigateur (fitaovana.js). -->
+        <div class="nav-item" data-section="word">📝 Word</div>
+        <div class="nav-item" data-section="excel">📊 Excel</div>
+        <div class="nav-item" data-section="notes">📒 Notes</div>
+        <div class="nav-item" data-section="kajy">🧮 Calculatrice</div>
+        <div class="nav-item" data-section="calendrier">📅 Calendrier</div>
+        <div class="nav-item" data-section="horaire">🕒 Horaire</div>
         <div class="nav-item" data-section="inviter">✉️ Inviter des amis</div>
         <div class="nav-item" data-section="contact">☎️ Nous contacter</div>
         <div class="nav-item" data-section="live">🔴 Live direct</div>
@@ -2014,6 +2022,16 @@
         </div>
       </section>
 
+      <!-- ---- FITAOVANA : Word, Excel, Notes, Calculatrice, Calendrier, Horaire ----
+           Des pages vides : fitaovana.js les remplit. Rien n'y quitte ce
+           navigateur. -->
+      <section class="section" id="section-word"><div class="fitaovana" data-outil="word"></div></section>
+      <section class="section" id="section-excel"><div class="fitaovana" data-outil="excel"></div></section>
+      <section class="section" id="section-notes"><div class="fitaovana" data-outil="notes"></div></section>
+      <section class="section" id="section-kajy"><div class="fitaovana" data-outil="kajy"></div></section>
+      <section class="section" id="section-calendrier"><div class="fitaovana" data-outil="calendrier"></div></section>
+      <section class="section" id="section-horaire"><div class="fitaovana" data-outil="horaire"></div></section>
+
     </main>
   </div>
 </div>
@@ -2021,7 +2039,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=3e82eabf"></script>
+<script src="gestion-stockage-js/common.js?v=fcb8de13"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2037,6 +2055,7 @@
 <script src="gestion-stockage-js/equipe.js?v=20fc09e5"></script>
 <script src="gestion-stockage-js/vue-mpiasa.js?v=bff76752"></script>
 <script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
+<script src="gestion-stockage-js/fitaovana.js?v=83aa83fa"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
 
 
