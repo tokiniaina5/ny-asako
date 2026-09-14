@@ -2594,9 +2594,9 @@
         filtrer();
         requestAnimationFrame(function(){
           placerPanneau();
-          // Le clavier ne s'ouvre que là où l'on cherche : sur ordinateur, la
-          // liste tient sous les yeux et le champ est masqué.
-          if(champ && !flottantVisible()) champ.focus({ preventScroll: true });
+          // Le curseur attend dans le champ : on tape le nom de la page aussitôt
+          // le menu ouvert, au doigt comme au clavier.
+          if(champ) champ.focus({ preventScroll: true });
         });
       }
       updateTopbarHeight();

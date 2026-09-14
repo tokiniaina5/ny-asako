@@ -309,8 +309,8 @@
      Notifications et chaque page sont dans son menu. Les fenêtres des pages
      prennent alors toute la hauteur (bandeBasse, common.js).
 
-     Le champ de recherche du menu, lui, ne sert qu'aux écrans étroits : au
-     large, la liste tient sous les yeux. */
+     Le champ de recherche du menu est partout : au large aussi, taper deux
+     lettres trouve une page plus vite que de parcourir la liste. */
 
   /* Une seule porte pour le menu à la fois. Sur un téléphone, c'est le ☰ du
      bord gauche de la rangée du bas : il tient sous le pouce, au lieu de
@@ -321,7 +321,6 @@
   /* 768 pixels : une tablette debout en fait 768 ou 810. C'est la largeur qui
      décide, pas l'appareil. */
   @media (min-width: 768px){
-    .menu-recherche, .menu-vide{ display:none !important; }
     /* Ni la rangée, ni le petit panneau de ses réglages qu'elle seule ouvre. */
     #stockMainTabs.dash-tabs-main, #barReglages{ display:none !important; }
     #menuFlottant{ display:flex; }
