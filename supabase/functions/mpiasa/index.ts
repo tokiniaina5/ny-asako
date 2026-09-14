@@ -37,7 +37,10 @@ function json(body: unknown, status = 200): Response {
 // Les tables d'equipe.js, et rien d'autre : ni les portefeuilles, ni les
 // comptes, ni la copie du stock — il écraserait celle du patron.
 const PERMIS: Record<string, string[]> = {
-  equipe: ["select", "insert", "update", "delete"],
+  // L'équipe se lit seulement. Inscrire, pauser, retirer quelqu'un ou lui
+  // faire un lien revient au patron : un employé pouvait suspendre ses
+  // collègues, et se suspendre lui-même sans pouvoir revenir.
+  equipe: ["select"],
   livraisons: ["select", "insert", "update", "delete"],
   pointages: ["select", "insert", "update", "delete"],
   positions: ["select"],
@@ -130,6 +133,14 @@ async function executer(admin: any, owner: string, r: Record<string, unknown>) {
 
   const { data, error } = await q;
   if (error) return { data: null, error: error.message };
+  // Le jeton de chacun est la clé de son lien : le lire, c'est entrer à sa
+  // place. Il ne quitte jamais le serveur, quelles que soient les colonnes
+  // demandées.
+  if (table === "equipe" && data) {
+    for (const ligne of Array.isArray(data) ? data : [data]) {
+      if (ligne && typeof ligne === "object") delete (ligne as Record<string, unknown>).jeton;
+    }
+  }
   return { data: data ?? null, error: null };
 }
 

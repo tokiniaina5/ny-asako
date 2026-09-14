@@ -637,3 +637,7 @@
      déconnecter. Et « Ny momba ahy » n'existe que pour lui. */
   body.mode-mpiasa #logoutBtn{ display:none !important; }
   body:not(.mode-mpiasa) .seulement-mpiasa{ display:none !important; }
+  /* L'équipe se lit, elle ne se touche pas : inscrire, pauser, retirer
+     quelqu'un ou lui faire un lien revient au patron. La fonction « mpiasa »
+     le refuse de toute façon ; on n'offre pas un bouton qui échoue. */
+  body.mode-mpiasa .seulement-patron{ display:none !important; }

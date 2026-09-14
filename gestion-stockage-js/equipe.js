@@ -517,7 +517,10 @@
       });
       actions.appendChild(retirer);
 
-      div.appendChild(actions);
+      // L'employé lit l'équipe, il n'y touche pas : ni ouvrir quelqu'un, ni
+      // lui faire un lien, ni le pauser, ni le retirer. Avec ces boutons, un
+      // lien suffisait à suspendre les autres — et soi-même, sans retour.
+      if (!(typeof MODE_MPIASA !== 'undefined' && MODE_MPIASA)) div.appendChild(actions);
       liste.appendChild(div);
     });
   }
