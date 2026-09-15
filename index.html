@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="b5f552c0">
+<meta name="ny-asako-version" content="d7301126">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -87,25 +87,39 @@
       <button type="button" class="btn btn-primary" id="recoverySaveBtn" style="width:100%;">Enregistrer et entrer</button>
     </div>
 
-    <!-- Deux dépannages séparés : le mot de passe oublié (lien par email, le compte
+    <!-- Deux dépannages séparés : le mot de passe oublié (code par email, le compte
          reste ouvert) et la demande de déblocage (compte fermé, paiement à confirmer). -->
     <div id="forgotWrap" style="display:none;">
 
-      <!-- 1) MOT DE PASSE OUBLIÉ : le lien n'arrive que dans la boîte mail du titulaire -->
+      <!-- 1) MOT DE PASSE OUBLIÉ : le code n'arrive que dans la boîte mail du titulaire -->
       <button type="button" class="btn btn-sm" id="resetToggleBtn" style="width:100%; margin-top:0.7rem;">🔑 Mot de passe oublié ?</button>
 
       <div id="resetBox" style="display:none; margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.9rem;">
         <p style="font-size:0.76rem; color:var(--muted); line-height:1.5; margin-bottom:0.9rem;">
-          Votre compte reste ouvert : nous envoyons un lien à votre email pour choisir un
+          Votre compte reste ouvert : nous envoyons un code à votre email pour choisir un
           <strong style="color:var(--text);">nouveau mot de passe</strong>. Rien à payer, et
-          personne d'autre ne peut s'en servir : le lien n'arrive que dans votre boîte mail.
+          personne d'autre ne peut s'en servir : le code n'arrive que dans votre boîte mail.
         </p>
         <div class="field">
           <label for="resetEmail">Email</label>
           <input id="resetEmail" type="email" placeholder="vous@exemple.com" autocomplete="email">
         </div>
-        <button type="button" class="btn btn-primary btn-sm" id="sendResetLinkBtn" style="width:100%;">✉️ Recevoir un lien par email</button>
+        <button type="button" class="btn btn-primary btn-sm" id="sendResetLinkBtn" style="width:100%;">✉️ Recevoir un code par email</button>
         <p id="resetStatus" style="font-size:0.75rem; color:var(--muted); margin-top:0.7rem; line-height:1.5;"></p>
+
+        <!-- Apparaît une fois le code parti : on le recopie ici, sans quitter l'écran. -->
+        <div id="resetCodeBox" style="display:none; margin-top:0.9rem;">
+          <div class="field">
+            <label for="resetCode">Code reçu par email</label>
+            <input id="resetCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" style="font-family:var(--font-mono); letter-spacing:0.3em;">
+          </div>
+          <div class="field">
+            <label for="resetNewPassword">Nouveau mot de passe</label>
+            <input id="resetNewPassword" type="password" minlength="6" placeholder="6 caractères minimum" autocomplete="new-password">
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="resetCodeSaveBtn" style="width:100%;">Valider le code et entrer</button>
+          <p id="resetCodeStatus" style="font-size:0.75rem; color:var(--amber); margin-top:0.7rem; line-height:1.5; min-height:1.1em;"></p>
+        </div>
       </div>
 
       <!-- 2) DEMANDE DE DÉBLOCAGE : lettre de demande de validation envoyée au propriétaire -->
@@ -2042,7 +2056,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=a15a2489"></script>
+<script src="gestion-stockage-js/common.js?v=d29235c0"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>

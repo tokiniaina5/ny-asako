@@ -1612,9 +1612,9 @@
       auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname })
         .then(function(res){
           if(!status) return;
-          status.textContent = (res && res.error)
-            ? authErrorText(res.error)
-            : 'Lien envoyé à ' + email + '. Regardez aussi dans les indésirables.';
+          if(res && res.error){ status.textContent = authErrorText(res.error); return; }
+          status.textContent = codeSentText(email);
+          showResetCodeBox();
         }, function(){
           if(status) status.textContent = 'Envoi impossible : vérifiez votre réseau.';
         });
@@ -1662,8 +1662,8 @@
             (data.detail ? ' — ' + String(data.detail).slice(0, 300) : '');
           return;
         }
-        if(status) status.textContent = 'Lien envoyé à ' + email + '. Ouvrez le plus récent de vos emails : ' +
-          'il ne vaut qu\'une heure et ne sert qu\'une fois. Regardez aussi dans les indésirables.';
+        if(status) status.textContent = codeSentText(email);
+        showResetCodeBox();
       }, function(err){
         fallback((err && err.message) || 'réseau');
       });
@@ -1677,7 +1677,7 @@
       const auth = sbAuth();
       if(!email){ if(status) status.textContent = 'Indiquez d\'abord votre email.'; return; }
       if(!auth){ if(status) status.textContent = 'Serveur injoignable : réessayez une fois connecté à Internet.'; return; }
-      if(status) status.textContent = 'Envoi du lien…';
+      if(status) status.textContent = 'Envoi du code…';
 
       // Le propriétaire passe par son propre service d'envoi : l'envoi intégré
       // de Supabase est trop limité pour être sûr, et lui, il ne peut pas se
@@ -1690,11 +1690,61 @@
       auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname })
         .then(function(res){
           if(res && res.error){ if(status) status.textContent = authErrorText(res.error); return; }
-          if(status) status.textContent = 'Lien envoyé à ' + email + '. Ouvrez le plus récent de vos emails : ' +
-            'le lien ne vaut qu\'une heure et ne sert qu\'une fois. Regardez aussi dans les indésirables.';
+          if(status) status.textContent = codeSentText(email);
+          showResetCodeBox();
         }, function(){
           if(status) status.textContent = 'Envoi impossible : vérifiez votre réseau.';
         });
+    });
+  }
+
+  function codeSentText(email){
+    return 'Code envoyé à ' + email + '. Recopiez ci-dessous celui du plus récent de vos emails : ' +
+      'il ne vaut qu\'une heure et ne sert qu\'une fois. Regardez aussi dans les indésirables.';
+  }
+
+  function showResetCodeBox(){
+    const box = document.getElementById('resetCodeBox');
+    if(!box) return;
+    box.style.display = 'block';
+    const field = document.getElementById('resetCode');
+    if(field){ field.value = ''; field.focus(); }
+  }
+
+  // Le code reçu vaut une connexion le temps de changer le mot de passe :
+  // verifyOtp ouvre la session, updateUser pose le nouveau mot de passe.
+  let resetByCode = false;
+  const resetCodeSaveBtn = document.getElementById('resetCodeSaveBtn');
+  if(resetCodeSaveBtn){
+    resetCodeSaveBtn.addEventListener('click', function(){
+      const status = document.getElementById('resetCodeStatus');
+      const email = document.getElementById('resetEmail').value.trim();
+      // Les messageries glissent parfois des espaces dans le code copié.
+      const token = document.getElementById('resetCode').value.replace(/\s+/g, '');
+      const password = document.getElementById('resetNewPassword').value;
+      const auth = sbAuth();
+      if(!auth){ status.textContent = 'Serveur injoignable.'; return; }
+      if(!email){ status.textContent = 'Indiquez d\'abord votre email.'; return; }
+      if(!/^\d{6,10}$/.test(token)){ status.textContent = 'Recopiez le code à chiffres reçu par email.'; return; }
+      if(password.length < 6){ status.textContent = 'Le mot de passe doit contenir au moins 6 caractères.'; return; }
+      status.textContent = 'Vérification du code…';
+      resetByCode = true;
+      auth.verifyOtp({ email: email, token: token, type: 'recovery' }).then(function(res){
+        if(res && res.error){
+          const code = res.error.code || '';
+          status.textContent = (code === 'otp_expired' || /expired|invalid/i.test(res.error.message || ''))
+            ? 'Ce code est faux, a expiré ou a déjà servi. Vérifiez le plus récent de vos emails, ou redemandez-en un.'
+            : authErrorText(res.error);
+          return;
+        }
+        status.textContent = 'Enregistrement…';
+        auth.updateUser({ password: password }).then(function(up){
+          if(up && up.error){ status.textContent = authErrorText(up.error); return; }
+          const user = (up && up.data && up.data.user) || (res.data && res.data.user);
+          saveLastEmail(email);
+          if(user){ openAppForAuthUser(user); } else { showLoginMode('quick'); }
+        }, function(){ status.textContent = 'Enregistrement impossible : vérifiez votre réseau.'; });
+      }, function(){ status.textContent = 'Vérification impossible : vérifiez votre réseau.'; });
     });
   }
 
@@ -1746,7 +1796,9 @@
 
   if(sbAuth() && sbAuth().onAuthStateChange){
     sbAuth().onAuthStateChange(function(event){
-      if(event === 'PASSWORD_RECOVERY') showRecoveryBox();
+      // Un code recopié à la main émet aussi PASSWORD_RECOVERY : le mot de passe
+      // a déjà été tapé à côté du code, inutile de le redemander.
+      if(event === 'PASSWORD_RECOVERY' && !resetByCode) showRecoveryBox();
     });
   }
 
