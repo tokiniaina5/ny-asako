@@ -3333,10 +3333,16 @@
   // Elle n'est écrite nulle part à la main — ce serait un chiffre de plus à
   // oublier. On la lit sur l'adresse du script, que le versionneur estampille
   // à chaque envoi avec l'empreinte de son contenu.
-  // L'empreinte de la version qui tourne, lue sur l'adresse du script — le
-  // versionneur l'y met à chaque envoi. Elle sert deux fois : à l'afficher, et
-  // à savoir si celle du serveur a changé.
-  const VERSION = (function(){
+  // L'empreinte de la version qui tourne. D'abord celle du site entier, que le
+  // versionneur écrit dans la page (meta « ny-asako-version ») : elle change dès
+  // que change un fichier, ou la page elle-même. À défaut — une page d'avant
+  // cette meta —, celle de common.js, lue sur l'adresse du script. Elle sert
+  // deux fois : à l'afficher, et à savoir si celle du serveur a changé.
+  const VERSION_DU_SITE = (function(){
+    const meta = document.querySelector('meta[name="ny-asako-version"]');
+    return meta ? (meta.getAttribute('content') || '').trim() : '';
+  })();
+  const VERSION = VERSION_DU_SITE || (function(){
     const script = document.querySelector('script[src*="common.js"]');
     const src = script ? script.getAttribute('src') || '' : '';
     return (src.split('?v=')[1] || '').trim();
@@ -3357,14 +3363,20 @@
   // aucun cache, et on lit l'empreinte qu'elle annonce. Différente de celle qui
   // tourne : on vide les caches et on recharge — c'est ce « vider » qui fait
   // que la mise à jour est entière, et non à moitié.
+  //
+  // On compare la version du site entier, et non plus celle de common.js
+  // seule : un changement de style, d'un autre script ou de la page ne touche
+  // pas common.js, et le téléphone restait sur l'ancienne sans que rien ne le
+  // voie.
   (function(){
     if(!VERSION || !window.fetch) return;
     // Une fois par version, et pas davantage : si le rechargement ne suffit
     // pas, on n'y revient pas en boucle — mieux vaut une version en retard
     // qu'une page qui se recharge sans fin.
     const MARQUE = 'stockmanager_version_rechargee';
-    const DELAI = 10 * 60 * 1000;
+    const DELAI = 5 * 60 * 1000;
     let enCours = false;
+    let enAttente = '';
 
     function dejaTentee(v){
       try{ return sessionStorage.getItem(MARQUE) === v; }catch(e){ return false; }
@@ -3376,6 +3388,53 @@
       try{ sessionStorage.removeItem(MARQUE); }catch(e){}
     }
 
+    // La version annoncée par le serveur, lue comme on lit la sienne.
+    function versionEnLigne(texte){
+      if(VERSION_DU_SITE){
+        const meta = texte.match(/<meta name="ny-asako-version" content="([a-f0-9]+)"/);
+        if(meta) return meta[1];
+      }
+      const script = texte.match(/common\.js\?v=([a-f0-9]+)/);
+      return script ? script[1] : '';
+    }
+
+    // Quelqu'un écrit — une note, une lettre, une case d'Excel : recharger
+    // maintenant emporterait ce qu'il tape.
+    function occupe(){
+      const a = document.activeElement;
+      return !!(a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable));
+    }
+
+    function appliquer(v){
+      noterTentative(v);
+      // Les caches d'abord : sans cela le rechargement retrouverait les
+      // mêmes fichiers, et l'on aurait tourné pour rien.
+      const vider = window.caches
+        ? caches.keys().then(function(noms){ return Promise.all(noms.map(function(n){ return caches.delete(n); })); })
+        : Promise.resolve();
+      return vider.catch(function(){}).then(function(){ location.reload(); });
+    }
+
+    // On le dit plutôt que de recharger sous ses doigts. Le bouton applique
+    // tout de suite ; sinon, la mise à jour se fait au prochain retour sur
+    // l'application, quand plus rien n'est en cours d'écriture.
+    function proposer(v){
+      enAttente = v;
+      let b = document.getElementById('bandeauVersion');
+      if(!b){
+        b = document.createElement('div');
+        b.id = 'bandeauVersion';
+        b.className = 'bandeau-install';
+        b.innerHTML = '<span class="bandeau-install-icone" aria-hidden="true">🔄</span>' +
+          '<div class="bandeau-install-texte"><strong>Misy version vaovao</strong>' +
+          '<span>Tsindrio « Havaozina » rehefa vita ny soratanao.</span></div>' +
+          '<button type="button" class="btn btn-sm btn-primary">Havaozina</button>';
+        b.querySelector('button').addEventListener('click', function(){ appliquer(enAttente); });
+        document.body.appendChild(b);
+      }
+      b.hidden = false;
+    }
+
     function verifier(){
       if(enCours || document.hidden) return;
       enCours = true;
@@ -3383,18 +3442,12 @@
         .then(function(r){ return r.ok ? r.text() : null; })
         .then(function(texte){
           if(!texte) return;
-          const trouve = texte.match(/common\.js\?v=([a-f0-9]+)/);
-          if(!trouve) return;
-          const enLigne = trouve[1];
+          const enLigne = versionEnLigne(texte);
+          if(!enLigne) return;
           if(enLigne === VERSION){ oublierTentative(); return; }
           if(dejaTentee(enLigne)) return;
-          noterTentative(enLigne);
-          // Les caches d'abord : sans cela le rechargement retrouverait les
-          // mêmes fichiers, et l'on aurait tourné pour rien.
-          const vider = window.caches
-            ? caches.keys().then(function(noms){ return Promise.all(noms.map(function(n){ return caches.delete(n); })); })
-            : Promise.resolve();
-          return vider.catch(function(){}).then(function(){ location.reload(); });
+          if(occupe()){ proposer(enLigne); return; }
+          return appliquer(enLigne);
         })
         .catch(function(){})
         .then(function(){ enCours = false; });

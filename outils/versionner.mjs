@@ -43,12 +43,25 @@ page = page.replace(motif, (tout, avant, relatif, apres) => {
   return avant + relatif + '?v=' + empreinte(relatif) + apres;
 });
 
+// La version du site entier : l'empreinte de la page, estampilles comprises.
+// Elle change dès que change un fichier, ou la page elle-même. Elle s'écrit
+// dans la page (meta « ny-asako-version »), où la veille de version de
+// common.js la compare à celle du serveur — comparer seulement common.js
+// laissait passer un changement de style ou d'un autre script. On la calcule
+// sur la page où cette meta est vide : sinon elle se contiendrait elle-même,
+// et changerait à chaque passage.
+const META = /(<meta name="ny-asako-version" content=")[^"]*(")/;
+const marque = crypto.createHash('md5').update(page.replace(META, '$1$2')).digest('hex').slice(0, 8);
+if (META.test(page)) page = page.replace(META, '$1' + marque + '$2');
+else console.log('meta ny-asako-version introuvable dans ' + PAGE + ' : la veille de version ne verra que common.js');
+
 fs.writeFileSync(path.join(racine, PAGE), crlf ? page.replace(/\n/g, '\r\n') : page);
 console.log(touches + ' fichiers estampilles dans ' + PAGE);
 for (const [f, h] of empreintes) console.log('  ' + h + '  ' + f);
+console.log('version du site : ' + marque);
 
-// Le service worker garde les fichiers dans un cache nommé. On y écrit
-// l'empreinte de la page : chaque envoi repart d'un cache neuf, et l'ancien est
+// Le service worker garde les fichiers dans un cache nommé. On y écrit la
+// version du site : chaque envoi repart d'un cache neuf, et l'ancien est
 // effacé à l'activation — sans quoi les fichiers de toutes les versions passées
 // s'y empileraient sans jamais resservir.
 const SW = 'sw.js';
@@ -57,7 +70,6 @@ if (fs.existsSync(cheminSw)) {
   let sw = fs.readFileSync(cheminSw, 'utf8');
   const crlfSw = sw.includes('\r\n');
   if (crlfSw) sw = sw.replace(/\r\n/g, '\n');
-  const marque = crypto.createHash('md5').update(page).digest('hex').slice(0, 8);
   // On vérifie que la ligne existe, et non qu'elle change : deux passages sur
   // une page identique donnent la même empreinte, et le second criait à tort.
   const motif = /const CACHE = '[^']*';/;
