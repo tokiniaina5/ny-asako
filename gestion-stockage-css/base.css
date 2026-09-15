@@ -391,7 +391,11 @@
     border-top: 1px solid var(--line);
     border-bottom: none;
     margin-bottom: 0;
-    padding: 0.3rem 3vw;
+    /* Pas de marge sur les côtés : le ☰ et les réglages s'y collent aux bords
+       (position:sticky), et une marge les en décollait d'autant. Les icônes
+       qui défilaient passaient alors dans cet écart — une croix à gauche du
+       ☰, une icône à moitié à droite des réglages. */
+    padding: 0.3rem 0;
     /* La barre d'accueil du téléphone mange le bas de l'écran : sans cette
        réserve, la rangée se retrouve dessous et ne répond plus au doigt. */
     padding-bottom: calc(0.3rem + env(safe-area-inset-bottom, 0px));
