@@ -2837,7 +2837,7 @@
     // « Ny asako », la bannière d'essai et la rangée du bas.
     const PAGES = [
       'dash-accueil',
-      'dash-articles', 'section-factures', 'section-inviter', 'section-contact',
+      'dash-articles', 'dash-commun', 'section-factures', 'section-inviter', 'section-contact',
       // Les outils de bureau (fitaovana.js).
       'section-word', 'section-excel', 'section-notes', 'section-kajy',
       'section-calendrier', 'section-horaire',
@@ -3803,7 +3803,8 @@
       // venait de disparaître.
       const cible = cle.indexOf('section:') === 0
         ? document.getElementById('section-' + cle.slice(8))
-        : (cle === 'id:menuArticles' ? document.getElementById('dash-articles') : null);
+        : (cle === 'id:menuArticles' ? document.getElementById('dash-articles')
+          : (cle === 'id:menuCommun' ? document.getElementById('dash-commun') : null));
       if(cible && cible.classList.contains('active')){
         const navStock = document.querySelector('.nav-item[data-section="stock"]');
         if(navStock) navStock.click();
@@ -4635,7 +4636,26 @@
   // Chaque vue redessine ce qui lui appartient. Deux chemins y mènent
   // maintenant — les onglets restants et les entrées du menu — et une vue
   // ouverte sans être redessinée montre l'état d'avant.
+  // Les deux onglets de « Commun » : le comptage des personnes et les CIN /
+  // passeports. On rouvre la fenêtre sur celui qu'on y a laissé. var et non
+  // let : rafraichirVue peut tourner avant que cette ligne ne soit lue.
+  var ongletCommun = 'tableau';
+  function choisirOngletCommun(nom){
+    ongletCommun = nom === 'pieces' ? 'pieces' : 'tableau';
+    const corps = document.getElementById('communCorps');
+    const pieces = document.getElementById('communPieces');
+    if(corps) corps.style.display = ongletCommun === 'tableau' ? '' : 'none';
+    if(pieces) pieces.style.display = ongletCommun === 'pieces' ? '' : 'none';
+    document.querySelectorAll('#dash-commun [data-commun]').forEach(function(t){
+      t.classList.toggle('active', t.dataset.commun === ongletCommun);
+    });
+    // Les deux onglets lisent le même registre : on le relit à chaque
+    // ouverture, et les chiffres se dessinent une fois l'onglet visible.
+    if(typeof renderPiecesIdentite === 'function') renderPiecesIdentite();
+  }
+
   function rafraichirVue(nom){
+    if(nom === 'commun') choisirOngletCommun(ongletCommun);
     // Gardes typeof : showDashView tourne aussi au démarrage, pour rouvrir
     // la vue quittée, et tous les fichiers ne sont pas encore chargés.
     if(nom === 'dashboard'){
@@ -4685,6 +4705,11 @@
   });
   const menuArticles = document.getElementById('menuArticles');
   if(menuArticles) menuArticles.addEventListener('click', function(){ ouvrirDepuisLeMenu('articles'); });
+  const menuCommun = document.getElementById('menuCommun');
+  if(menuCommun) menuCommun.addEventListener('click', function(){ ouvrirDepuisLeMenu('commun'); });
+  document.querySelectorAll('#dash-commun [data-commun]').forEach(function(tab){
+    tab.addEventListener('click', function(){ choisirOngletCommun(tab.dataset.commun); });
+  });
 
   const backToAccueilBtn = document.getElementById('backToAccueilBtn');
   if(backToAccueilBtn){

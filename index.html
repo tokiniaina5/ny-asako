@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="d7301126">
+<meta name="ny-asako-version" content="e5aadfd2">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -482,6 +482,7 @@
         <button type="button" class="nav-action" id="menuAccueil">🏠 Botika</button>
         <button type="button" class="nav-action" id="composerToggle" aria-label="Écrire un message" aria-expanded="false">✏️ Écrire</button>
         <button type="button" class="nav-action" id="menuArticles">📋 Articles</button>
+        <button type="button" class="nav-action" id="menuCommun">🗂️ Commun</button>
         <button type="button" class="nav-action" id="notifToggle" aria-label="Notifications" aria-expanded="false" style="position:relative;">
           <span>🔔 Notifications</span>
           <span id="notifBadge" style="display:none; background:#ff6b6b; color:#fff; font-size:0.62rem; font-weight:700; border-radius:999px; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 4px;">0</span>
@@ -661,6 +662,93 @@
             </table>
           </div>
           <p class="empty-hint" id="stockEmptyHint" style="display:none;">Aucun article pour le moment. Ajoutez-en un depuis l’onglet « Ajouter ».</p>
+        </div>
+
+        <!-- ===== COMMUN ===== -->
+        <!-- Une fenêtre comme Articles. Son Tableau de bord compte les personnes
+             du registre des CIN / passeports, et non le stock : les deux
+             onglets lisent les mêmes lignes (pieces-identite.js). -->
+        <div class="dash-view" id="dash-commun">
+          <!-- data-commun et non data-dash : ces onglets changent ce qu'on voit
+               DANS la fenêtre. Un data-dash ferait basculer la page entière. -->
+          <div class="dash-tabs">
+            <div class="dash-tab active" data-commun="tableau">📊 Tableau de bord</div>
+            <div class="dash-tab" data-commun="pieces">🆔 CIN / Passeport</div>
+          </div>
+          <!-- Le comptage des personnes. -->
+          <div id="communCorps">
+            <p id="communComptageMessage" style="font-size:0.78rem; color:var(--red); margin:0 0 0.8rem; display:none;"></p>
+
+            <div class="kpi-row">
+              <div class="kpi-card"><div class="kpi-label">Personnes enregistrées</div><div class="kpi-value" id="communKpiPersonnes">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">CIN</div><div class="kpi-value" id="communKpiCin">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Passeports</div><div class="kpi-value" id="communKpiPasseports">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Enregistrées ce mois-ci</div><div class="kpi-value" id="communKpiMois">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Passeports expirés</div><div class="kpi-value" id="communKpiExpires">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Expirent dans 3 mois</div><div class="kpi-value" id="communKpiBientot">0</div></div>
+            </div>
+
+            <div class="chart-grid">
+              <div class="chart-panel"><h4>Personnes enregistrées par mois</h4><div class="chart-box" style="height:220px;"><canvas id="communChartMois"></canvas></div></div>
+              <div class="chart-panel"><h4>CIN / Passeport</h4><div class="chart-box" style="height:220px;"><canvas id="communChartTypes"></canvas></div></div>
+            </div>
+
+            <div class="list-panel">
+              <h4>⚠️ Passeports à renouveler</h4>
+              <div id="communListeExpiration"></div>
+            </div>
+          </div>
+
+          <!-- Le registre des pièces d'identité (pieces-identite.js). -->
+          <div id="communPieces" style="display:none;">
+            <div class="panel">
+              <h3>🆔 Enregistrer une pièce d'identité</h3>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="pieceType">Type</label>
+                  <select id="pieceType">
+                    <option value="cin">CIN</option>
+                    <option value="passeport">Passeport</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="pieceNumero">Numéro</label>
+                  <input type="text" id="pieceNumero" placeholder="Ex : 101 234 567 890" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="pieceNom">Nom complet</label>
+                  <input type="text" id="pieceNom" placeholder="Nom et prénoms" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="pieceDelivrance">Date de délivrance</label>
+                  <input type="date" id="pieceDelivrance">
+                </div>
+                <div class="field" id="pieceExpirationChamp" style="display:none;">
+                  <label for="pieceExpiration">Date d'expiration</label>
+                  <input type="date" id="pieceExpiration">
+                </div>
+              </div>
+              <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary btn-sm" id="pieceEnregistrer" style="width:auto;">Enregistrer</button>
+                <button type="button" class="btn btn-sm" id="pieceAnnuler" style="width:auto; display:none;">Annuler</button>
+              </div>
+              <p id="pieceMessage" style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>
+            </div>
+
+            <div class="panel">
+              <h3>📇 Pièces enregistrées</h3>
+              <input type="search" id="pieceRecherche" placeholder="🔍 Rechercher un nom ou un numéro..." autocomplete="off" style="width:100%; margin-bottom:0.8rem; box-sizing:border-box;">
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Type</th><th>Numéro</th><th>Nom</th><th>Délivrée le</th><th>Expire le</th><th></th></tr>
+                  </thead>
+                  <tbody id="piecesListe"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint" id="piecesVide">Mbola tsy misy CIN na passeport voasoratra.</p>
+            </div>
+          </div>
         </div>
 
         <!-- ===== DASHBOARD ===== -->
@@ -2056,7 +2144,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=d29235c0"></script>
+<script src="gestion-stockage-js/common.js?v=13bc408b"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2070,6 +2158,7 @@
 <script src="gestion-stockage-js/fond.js?v=9130e24f"></script>
 <script src="gestion-stockage-js/carte-libre.js?v=732ab00c"></script>
 <script src="gestion-stockage-js/equipe.js?v=20fc09e5"></script>
+<script src="gestion-stockage-js/pieces-identite.js?v=37af2f5c"></script>
 <script src="gestion-stockage-js/vue-mpiasa.js?v=bff76752"></script>
 <script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=83aa83fa"></script>
