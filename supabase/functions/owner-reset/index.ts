@@ -138,7 +138,9 @@ Deno.serve(async (req: Request) => {
     body: JSON.stringify({
       from,
       to: [ownerEmail],
-      subject: "Votre lien de connexion — Gestion de Stockage",
+      // Un sujet distinct de l'ancien « lien de connexion » : la messagerie
+      // rangeait sinon le code dans la même conversation que les vieux liens.
+      subject: "Votre code de connexion — Gestion de Stockage",
       text,
     }),
   });
