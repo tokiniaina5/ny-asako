@@ -769,3 +769,88 @@
   }
   .fenetre-page::-webkit-scrollbar-thumb:hover,
   .nav-list.floating::-webkit-scrollbar-thumb:hover{ background-color: var(--muted); }
+
+  /* ---------- La rangée du bas en « dock » ----------
+     Elle quitte les bords de l'écran : posée à huit pixels des côtés et du
+     bas, arrondie et courbée comme les fenêtres, elle flotte comme le dock
+     d'un téléphone. Ses coins ronds rognent aussi le ☰ et le ⋯ collés aux
+     extrémités — le défilement latéral la découpe déjà à sa forme.
+     La barre d'accueil du téléphone est gardée sous elle, et non plus dedans. */
+  #stockMainTabs.dash-tabs-main{
+    left: 8px; right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+    box-shadow:
+      inset 10px 0 14px -10px rgba(0,0,0,0.4),
+      inset -10px 0 14px -10px rgba(0,0,0,0.4),
+      inset 1px 0 0 rgba(255,255,255,0.07),
+      inset -1px 0 0 rgba(255,255,255,0.07),
+      0 10px 30px rgba(0,0,0,0.45);
+  }
+  /* Escamotée, elle descend de sa hauteur ET de l'écart qui la sépare du bas :
+     de sa seule hauteur, il en restait une lisière visible. */
+  #stockMainTabs.dash-tabs-main.barre-cachee{
+    transform: translateY(calc(100% + 8px + env(safe-area-inset-bottom, 0px)));
+  }
+  /* Le ☰ et le ⋯ prennent la couleur du dock, et non un fond plus sombre qui
+     dessinerait deux carrés dans ses coins ronds. */
+  #stockMainTabs #menuToggle,
+  #stockMainTabs #barReglagesBtn{ background: var(--panel); }
+
+  /* Les icônes deviennent des tuiles, comme les applications d'un téléphone :
+     un carré aux coins ronds, bombé par la même ombre que les fenêtres. */
+  #stockMainTabs .dash-tab[data-epingle],
+  #stockMainTabs #barComposer,
+  #stockMainTabs #barAccueil{
+    flex: 0 0 auto;
+    width: 40px; height: 40px;
+    margin: 0 3px;
+    padding: 0;
+    align-self: center;
+    justify-content: center;
+    border-radius: 13px;
+    border-bottom: none;
+    background: var(--panel-2);
+    box-shadow:
+      inset 4px 0 6px -4px rgba(0,0,0,0.35),
+      inset -4px 0 6px -4px rgba(0,0,0,0.35),
+      inset 0 0 0 1px var(--line);
+  }
+  /* La page ouverte : un liseré cyan autour de la tuile, à la place du
+     soulignement d'autrefois. */
+  #stockMainTabs .dash-tab[data-epingle].active,
+  #stockMainTabs #barComposer.active,
+  #stockMainTabs #barAccueil.active{
+    box-shadow:
+      inset 4px 0 6px -4px rgba(0,0,0,0.35),
+      inset -4px 0 6px -4px rgba(0,0,0,0.35),
+      inset 0 0 0 2px var(--cyan);
+  }
+  /* En mode manuel, la croix se pose sur le coin de la tuile, comme une
+     pastille d'application — et la tuile ne descend plus pour lui faire place. */
+  #stockMainTabs.mode-manuel .dash-tab[data-epingle],
+  #stockMainTabs.mode-manuel #barComposer,
+  #stockMainTabs.mode-manuel #barAccueil{
+    padding-top: 0; padding-bottom: 0;
+    margin-top: 7px;
+  }
+  #stockMainTabs .dash-tab[data-epingle] .epingle-retirer,
+  #stockMainTabs #barComposer .epingle-retirer,
+  #stockMainTabs #barAccueil .epingle-retirer{ top: -6px; right: -6px; }
+
+  /* Les icônes posées sur le fond : la même tuile, sous leur nom. */
+  .icone-bureau .emoji{
+    width: 50px; height: 50px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 15px;
+    background: var(--panel-2);
+    box-shadow:
+      inset 5px 0 7px -5px rgba(0,0,0,0.4),
+      inset -5px 0 7px -5px rgba(0,0,0,0.4),
+      inset 0 0 0 1px var(--line),
+      0 4px 12px rgba(0,0,0,0.35);
+    text-shadow: none;
+  }
