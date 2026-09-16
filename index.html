@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="911bcd98">
+<meta name="ny-asako-version" content="5b2ac5a6">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -15,16 +15,58 @@
      sombre puis s'éclairait d'un coup (theme.js tient le bouton). -->
 <script>
   (function(){
+    // La luminosité, de 0 (nuit la plus sombre) à 100 (jour le plus clair).
+    //
+    // Deux moitiés, et non un seul fondu : fondre d'un bout à l'autre passait
+    // par un gris où le texte, clair ou sombre, ne se lisait plus. En dessous
+    // de 50, c'est la nuit qui s'éclaircit — texte clair ; à partir de 50,
+    // c'est le jour qui s'assombrit — texte sombre. 0 et 100 redonnent
+    // exactement les modes nuit et jour d'origine.
+    //
+    // Écrit ici, dans l'en-tête, pour que la page s'ouvre déjà à la bonne
+    // teinte ; theme.js s'en sert ensuite quand on bouge le curseur.
+    var NOMS = ['--bg', '--panel', '--panel-2', '--line', '--muted'];
+    var NUIT = [[10,13,16], [19,26,32], [24,33,41], [31,42,48], [124,139,146]];
+    var NUIT_CLAIRE = [[43,54,64], [53,65,76], [59,72,85], [74,88,100], [163,177,184]];
+    var JOUR_SOMBRE = [[180,190,197], [201,210,216], [191,201,207], [163,175,183], [61,75,83]];
+    var JOUR = [[238,242,245], [255,255,255], [243,246,248], [212,220,225], [90,106,114]];
+
+    window.__appliquerNiveau = function(t){
+      var racine = document.documentElement;
+      t = Math.max(0, Math.min(100, Number(t) || 0));
+      var jour = t >= 50;
+      var de = jour ? JOUR_SOMBRE : NUIT, a = jour ? JOUR : NUIT_CLAIRE;
+      var k = jour ? (t - 50) / 50 : t / 49;
+      var fond = null;
+      NOMS.forEach(function(nom, i){
+        var c = de[i].map(function(v, j){ return Math.round(v + (a[i][j] - v) * k); });
+        racine.style.setProperty(nom, 'rgb(' + c.join(',') + ')');
+        if(i === 0) fond = c;
+      });
+      if(jour) racine.setAttribute('data-theme', 'jour'); else racine.removeAttribute('data-theme');
+      var m = document.querySelector('meta[name="theme-color"]');
+      if(m) m.setAttribute('content', 'rgb(' + fond.join(',') + ')');
+    };
+    // L'automatique n'a pas de curseur : il rend la main aux deux thèmes fixes.
+    window.__effacerNiveau = function(){
+      var racine = document.documentElement;
+      NOMS.forEach(function(nom){ racine.style.removeProperty(nom); });
+    };
+
     try{
-      // En automatique, l'heure décide : jour de 6 h à 18 h. En manuel, le
-      // dernier choix. Même règle que theme.js.
-      var auto = localStorage.getItem('stockmanager_theme_mode') === 'auto';
-      var h = new Date().getHours();
-      var jour = auto ? (h >= 6 && h < 18) : localStorage.getItem('stockmanager_theme') === 'jour';
-      if(jour){
-        document.documentElement.setAttribute('data-theme', 'jour');
-        var m = document.querySelector('meta[name="theme-color"]');
-        if(m) m.setAttribute('content', '#eef2f5');
+      if(localStorage.getItem('stockmanager_theme_mode') === 'auto'){
+        // En automatique, l'heure décide : jour de 6 h à 18 h (theme.js).
+        var h = new Date().getHours();
+        if(h >= 6 && h < 18){
+          document.documentElement.setAttribute('data-theme', 'jour');
+          var m = document.querySelector('meta[name="theme-color"]');
+          if(m) m.setAttribute('content', '#eef2f5');
+        }
+      } else {
+        var brut = localStorage.getItem('stockmanager_theme_niveau');
+        var niveau = brut !== null ? Number(brut)
+          : (localStorage.getItem('stockmanager_theme') === 'jour' ? 100 : 0);
+        window.__appliquerNiveau(niveau);
       }
     }catch(e){}
   })();
@@ -67,7 +109,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=d7bedec9">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=fb36bc7c">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=0acddc5a">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -611,15 +653,12 @@
             <span class="reglage-nom">Automatique</span>
           </button>
         </div>
-        <div class="reglages-choix" id="themeManuel" style="margin-top:0.6rem;">
-          <button type="button" class="reglage-mode" data-theme-choix="jour" title="Andro">
-            <span class="reglage-icone" aria-hidden="true">☀️</span>
-            <span class="reglage-nom">Andro</span>
-          </button>
-          <button type="button" class="reglage-mode" data-theme-choix="alina" title="Alina">
-            <span class="reglage-icone" aria-hidden="true">🌙</span>
-            <span class="reglage-nom">Alina</span>
-          </button>
+        <!-- En manuel, un curseur comme celui du volume : monté, l'écran
+             s'éclaire ; descendu, il s'assombrit. -->
+        <div class="theme-niveau" id="themeManuel">
+          <span aria-hidden="true">🌙</span>
+          <input type="range" id="themeNiveau" min="0" max="100" step="1" aria-label="Hazavana">
+          <span aria-hidden="true">☀️</span>
         </div>
         <p class="panneau-note" id="themeNote"></p>
       </div>
@@ -2539,7 +2578,7 @@
 <script src="gestion-stockage-js/commun-alalana.js?v=5ffa6ad0"></script>
 <script src="gestion-stockage-js/taratasy.js?v=666d726e"></script>
 <script src="gestion-stockage-js/adidy.js?v=cff1cd41"></script>
-<script src="gestion-stockage-js/theme.js?v=3c1a7ced"></script>
+<script src="gestion-stockage-js/theme.js?v=87730efe"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
 
 

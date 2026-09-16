@@ -380,6 +380,10 @@
   .bandeau-reseau[hidden]{ display: none; }
 
   .reglages-choix{ display:flex; gap:0.6rem; }
+  /* Le curseur de luminosité : la lune d'un côté, le soleil de l'autre, et
+     toute la largeur entre les deux pour le doigt. */
+  .theme-niveau{ display:flex; align-items:center; gap:0.6rem; margin-top:0.9rem; font-size:1.2rem; }
+  .theme-niveau input[type="range"]{ flex:1; min-width:0; height:28px; accent-color: var(--cyan); cursor:pointer; }
   /* Les deux choix sont d'abord des images : le mot n'est là que pour lever le
      doute sur ce que la main et la machine veulent dire. */
   .reglage-mode{
