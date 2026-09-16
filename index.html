@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="0a0c20be">
+<meta name="ny-asako-version" content="911bcd98">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -16,7 +16,12 @@
 <script>
   (function(){
     try{
-      if(localStorage.getItem('stockmanager_theme') === 'jour'){
+      // En automatique, l'heure décide : jour de 6 h à 18 h. En manuel, le
+      // dernier choix. Même règle que theme.js.
+      var auto = localStorage.getItem('stockmanager_theme_mode') === 'auto';
+      var h = new Date().getHours();
+      var jour = auto ? (h >= 6 && h < 18) : localStorage.getItem('stockmanager_theme') === 'jour';
+      if(jour){
         document.documentElement.setAttribute('data-theme', 'jour');
         var m = document.querySelector('meta[name="theme-color"]');
         if(m) m.setAttribute('content', '#eef2f5');
@@ -494,8 +499,9 @@
         <p class="menu-vide" id="menuVide" style="display:none;">Tsy misy pejy mifanaraka.</p>
         <button type="button" class="nav-action" id="menuAccueil">🏠 Botika</button>
         <button type="button" class="nav-action" id="composerToggle" aria-label="Écrire un message" aria-expanded="false">✏️ Écrire</button>
-        <!-- Le libellé propose toujours l'autre mode (theme.js). -->
-        <button type="button" class="nav-action" id="menuTheme" aria-label="Mode andro">☀️ Mode andro</button>
+        <!-- Ouvre le choix du mode : manuel (jour ou nuit) ou automatique
+             (theme.js). L'icône montre le mode en cours. -->
+        <button type="button" class="nav-action" id="menuTheme" aria-label="Mode andro / alina" aria-expanded="false">🌙 Andro / Alina</button>
         <button type="button" class="nav-action" id="menuArticles">📋 Articles</button>
         <button type="button" class="nav-action" id="menuCommun">🗂️ Administratif</button>
         <button type="button" class="nav-action" id="notifToggle" aria-label="Notifications" aria-expanded="false" style="position:relative;">
@@ -589,6 +595,33 @@
         <!-- Sortie de secours : une rangée vidée ne se remplissait plus jamais
              d'elle-même, et il n'y avait aucun chemin pour y revenir. -->
         <button type="button" class="btn btn-sm" id="barToutRemettre" style="width:100%; margin-top:0.8rem;">↩︎ Averina ny sary rehetra</button>
+      </div>
+
+      <!-- Le choix du mode jour / nuit : la même forme que les réglages de la
+           rangée — manuel ou automatique — et, en manuel, le jour ou la nuit. -->
+      <div class="panneau-flottant panneau-boite" id="themePanneau" style="display:none;">
+        <div class="panneau-titre">Mode andro / alina</div>
+        <div class="reglages-choix">
+          <button type="button" class="reglage-mode" data-theme-mode="manuel" title="Manuel">
+            <span class="reglage-icone" aria-hidden="true">✋</span>
+            <span class="reglage-nom">Manuel</span>
+          </button>
+          <button type="button" class="reglage-mode" data-theme-mode="auto" title="Automatique">
+            <span class="reglage-icone" aria-hidden="true">🤖</span>
+            <span class="reglage-nom">Automatique</span>
+          </button>
+        </div>
+        <div class="reglages-choix" id="themeManuel" style="margin-top:0.6rem;">
+          <button type="button" class="reglage-mode" data-theme-choix="jour" title="Andro">
+            <span class="reglage-icone" aria-hidden="true">☀️</span>
+            <span class="reglage-nom">Andro</span>
+          </button>
+          <button type="button" class="reglage-mode" data-theme-choix="alina" title="Alina">
+            <span class="reglage-icone" aria-hidden="true">🌙</span>
+            <span class="reglage-nom">Alina</span>
+          </button>
+        </div>
+        <p class="panneau-note" id="themeNote"></p>
       </div>
 
       <!-- Bandeau d'installation. Le navigateur propose déjà l'installation par
@@ -2506,7 +2539,7 @@
 <script src="gestion-stockage-js/commun-alalana.js?v=5ffa6ad0"></script>
 <script src="gestion-stockage-js/taratasy.js?v=666d726e"></script>
 <script src="gestion-stockage-js/adidy.js?v=cff1cd41"></script>
-<script src="gestion-stockage-js/theme.js?v=4642f317"></script>
+<script src="gestion-stockage-js/theme.js?v=3c1a7ced"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
 
 
