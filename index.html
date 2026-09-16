@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="19229bc1">
+<meta name="ny-asako-version" content="53f0c198">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -676,6 +676,7 @@
             <div class="dash-tab" data-commun="pieces">🆔 CIN / Passeport</div>
             <div class="dash-tab" data-commun="adidy">💰 Adidy</div>
             <div class="dash-tab" data-commun="historique">📜 Historique</div>
+            <div class="dash-tab" data-commun="taratasy">📄 Taratasy</div>
           </div>
           <!-- Le comptage des personnes. -->
           <div id="communCorps">
@@ -879,6 +880,87 @@
                 </table>
               </div>
               <p class="empty-hint" id="histoVide">Mbola tsy misy fandoavana voasoratra.</p>
+            </div>
+          </div>
+
+          <!-- Fanamarinam-ponenana sy fifindra-monina (taratasy.js). Le papier
+               se prépare ici ; il ne vaut que signé et cacheté par l'autorité
+               compétente. -->
+          <div id="communTaratasy" style="display:none;">
+            <div class="panel">
+              <h3>📄 Taratasy vaovao</h3>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="tarKarazana">Karazana</label>
+                  <select id="tarKarazana">
+                    <option value="fonenana">Fanamarinam-ponenana</option>
+                    <option value="fifindramonina">Fanamarinana fifindra-monina</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="tarOlona">Olona (avy ao amin'ny CIN / Passeport)</label>
+                  <select id="tarOlona"></select>
+                </div>
+                <div class="field">
+                  <label for="tarAnarana">Anarana feno</label>
+                  <input type="text" id="tarAnarana" placeholder="Nom et prénoms" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="tarCin">Laharana CIN</label>
+                  <input type="text" id="tarCin" placeholder="101 234 567 890" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="tarTerakaDaty">Daty nahaterahana</label>
+                  <input type="date" id="tarTerakaDaty">
+                </div>
+                <div class="field">
+                  <label for="tarTerakaToerana">Toerana nahaterahana</label>
+                  <input type="text" id="tarTerakaToerana" placeholder="Antananarivo" autocomplete="off">
+                </div>
+                <div class="field" id="tarFonenanaChamp">
+                  <label for="tarFonenana">Fonenana</label>
+                  <input type="text" id="tarFonenana" placeholder="Lot, fokontany, kaominina" autocomplete="off">
+                </div>
+                <div class="field" id="tarTalohaChamp" style="display:none;">
+                  <label for="tarTaloha">Fonenana taloha</label>
+                  <input type="text" id="tarTaloha" placeholder="Toerana nialana" autocomplete="off">
+                </div>
+                <div class="field" id="tarVaovaoChamp" style="display:none;">
+                  <label for="tarVaovao">Fonenana vaovao</label>
+                  <input type="text" id="tarVaovao" placeholder="Toerana nifindrana" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="tarDaty">Daty nanaovana</label>
+                  <input type="date" id="tarDaty">
+                </div>
+                <div class="field">
+                  <label for="tarLaharana">Laharan'ny taratasy</label>
+                  <input type="text" id="tarLaharana" placeholder="TAR-2026-001" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="tarNote">Fanamarihana</label>
+                  <input type="text" id="tarNote" placeholder="Raha misy" autocomplete="off">
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="tarVokatra" style="width:auto;">📄 Vokaro ny PDF sy tehirizo</button>
+              <p id="tarMessage" style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>
+              <p style="font-size:0.74rem; color:var(--muted); line-height:1.5;">
+                Tsy manan-kery ity taratasy ity raha tsy misy sonia sy kasen'ny manam-pahefana.
+                Misy toerana malalaka any ambany amin'ny PDF ho an'izany.
+              </p>
+            </div>
+
+            <div class="panel">
+              <h3>🗂️ Taratasy efa nomena</h3>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Daty</th><th>Karazana</th><th>Olona</th><th>Laharana</th><th></th></tr>
+                  </thead>
+                  <tbody id="tarListe"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint" id="tarVide">Mbola tsy misy taratasy natao.</p>
             </div>
           </div>
         </div>
@@ -2276,7 +2358,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=31f5dc00"></script>
+<script src="gestion-stockage-js/common.js?v=2655c7f1"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2295,6 +2377,7 @@
 <script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=83aa83fa"></script>
 <script src="gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
+<script src="gestion-stockage-js/taratasy.js?v=41d56fb2"></script>
 <script src="gestion-stockage-js/adidy.js?v=cff1cd41"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
 

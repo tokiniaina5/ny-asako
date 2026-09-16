@@ -4643,7 +4643,8 @@
   function choisirOngletCommun(nom){
     const PANNEAUX = {
       tableau: 'communCorps', pieces: 'communPieces',
-      adidy: 'communAdidy', historique: 'communHistorique'
+      adidy: 'communAdidy', historique: 'communHistorique',
+      taratasy: 'communTaratasy'
     };
     ongletCommun = PANNEAUX[nom] ? nom : 'tableau';
     Object.keys(PANNEAUX).forEach(function(cle){
@@ -4659,6 +4660,8 @@
       if(typeof renderAdidy === 'function') renderAdidy();
     } else if(ongletCommun === 'historique'){
       if(typeof renderHistorique === 'function') renderHistorique();
+    } else if(ongletCommun === 'taratasy'){
+      if(typeof renderTaratasy === 'function') renderTaratasy();
     } else if(typeof renderPiecesIdentite === 'function'){
       renderPiecesIdentite();
     }
