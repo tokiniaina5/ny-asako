@@ -24,9 +24,22 @@
     justify-content: center;
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: none;
   }
-  #stockMainTabs.dash-tabs::-webkit-scrollbar{ display:none; }
+  /* Quand les icônes ne tiennent plus, une barre de défilement le dit, et se
+     tire au doigt comme à la souris pour aller voir les pages restées
+     ouvertes. Cachée, rien n'annonçait qu'il y en avait d'autres.
+     Un trait fin et arrondi, et non le rectangle du navigateur ; son rail
+     s'arrête avant le ☰ et le ⋯ collés aux deux bouts, et avant les coins
+     ronds du dock. */
+  #stockMainTabs.dash-tabs::-webkit-scrollbar{ height: 6px; }
+  #stockMainTabs.dash-tabs::-webkit-scrollbar-button{ display: none; }
+  #stockMainTabs.dash-tabs::-webkit-scrollbar-track{ background: transparent; margin: 0 48px; }
+  #stockMainTabs.dash-tabs::-webkit-scrollbar-thumb{ background: var(--muted); border-radius: 999px; }
+  /* Firefox seulement : dans Chrome, ces propriétés annuleraient les règles
+     ci-dessus, rail et coins compris. */
+  @supports not selector(::-webkit-scrollbar){
+    #stockMainTabs.dash-tabs{ scrollbar-width: thin; scrollbar-color: var(--muted) transparent; }
+  }
   /* Pleine, elle ne se centre plus : le début doit rester à sa place. */
   #stockMainTabs.dash-tabs.pleine{ justify-content: flex-start; }
   /* Rien ne dit qu'une rangée défile. Un fondu au bord droit annonce ce qui
