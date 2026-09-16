@@ -4667,7 +4667,10 @@
     }
     // Le tableau de bord montre aussi l'argent entré : il le relit lui-même,
     // sans qu'il ait fallu passer par l'onglet Adidy.
-    if(ongletCommun === 'tableau' && typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
+    if(ongletCommun === 'tableau'){
+      if(typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
+      if(typeof renderTaratasyIsa === 'function') renderTaratasyIsa();
+    }
   }
 
   function rafraichirVue(nom){

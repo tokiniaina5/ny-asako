@@ -291,6 +291,7 @@
         if (res.error) { dire(expliquer(res), true); return; }
         taratasy = res.data || [];
         afficher();
+        compter();
       }, function () {
         dire('Tsy tratra ny serveur : jereo ny réseau.', true);
       });
@@ -402,6 +403,44 @@
       supprimer(fafao.dataset.tarFafao);
     }
   });
+
+  // ---------- Les chiffres du tableau de bord ----------
+  // Les résidences se comptent par personne : un même nom qui revient chaque
+  // trimestre est une personne, pas trois. Les départs, eux, ne se comptent
+  // qu'en nombre de papiers : demander leurs noms rouvrirait l'archive.
+
+  function compter() {
+    const client = sb();
+    const email = monEmail();
+    if (!$('communKpiFonenana')) return Promise.resolve();
+    if (!client || !email) return Promise.resolve();
+
+    const auj = aujourdhui();
+    const personnes = new Set();
+    let manankery = 0;
+    taratasy.forEach(function (t) {
+      const cle = String(t.anarana || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      if (cle) personnes.add(cle);
+      const fin = finDeValidite(t);
+      if (fin && fin >= auj) manankery++;
+    });
+    $('communKpiFonenana').textContent = personnes.size.toLocaleString('fr-FR');
+    $('communKpiFonenanaKery').textContent = manankery.toLocaleString('fr-FR');
+
+    // head : le serveur ne renvoie que le compte, aucune ligne.
+    return client.from('taratasy').select('id', { count: 'exact', head: true })
+      .eq('owner_email', email).eq('karazana', 'fifindramonina')
+      .then(function (res) {
+        const n = (res && typeof res.count === 'number') ? res.count : 0;
+        $('communKpiFifindra').textContent = n.toLocaleString('fr-FR');
+      }, function () {});
+  }
+
+  // Appelée par common.js à l'ouverture du tableau de bord : les chiffres
+  // s'y montrent sans qu'on ait ouvert l'onglet des taratasy.
+  // charger() compte déjà : l'appeler puis compter à nouveau demandait deux
+  // fois la même chose au serveur.
+  window.renderTaratasyIsa = charger;
 
   // ---------- L'archive des départs ----------
   // Un départ ne se feuillette pas : il s'ouvre, et seulement pour qui sait

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="7fbdeb26">
+<meta name="ny-asako-version" content="df72bfa7">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -695,6 +695,11 @@
               <div class="kpi-card"><div class="kpi-label">Vola voaangona ity volana ity</div><div class="kpi-value" id="communKpiVolaVolana">0 Ar</div></div>
               <div class="kpi-card"><div class="kpi-label">Vola voaangona ity taona ity</div><div class="kpi-value" id="communKpiVolaTaona">0 Ar</div></div>
               <div class="kpi-card"><div class="kpi-label">Vola voaangona hatramin'izao</div><div class="kpi-value" id="communKpiVolaTotal">0 Ar</div></div>
+              <!-- Les papiers (taratasy.js). Pour les départs, seul le nombre
+                   est demandé au serveur : l'archive reste fermée. -->
+              <div class="kpi-card"><div class="kpi-label">Olona manana fanamarinam-ponenana</div><div class="kpi-value" id="communKpiFonenana">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Fanamarinam-ponenana manan-kery</div><div class="kpi-value" id="communKpiFonenanaKery">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Taratasy fifindra-monina</div><div class="kpi-value" id="communKpiFifindra">0</div></div>
             </div>
 
             <div class="chart-grid">
@@ -2383,7 +2388,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=2655c7f1"></script>
+<script src="gestion-stockage-js/common.js?v=d0609a10"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2402,7 +2407,7 @@
 <script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=83aa83fa"></script>
 <script src="gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
-<script src="gestion-stockage-js/taratasy.js?v=8d7523e7"></script>
+<script src="gestion-stockage-js/taratasy.js?v=666d726e"></script>
 <script src="gestion-stockage-js/adidy.js?v=cff1cd41"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
 
