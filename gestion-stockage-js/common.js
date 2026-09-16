@@ -3856,10 +3856,26 @@
       });
       // Les pages épinglées se rangent après les entrées fixes et avant les
       // réglages, qui ferment la rangée. La loupe, elle, l'ouvre.
+      //
+      // Et entre elles, dans l'ordre du menu — non dans celui où on les a
+      // ouvertes. Posées à la suite, les icônes changeaient de place d'un jour
+      // à l'autre, et le doigt ne les retrouvait jamais au même endroit.
+      const rang = rangDansLeMenu(cle);
+      const suivant = [].slice.call(rangee.querySelectorAll('[data-epingle]')).filter(function(b){
+        return b !== bouton && rangDansLeMenu(b.dataset.epingle) > rang;
+      })[0];
       const reglages = document.getElementById('barReglagesBtn');
-      if(reglages && reglages.parentElement === rangee) rangee.insertBefore(bouton, reglages);
+      if(suivant) rangee.insertBefore(bouton, suivant);
+      else if(reglages && reglages.parentElement === rangee) rangee.insertBefore(bouton, reglages);
       else rangee.appendChild(bouton);
     };
+
+    // La place d'une entrée dans le menu. Une entrée que le menu ne connaît
+    // plus passe au bout, plutôt que de s'intercaler n'importe où.
+    function rangDansLeMenu(cle){
+      const i = entreesEpinglables().indexOf(entreeDe(cle));
+      return i < 0 ? 9999 : i;
+    }
 
     function mesurer(){
       const deborde = rangee.scrollWidth > rangee.clientWidth;
