@@ -4644,7 +4644,7 @@
     const PANNEAUX = {
       tableau: 'communCorps', pieces: 'communPieces',
       adidy: 'communAdidy', historique: 'communHistorique',
-      taratasy: 'communTaratasy'
+      taratasy: 'communTaratasy', fangatahana: 'communFangatahana'
     };
     ongletCommun = PANNEAUX[nom] ? nom : 'tableau';
     Object.keys(PANNEAUX).forEach(function(cle){
@@ -4654,6 +4654,21 @@
     document.querySelectorAll('#dash-commun [data-commun]').forEach(function(t){
       t.classList.toggle('active', t.dataset.commun === ongletCommun);
     });
+    // La porte d'abord : sans alalana, rien de tout cela ne se montre, et rien
+    // ne se demande au serveur.
+    if(typeof renderPorteCommun === 'function'){
+      renderPorteCommun().then(function(ouverte){ if(ouverte) remplirOngletCommun(); });
+      return;
+    }
+    remplirOngletCommun();
+  }
+
+  function remplirOngletCommun(){
+    const nom = ongletCommun;
+    if(nom === 'fangatahana'){
+      if(typeof renderFangatahana === 'function') renderFangatahana();
+      return;
+    }
     // On relit à chaque ouverture : les chiffres se dessinent une fois
     // l'onglet visible, et les adidy suivent les personnes du registre.
     if(ongletCommun === 'adidy'){

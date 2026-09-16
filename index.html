@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="fbd0aac1">
+<meta name="ny-asako-version" content="1d4ea2f5">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -669,6 +669,35 @@
              du registre des CIN / passeports, et non le stock : les deux
              onglets lisent les mêmes lignes (pieces-identite.js). -->
         <div class="dash-view" id="dash-commun">
+          <!-- La porte : ce qui est dedans ne regarde pas tout le monde. On la
+               passe avec un code que le propriétaire donne de la main à la
+               main (commun-alalana.js). -->
+          <div id="communPorte" style="display:none;">
+            <div class="panel">
+              <h3>🔐 Mila alalana ity pejy ity</h3>
+              <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin-bottom:0.9rem;">
+                Angataho amin'ny tompon'ny site ny fanokafana. Izy no manome anao
+                <strong style="color:var(--text);">code</strong> mivantana — tsy alefa amin'ny mailaka izany.
+                Rehefa voasoratra eto ilay code dia misokatra ny pejy, ary tsy hanontaniana anao intsony
+                eto amin'ity appareil ity.
+              </p>
+              <div class="field">
+                <label for="porteHafatra">Hafatra (raha misy)</label>
+                <input type="text" id="porteHafatra" placeholder="Ohatra : mpiara-miasa ao amin'ny fokontany" autocomplete="off">
+              </div>
+              <button type="button" class="btn btn-sm" id="porteMangataka" style="width:auto;">📩 Mangataka fanokafana</button>
+              <p id="porteStatut" style="font-size:0.76rem; color:var(--muted); margin:0.7rem 0 0.9rem; min-height:1.1em;"></p>
+
+              <div class="field">
+                <label for="porteCode">Code nomen'ny tompon'ny site</label>
+                <input type="text" id="porteCode" placeholder="Litera 8" autocomplete="off" style="font-family:var(--font-mono); letter-spacing:0.2em; text-transform:uppercase;">
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="porteSokafy" style="width:auto;">🔓 Sokafy ny pejy</button>
+              <p id="porteMessage" style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>
+            </div>
+          </div>
+
+          <div id="communContenu">
           <!-- data-commun et non data-dash : ces onglets changent ce qu'on voit
                DANS la fenêtre. Un data-dash ferait basculer la page entière. -->
           <div class="dash-tabs">
@@ -677,6 +706,8 @@
             <div class="dash-tab" data-commun="adidy">💰 Adidy</div>
             <div class="dash-tab" data-commun="historique">📜 Historique</div>
             <div class="dash-tab" data-commun="taratasy">📄 Taratasy</div>
+            <!-- Le propriétaire seul : le style le montre, commun-alalana.js le décide. -->
+            <div class="dash-tab" data-commun="fangatahana" id="ongletFangatahana" style="display:none;">🛡️ Fangatahana</div>
           </div>
           <!-- Le comptage des personnes. -->
           <div id="communCorps">
@@ -1000,6 +1031,41 @@
               </div>
               <p class="empty-hint" id="tarVide">Mbola tsy misy taratasy natao.</p>
             </div>
+          </div>
+
+          <!-- Qui demande à entrer, et à qui c'est accordé. Propriétaire seul. -->
+          <div id="communFangatahana" style="display:none;">
+            <div class="panel">
+              <h3>🛡️ Fangatahana fanokafana</h3>
+              <p style="font-size:0.76rem; color:var(--muted); line-height:1.5; margin-bottom:0.8rem;">
+                Ny code dia aseho eto ihany : ianao no mampita azy mivantana amin'ilay olona.
+                Tsy alefa amin'ny mailaka na hafatra izy.
+              </p>
+              <p id="admMessage" style="font-size:0.82rem; margin:0 0 0.8rem; min-height:1.1em; font-family:var(--font-mono);"></p>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Daty</th><th>Olona</th><th>Hafatra</th><th>Toe-javatra</th><th></th></tr>
+                  </thead>
+                  <tbody id="admFangatahanaListe"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint" id="admFangatahanaVide">Mbola tsy misy fangatahana.</p>
+            </div>
+
+            <div class="panel">
+              <h3>🔑 Alalana efa nomena</h3>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Olona</th><th>Code</th><th>Toe-javatra</th><th></th></tr>
+                  </thead>
+                  <tbody id="admAlalanaListe"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint" id="admAlalanaVide">Mbola tsy misy alalana nomena.</p>
+            </div>
+          </div>
           </div>
         </div>
 
@@ -2396,7 +2462,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=d0609a10"></script>
+<script src="gestion-stockage-js/common.js?v=45bcc196"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2415,6 +2481,7 @@
 <script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=83aa83fa"></script>
 <script src="gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
+<script src="gestion-stockage-js/commun-alalana.js?v=9b9fd419"></script>
 <script src="gestion-stockage-js/taratasy.js?v=666d726e"></script>
 <script src="gestion-stockage-js/adidy.js?v=cff1cd41"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
