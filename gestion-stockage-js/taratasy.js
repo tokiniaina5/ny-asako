@@ -52,6 +52,17 @@
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
+  // Un certificat de résidence ne vaut que trois mois : passé ce délai, il ne
+  // dit plus où quelqu'un habite, il dit où il habitait. Le départ, lui,
+  // constate un fait daté — il ne se périme pas.
+  function finDeValidite(t) {
+    if (!t || t.karazana !== 'fonenana' || !t.daty) return '';
+    const d = new Date(String(t.daty).slice(0, 10) + 'T00:00:00');
+    if (isNaN(d)) return '';
+    const fin = new Date(d.getFullYear(), d.getMonth() + 3, d.getDate());
+    return fin.getFullYear() + '-' + String(fin.getMonth() + 1).padStart(2, '0') + '-' + String(fin.getDate()).padStart(2, '0');
+  }
+
   function dire(texte, erreur) {
     const el = $('tarMessage');
     el.textContent = texte || '';
@@ -162,11 +173,14 @@
         'Natao ity taratasy ity mba hanamarinana izany, ary hampiasainy amin\'izay ilana azy.'
       ];
     }
+    const fin = finDeValidite(t);
     return [
       'Izaho manao sonia eto ambany dia manamarina fa ' + nom + teraka + cin + ',',
       'dia tena monina ao ' + (t.fonenana || '—') + '.',
       '',
-      'Natao ity taratasy ity mba hanamarinana izany, ary hampiasainy amin\'izay ilana azy.'
+      'Natao ity taratasy ity mba hanamarinana izany, ary hampiasainy amin\'izay ilana azy.',
+      '',
+      'Manan-kery mandritra ny telo (3) volana : hatramin\'ny ' + dateFr(fin) + '.'
     ];
   }
 
@@ -254,12 +268,17 @@
   }
 
   function afficher() {
+    const auj = aujourdhui();
     $('tarListe').innerHTML = taratasy.map(function (t) {
+      const fin = finDeValidite(t);
+      const lany = fin && fin < auj;
       return '<tr>' +
         '<td style="white-space:nowrap;">' + dateFr(t.daty) + '</td>' +
         '<td>' + echapper(NOMS[t.karazana] || t.karazana) + '</td>' +
         '<td>' + echapper(t.anarana) + '</td>' +
         '<td style="font-family:var(--font-mono); white-space:nowrap;">' + echapper(t.laharana || '—') + '</td>' +
+        '<td style="white-space:nowrap;' + (lany ? ' color:var(--red);' : '') + '"' + (lany ? ' title="Lany andro"' : '') + '>' +
+          (fin ? dateFr(fin) + (lany ? ' ⚠️' : '') : '—') + '</td>' +
         '<td style="white-space:nowrap;">' +
           '<button type="button" class="btn btn-sm" data-tar-pdf="' + echapper(t.id) + '">PDF</button> ' +
           '<button type="button" class="btn btn-red btn-sm" data-tar-fafao="' + echapper(t.id) + '">Fafana</button>' +
@@ -268,6 +287,17 @@
     }).join('');
     $('tarVide').style.display = taratasy.length ? 'none' : '';
     if (!$('tarLaharana').value) $('tarLaharana').placeholder = laharanaSuivant();
+    direValidite();
+  }
+
+  // Sous la date : jusqu'à quand le papier qu'on prépare vaudra.
+  function direValidite() {
+    const el = $('tarValidite');
+    if (!el) return;
+    const fin = finDeValidite({ karazana: karazanaChoisie(), daty: $('tarDaty').value || aujourdhui() });
+    el.textContent = fin
+      ? 'Manan-kery mandritra ny 3 volana : hatramin\'ny ' + dateFr(fin) + '.'
+      : 'Tsy misy faharetana voafetra : fanamarinana zava-nitranga izy.';
   }
 
   function vider() {
@@ -320,7 +350,8 @@
 
   // ---------- Les boutons ----------
 
-  $('tarKarazana').addEventListener('change', ajusterChamps);
+  $('tarKarazana').addEventListener('change', function () { ajusterChamps(); direValidite(); });
+  $('tarDaty').addEventListener('change', direValidite);
   $('tarOlona').addEventListener('change', prendreLaPersonne);
   $('tarVokatra').addEventListener('click', delivrer);
   $('tarListe').addEventListener('click', function (e) {

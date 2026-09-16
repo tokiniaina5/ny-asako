@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="53f0c198">
+<meta name="ny-asako-version" content="f618e752">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -942,6 +942,7 @@
                   <input type="text" id="tarNote" placeholder="Raha misy" autocomplete="off">
                 </div>
               </div>
+              <p id="tarValidite" style="font-size:0.76rem; color:var(--amber); margin:0 0 0.7rem; min-height:1.1em;"></p>
               <button type="button" class="btn btn-primary btn-sm" id="tarVokatra" style="width:auto;">📄 Vokaro ny PDF sy tehirizo</button>
               <p id="tarMessage" style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>
               <p style="font-size:0.74rem; color:var(--muted); line-height:1.5;">
@@ -955,7 +956,7 @@
               <div class="table-scroll">
                 <table>
                   <thead>
-                    <tr><th>Daty</th><th>Karazana</th><th>Olona</th><th>Laharana</th><th></th></tr>
+                    <tr><th>Daty</th><th>Karazana</th><th>Olona</th><th>Laharana</th><th>Manan-kery hatramin'ny</th><th></th></tr>
                   </thead>
                   <tbody id="tarListe"></tbody>
                 </table>
@@ -2377,7 +2378,7 @@
 <script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=83aa83fa"></script>
 <script src="gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
-<script src="gestion-stockage-js/taratasy.js?v=41d56fb2"></script>
+<script src="gestion-stockage-js/taratasy.js?v=ae38fd13"></script>
 <script src="gestion-stockage-js/adidy.js?v=cff1cd41"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
 
