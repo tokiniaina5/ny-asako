@@ -101,8 +101,12 @@
     return maLigne().then(function (ligne) {
       const garde = codeGarde();
       const codeMety = !!(ligne && ligne.active && garde && String(ligne.code).trim().toUpperCase() === garde);
-      // Le code juste ne suffit pas : le propriétaire doit encore dire oui.
-      const ok = codeMety && !!ligne.voamarina;
+      // Une fois l'accès confirmé, c'est le compte qui ouvre : la personne
+      // peut se déconnecter, changer d'appareil, oublier son code — elle
+      // rentre en se connectant. Le code n'aura servi qu'une fois, à se faire
+      // reconnaître ; le redemander ensuite fermerait la porte à celui-là
+      // même à qui on vient de l'ouvrir.
+      const ok = !!(ligne && ligne.active && ligne.voamarina);
       montrer(ok);
       if (!ok) {
         if (codeMety) {
