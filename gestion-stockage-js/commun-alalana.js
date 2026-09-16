@@ -162,6 +162,30 @@
     const email = monEmail();
     if (!client || !email) { dire('porteMessage', 'Midira amin\'ny kaontinao aloha.', true); return; }
     dire('porteMessage', 'Mandefa ny fangatahana…');
+    // La fonction pose la demande ET prévient le propriétaire : écrite
+    // seulement dans la table, elle attendait qu'il pense à venir la voir.
+    if (client.functions && client.functions.invoke) {
+      client.functions.invoke('commun-angataka', {
+        body: { hafatra: $('porteHafatra').value.trim() || null, anarana: monNom() || null }
+      }).then(function (res) {
+        const data = (res && res.data) || {};
+        if (res && res.error && !data.ok) { ecrireLaDemande(); return; }
+        dire('porteMessage', data.sent
+          ? 'Nalefa ny fangatahanao, ary nampandrenesina ny tompon\'ny site.'
+          : 'Voatahiry ny fangatahanao. Tsy lasa ny mailaka, fa ho hitany ao amin\'ny pejiny ihany izy.');
+        montrerMonStatut();
+      }, function () { ecrireLaDemande(); });
+      return;
+    }
+    ecrireLaDemande();
+  }
+
+  // Le recours, quand la fonction n'est pas déployée ou ne répond pas : la
+  // demande s'écrit quand même, le propriétaire la verra dans son onglet.
+  function ecrireLaDemande() {
+    const client = sb();
+    const email = monEmail();
+    if (!client || !email) return;
     client.from('commun_fangatahana').insert({
       email: email,
       anarana: monNom() || null,
