@@ -685,3 +685,35 @@
   body.mode-mpiasa #navList .nav-item[data-section="mpiasa"],
   body.mode-mpiasa [data-epingle="section:mpiasa"],
   body.mode-mpiasa .icone-bureau[data-cle="section:mpiasa"]{ display:none !important; }
+
+  /* ---------- L'écran « edge », pour les petites fenêtres aussi ----------
+     Le menu et les panneaux qu'on ouvre par-dessus — notifications, achats
+     internationaux, réglages de la rangée, mode jour et nuit, boîte d'écriture —
+     prennent la même allure que les pages : coins ronds, bords qui se courbent.
+     Un peu moins que les pages (24 px et non 28) : sur une fenêtre de deux
+     cent trente pixels, la courbe d'une page mangerait la première ligne.
+
+     !important : les notifications et les achats portent encore leur
+     habillage dans leur attribut style, qui l'emporterait sinon. */
+  .nav-list.floating,
+  .panneau-boite,
+  #notifPanel,
+  #marketPanel,
+  #fbComposer.composer-flottant{
+    border-radius: 24px !important;
+    box-shadow:
+      inset 10px 0 14px -10px rgba(0,0,0,0.4),
+      inset -10px 0 14px -10px rgba(0,0,0,0.4),
+      inset 1px 0 0 rgba(255,255,255,0.07),
+      inset -1px 0 0 rgba(255,255,255,0.07),
+      0 12px 36px rgba(0,0,0,0.5) !important;
+  }
+  /* La marge intérieure s'élargit, pour que rien ne se loge dans la courbe. */
+  .nav-list.floating{ padding: 0.8rem 0.9rem; }
+  .panneau-boite{ padding: 1rem 1.15rem; }
+  /* Leurs poignées épousent ces coins, comme celles des pages. */
+  .poignees:not(:has(.poignee-deplacer)) .poignee{ width:20px; height:20px; }
+  .poignees:not(:has(.poignee-deplacer)) .poignee.hg{ border-radius:24px 0 0 0; }
+  .poignees:not(:has(.poignee-deplacer)) .poignee.hd{ border-radius:0 24px 0 0; }
+  .poignees:not(:has(.poignee-deplacer)) .poignee.bg{ border-radius:0 0 0 24px; }
+  .poignees:not(:has(.poignee-deplacer)) .poignee.bd{ border-radius:0 0 24px 0; }
