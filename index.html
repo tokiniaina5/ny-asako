@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="5b2ac5a6">
+<meta name="ny-asako-version" content="0a2f6ad4">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -52,6 +52,22 @@
       var racine = document.documentElement;
       NOMS.forEach(function(nom){ racine.style.removeProperty(nom); });
     };
+
+    // Luminosité et contraste, en pour cent. Posés en filtre sur <html> et
+    // nulle part ailleurs : sur tout autre élément, un filtre détache les
+    // fenêtres et la rangée fixées à l'écran ; sur la racine, non.
+    // À 100 % tous deux, aucun filtre — un filtre sur la page entière coûte
+    // à chaque image, et un téléphone le sentirait pour rien.
+    window.__appliquerFiltre = function(lum, con){
+      lum = Math.max(50, Math.min(150, Number(lum) || 100));
+      con = Math.max(50, Math.min(150, Number(con) || 100));
+      document.documentElement.style.filter = (lum === 100 && con === 100)
+        ? '' : 'brightness(' + (lum / 100) + ') contrast(' + (con / 100) + ')';
+    };
+
+    try{
+      window.__appliquerFiltre(localStorage.getItem('stockmanager_luminosite'), localStorage.getItem('stockmanager_contraste'));
+    }catch(e){}
 
     try{
       if(localStorage.getItem('stockmanager_theme_mode') === 'auto'){
@@ -109,7 +125,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=d7bedec9">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=0acddc5a">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=45ede7ad">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -661,6 +677,18 @@
           <span aria-hidden="true">☀️</span>
         </div>
         <p class="panneau-note" id="themeNote"></p>
+
+        <!-- Luminosité et contraste : valables dans les deux modes, par-dessus
+             les couleurs du thème. -->
+        <div class="theme-reglage">
+          <label for="themeLuminosite"><span>🔆 Luminosité</span><span id="themeLuminositeVal">100 %</span></label>
+          <input type="range" id="themeLuminosite" min="50" max="150" step="1" value="100">
+        </div>
+        <div class="theme-reglage">
+          <label for="themeContraste"><span>◐ Contraste</span><span id="themeContrasteVal">100 %</span></label>
+          <input type="range" id="themeContraste" min="50" max="150" step="1" value="100">
+        </div>
+        <button type="button" class="btn btn-sm" id="themeReinitialiser" style="width:100%; margin-top:0.7rem;">↩︎ Averina amin'ny 100 %</button>
       </div>
 
       <!-- Bandeau d'installation. Le navigateur propose déjà l'installation par
@@ -2578,7 +2606,7 @@
 <script src="gestion-stockage-js/commun-alalana.js?v=5ffa6ad0"></script>
 <script src="gestion-stockage-js/taratasy.js?v=666d726e"></script>
 <script src="gestion-stockage-js/adidy.js?v=cff1cd41"></script>
-<script src="gestion-stockage-js/theme.js?v=87730efe"></script>
+<script src="gestion-stockage-js/theme.js?v=096262fd"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
 
 

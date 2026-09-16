@@ -100,7 +100,7 @@
     if (note) {
       note.textContent = mode === 'auto'
         ? 'Andro manomboka amin\'ny ' + DEBUT_JOUR + ' ora maraina ka hatramin\'ny ' + (FIN_JOUR - 12) + ' ora hariva, alina amin\'ny ora hafa. Miova ho azy.'
-        : 'Akaro mba hanazava, ampidino mba hanamaizina. Hazavana : ' + lireNiveau() + ' %.';
+        : 'Akaro mankany amin\'ny ☀️ ho andro, ampidino mankany amin\'ny 🌙 ho alina (' + lireNiveau() + ' %).';
     }
   }
 
@@ -167,6 +167,49 @@
     });
   }
 
+  // ---------- Luminosité et contraste ----------
+  // Par-dessus les couleurs du thème, dans les deux modes. Le filtre lui-même
+  // est posé par l'en-tête de la page (window.__appliquerFiltre).
+  const CLE_LUM = 'stockmanager_luminosite';
+  const CLE_CON = 'stockmanager_contraste';
+  const curseurLum = document.getElementById('themeLuminosite');
+  const curseurCon = document.getElementById('themeContraste');
+
+  function valeur(cle) {
+    const n = Number(lire(cle));
+    return (lire(cle) !== null && isFinite(n)) ? Math.max(50, Math.min(150, n)) : 100;
+  }
+
+  function appliquerFiltre() {
+    const lum = valeur(CLE_LUM);
+    const con = valeur(CLE_CON);
+    if (typeof window.__appliquerFiltre === 'function') window.__appliquerFiltre(lum, con);
+    const vl = document.getElementById('themeLuminositeVal');
+    const vc = document.getElementById('themeContrasteVal');
+    if (vl) vl.textContent = lum + ' %';
+    if (vc) vc.textContent = con + ' %';
+    if (curseurLum && document.activeElement !== curseurLum) curseurLum.value = String(lum);
+    if (curseurCon && document.activeElement !== curseurCon) curseurCon.value = String(con);
+  }
+
+  [[curseurLum, CLE_LUM], [curseurCon, CLE_CON]].forEach(function (paire) {
+    if (!paire[0]) return;
+    paire[0].addEventListener('input', function () {
+      ecrire(paire[1], paire[0].value);
+      appliquerFiltre();
+    });
+  });
+
+  const reinitialiser = document.getElementById('themeReinitialiser');
+  if (reinitialiser) {
+    reinitialiser.addEventListener('click', function () {
+      try { localStorage.removeItem(CLE_LUM); localStorage.removeItem(CLE_CON); } catch (e) {}
+      if (curseurLum) curseurLum.blur();
+      if (curseurCon) curseurCon.blur();
+      appliquerFiltre();
+    });
+  }
+
   document.addEventListener('click', function (e) {
     if (panneau.style.display !== 'block') return;
     if (panneau.contains(e.target) || bouton.contains(e.target)) return;
@@ -183,4 +226,5 @@
   setInterval(function () { if (lireMode() === 'auto') appliquer(); }, 60 * 1000);
 
   appliquer();
+  appliquerFiltre();
 })();
