@@ -247,23 +247,42 @@
      fil, et non à la place du fil. On les tire par les coins comme le menu ;
      on ne les déplace pas : elles s'ouvrent déjà entre les deux barres, là où
      l'œil les cherche. */
+  /* Habillées comme l'écran d'un téléphone « edge » : de grands coins ronds,
+     et des bords qui semblent se courber vers l'arrière — une ombre qui
+     fonce vers les côtés, un filet de lumière sur l'arête.
+     Les ombres sont « inset » : elles restent au bord de la fenêtre pendant
+     que le contenu défile, et passent sous lui. La marge intérieure s'élargit
+     d'autant, pour que rien ne se loge dans la courbe. */
   .section.fenetre-page.active,
   .dash-view.fenetre-page.active{
     position: fixed;
     z-index: 95;
     background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: 12px;
-    box-shadow: 0 18px 48px rgba(0,0,0,0.55);
-    padding: 0.9rem 1rem;
+    border-radius: 28px;
+    box-shadow:
+      inset 14px 0 18px -14px rgba(0,0,0,0.45),
+      inset -14px 0 18px -14px rgba(0,0,0,0.45),
+      inset 1px 0 0 rgba(255,255,255,0.07),
+      inset -1px 0 0 rgba(255,255,255,0.07),
+      0 18px 48px rgba(0,0,0,0.55);
+    padding: 1rem 1.3rem;
     overflow-y: auto;
   }
+  /* Les poignées d'une page épousent ses coins : plus grandes, et arrondies
+     comme eux. Celles des panneaux du menu gardent leur petite équerre. */
+  .poignees:has(.poignee-deplacer) .poignee{ width:26px; height:26px; }
+  .poignees:has(.poignee-deplacer) .poignee.hg{ border-radius:28px 0 0 0; }
+  .poignees:has(.poignee-deplacer) .poignee.hd{ border-radius:0 28px 0 0; }
+  .poignees:has(.poignee-deplacer) .poignee.bg{ border-radius:0 0 0 28px; }
+  .poignees:has(.poignee-deplacer) .poignee.bd{ border-radius:0 0 28px 0; }
   /* Le ruban par lequel on prend la fenêtre pour la poser ailleurs. Il court
      entre le coin haut-gauche et la croix, et porte un trait au milieu : sans
      lui, rien ne dirait qu'on peut saisir là. */
   .poignee-deplacer{
     position: absolute;
-    top: 0; left: 18px; right: 40px;
+    /* Entre les deux coins arrondis, qui prennent plus de place qu'avant. */
+    top: 0; left: 30px; right: 48px;
     height: 22px;
     pointer-events: auto;
     touch-action: none;
@@ -286,7 +305,8 @@
      fenêtre : à l'intérieur, elle défilerait avec la page et disparaîtrait
      dès qu'on descend d'une ligne. */
   .fenetre-fermer{
-    position: absolute; top: 7px; right: 7px;
+    /* Rentrée dans la courbe du coin : collée au bord, elle en débordait. */
+    position: absolute; top: 12px; right: 14px;
     width: 26px; height: 26px; line-height: 24px;
     border-radius: 999px;
     border: 1px solid var(--line);
