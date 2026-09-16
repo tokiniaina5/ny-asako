@@ -4641,17 +4641,22 @@
   // let : rafraichirVue peut tourner avant que cette ligne ne soit lue.
   var ongletCommun = 'tableau';
   function choisirOngletCommun(nom){
-    ongletCommun = nom === 'pieces' ? 'pieces' : 'tableau';
-    const corps = document.getElementById('communCorps');
-    const pieces = document.getElementById('communPieces');
-    if(corps) corps.style.display = ongletCommun === 'tableau' ? '' : 'none';
-    if(pieces) pieces.style.display = ongletCommun === 'pieces' ? '' : 'none';
+    const PANNEAUX = { tableau: 'communCorps', pieces: 'communPieces', adidy: 'communAdidy' };
+    ongletCommun = PANNEAUX[nom] ? nom : 'tableau';
+    Object.keys(PANNEAUX).forEach(function(cle){
+      const el = document.getElementById(PANNEAUX[cle]);
+      if(el) el.style.display = cle === ongletCommun ? '' : 'none';
+    });
     document.querySelectorAll('#dash-commun [data-commun]').forEach(function(t){
       t.classList.toggle('active', t.dataset.commun === ongletCommun);
     });
-    // Les deux onglets lisent le même registre : on le relit à chaque
-    // ouverture, et les chiffres se dessinent une fois l'onglet visible.
-    if(typeof renderPiecesIdentite === 'function') renderPiecesIdentite();
+    // On relit à chaque ouverture : les chiffres se dessinent une fois
+    // l'onglet visible, et les adidy suivent les personnes du registre.
+    if(ongletCommun === 'adidy'){
+      if(typeof renderAdidy === 'function') renderAdidy();
+    } else if(typeof renderPiecesIdentite === 'function'){
+      renderPiecesIdentite();
+    }
   }
 
   function rafraichirVue(nom){
