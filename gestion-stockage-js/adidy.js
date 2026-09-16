@@ -325,7 +325,8 @@
     const client = sb();
     const email = monEmail();
     if (!client || !email) { tous = []; return Promise.resolve(); }
-    return client.from('adidy_fandoavana').select('vola,daty').eq('owner_email', email)
+    // Tout le versement, et non ses seuls chiffres : l'historique en vit.
+    return client.from('adidy_fandoavana').select('*').eq('owner_email', email)
       .then(function (res) {
         tous = (res.error ? [] : (res.data || []));
       }, function () { tous = []; });
@@ -390,6 +391,86 @@
     return chargerTous().then(afficherTotaux);
   };
 
+  // ---------- L'historique ----------
+  // L'onglet Adidy ne montre qu'une période à la fois ; ici, tout ce qui a
+  // été versé, du plus récent au plus ancien.
+
+  function nomAdidy(id) {
+    const a = adidy.filter(function (x) { return x.id === id; })[0];
+    return a ? a.anarana : '—';
+  }
+
+  function periodeLisible(cle) {
+    const s = String(cle || '');
+    if (/^\d{4}-\d{2}$/.test(s)) {
+      const d = new Date(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, 1);
+      return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    }
+    return s || '—';
+  }
+
+  function afficherHistorique() {
+    const corps = $('histoListe');
+    if (!corps) return;
+    const q = ($('histoRecherche').value || '').trim().toLowerCase();
+    const liste = tous.slice().sort(function (a, b) {
+      return String(b.daty || '') < String(a.daty || '') ? -1 : 1;
+    }).filter(function (v) {
+      if (!q) return true;
+      return [v.anarana, nomAdidy(v.adidy_id), periodeLisible(v.vanim_potoana), v.vanim_potoana]
+        .some(function (t) { return String(t || '').toLowerCase().indexOf(q) >= 0; });
+    });
+
+    corps.innerHTML = liste.map(function (v) {
+      return '<tr>' +
+        '<td style="white-space:nowrap;">' + (v.daty ? new Date(v.daty + 'T00:00:00').toLocaleDateString('fr-FR') : '—') + '</td>' +
+        '<td>' + echapper(v.anarana) + '</td>' +
+        '<td>' + echapper(nomAdidy(v.adidy_id)) + '</td>' +
+        '<td style="color:var(--muted); white-space:nowrap;">' + echapper(periodeLisible(v.vanim_potoana)) + '</td>' +
+        '<td style="font-family:var(--font-mono); white-space:nowrap;">' + (v.vola == null ? '—' : ariary(v.vola)) + '</td>' +
+        '<td><button type="button" class="btn btn-red btn-sm" data-histo-fafao="' + echapper(v.id) + '">Fafana</button></td>' +
+      '</tr>';
+    }).join('');
+
+    $('histoVide').style.display = liste.length ? 'none' : '';
+    $('histoVide').textContent = tous.length
+      ? 'Tsy misy mifanaraka amin\'ny fikarohana.'
+      : 'Mbola tsy misy fandoavana voasoratra.';
+    const somme = liste.reduce(function (s, v) { return s + Number(v.vola || 0); }, 0);
+    $('histoRecap').textContent = liste.length
+      ? liste.length + ' fandoavana · ' + ariary(somme)
+      : '';
+  }
+
+  function supprimerVersement(id) {
+    const client = sb();
+    const v = tous.filter(function (x) { return x.id === id; })[0];
+    if (!client || !v) return;
+    if (!window.confirm('Fafana ve ny fandoavan\'i ' + v.anarana + ' (' + periodeLisible(v.vanim_potoana) + ') ?')) return;
+    client.from('adidy_fandoavana').delete().eq('id', id).then(function (res) {
+      if (res.error) { dire('histoMessage', expliquer(res), true); return; }
+      dire('histoMessage', 'Voafafa.');
+      chargerTous().then(function () {
+        afficherTotaux();
+        afficherHistorique();
+        // La période ouverte dans l'onglet Adidy vient peut-être de changer.
+        chargerVersements();
+      });
+    }, function () {
+      dire('histoMessage', 'Tsy tratra ny serveur : jereo ny réseau.', true);
+    });
+  }
+
+  window.renderHistorique = function () {
+    dire('histoMessage', '');
+    // Les noms des cotisations viennent de la table adidy : sans elle, la
+    // colonne « Adidy » ne dirait qu'un identifiant.
+    return Promise.all([chargerAdidy(), chargerTous()]).then(function () {
+      afficherTotaux();
+      afficherHistorique();
+    });
+  };
+
   // ---------- Les boutons ----------
 
   $('adidyAjouter').addEventListener('click', enregistrerAdidy);
@@ -406,6 +487,11 @@
   $('adidyOlonaListe').addEventListener('change', function (e) {
     const case_ = e.target.closest('input[data-olona]');
     if (case_) basculer(case_.dataset.olona, case_.checked);
+  });
+  $('histoRecherche').addEventListener('input', afficherHistorique);
+  $('histoListe').addEventListener('click', function (e) {
+    const fafao = e.target.closest('[data-histo-fafao]');
+    if (fafao) supprimerVersement(fafao.dataset.histoFafao);
   });
 
   // Appelée par common.js quand l'onglet s'ouvre.

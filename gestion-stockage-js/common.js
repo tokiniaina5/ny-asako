@@ -4641,7 +4641,10 @@
   // let : rafraichirVue peut tourner avant que cette ligne ne soit lue.
   var ongletCommun = 'tableau';
   function choisirOngletCommun(nom){
-    const PANNEAUX = { tableau: 'communCorps', pieces: 'communPieces', adidy: 'communAdidy' };
+    const PANNEAUX = {
+      tableau: 'communCorps', pieces: 'communPieces',
+      adidy: 'communAdidy', historique: 'communHistorique'
+    };
     ongletCommun = PANNEAUX[nom] ? nom : 'tableau';
     Object.keys(PANNEAUX).forEach(function(cle){
       const el = document.getElementById(PANNEAUX[cle]);
@@ -4654,6 +4657,8 @@
     // l'onglet visible, et les adidy suivent les personnes du registre.
     if(ongletCommun === 'adidy'){
       if(typeof renderAdidy === 'function') renderAdidy();
+    } else if(ongletCommun === 'historique'){
+      if(typeof renderHistorique === 'function') renderHistorique();
     } else if(typeof renderPiecesIdentite === 'function'){
       renderPiecesIdentite();
     }
