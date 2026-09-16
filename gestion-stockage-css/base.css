@@ -303,28 +303,18 @@
     transform: scale(1.06);
   }
 
-  /* La rangée du bas est faite pour le pouce : elle ne paraît que sur un
-     écran de téléphone. Au large, elle barrait tout le bas de l'écran pour
-     des icônes que le hamburger ouvre déjà — Botika, Écrire, Articles,
-     Notifications et chaque page sont dans son menu. Les fenêtres des pages
-     prennent alors toute la hauteur (bandeBasse, common.js).
+  /* La rangée du bas vaut partout, téléphone comme ordinateur. Cachée au
+     large, elle obligeait à rouvrir le menu pour chaque page déjà épinglée :
+     les icônes qu'on retrouvait d'un geste sur le téléphone étaient à trois
+     clics sur l'écran le plus grand.
 
-     Le champ de recherche du menu est partout : au large aussi, taper deux
-     lettres trouve une page plus vite que de parcourir la liste. */
+     Le champ de recherche du menu est partout : taper deux lettres trouve une
+     page plus vite que de parcourir la liste. */
 
-  /* Une seule porte pour le menu à la fois. Sur un téléphone, c'est le ☰ du
-     bord gauche de la rangée du bas : il tient sous le pouce, au lieu de
-     flotter par-dessus la page, et le menu s'ouvre au-dessus de la rangée.
-     Au large, la rangée est cachée, et le hamburger flottant reprend sa place
-     — sans lui, un ordinateur n'aurait plus aucun moyen d'ouvrir le menu. */
+  /* Une seule porte pour le menu à la fois : le ☰ du bord gauche de la
+     rangée. Le hamburger flottant, qui la remplaçait au large, ferait
+     maintenant double emploi. */
   #menuFlottant{ display:none; }
-  /* 768 pixels : une tablette debout en fait 768 ou 810. C'est la largeur qui
-     décide, pas l'appareil. */
-  @media (min-width: 768px){
-    /* Ni la rangée, ni le petit panneau de ses réglages qu'elle seule ouvre. */
-    #stockMainTabs.dash-tabs-main, #barReglages{ display:none !important; }
-    #menuFlottant{ display:flex; }
-  }
 
   /* Le champ de recherche du menu : il tient la première ligne, là où le
      pouce arrive après avoir touché la loupe. */
