@@ -55,16 +55,19 @@ create policy "taratasy ecriture proprietaire"
   on public.taratasy for insert to authenticated
   with check (lower(owner_email) = lower(auth.jwt() ->> 'email'));
 
+-- Le départ ne se retouche pas. Une fois écrit, il ne se modifie ni ne
+-- s'efface — pas même depuis la console : c'est la base qui refuse, et non
+-- l'écran. Un constat qu'on peut réécrire ne constate plus rien.
 drop policy if exists "taratasy modification proprietaire" on public.taratasy;
 create policy "taratasy modification proprietaire"
   on public.taratasy for update to authenticated
-  using (lower(owner_email) = lower(auth.jwt() ->> 'email'))
-  with check (lower(owner_email) = lower(auth.jwt() ->> 'email'));
+  using (lower(owner_email) = lower(auth.jwt() ->> 'email') and karazana <> 'fifindramonina')
+  with check (lower(owner_email) = lower(auth.jwt() ->> 'email') and karazana <> 'fifindramonina');
 
 drop policy if exists "taratasy suppression proprietaire" on public.taratasy;
 create policy "taratasy suppression proprietaire"
   on public.taratasy for delete to authenticated
-  using (lower(owner_email) = lower(auth.jwt() ->> 'email'));
+  using (lower(owner_email) = lower(auth.jwt() ->> 'email') and karazana <> 'fifindramonina');
 
 -- ---------- Vérification ----------
 select table_name

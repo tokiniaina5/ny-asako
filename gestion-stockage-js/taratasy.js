@@ -132,18 +132,43 @@
 
   // ---------- Le papier ----------
 
-  function laharanaSuivant() {
-    const annee = new Date().getFullYear();
-    const dejaCetteAnnee = taratasy.filter(function (t) {
-      return String(t.daty || '').slice(0, 4) === String(annee);
-    }).length;
-    return 'TAR-' + annee + '-' + String(dejaCetteAnnee + 1).padStart(3, '0');
+  // Le numéro repart à 1 chaque mois : « 001/09-2026 ». Compté sur le plus
+  // grand numéro déjà donné ce mois-là, et non sur le nombre de papiers —
+  // un papier effacé ne doit pas rendre son numéro à un autre.
+  function laharanaSuivant(daty) {
+    const jour = String(daty || $('tarDaty').value || aujourdhui()).slice(0, 10);
+    const annee = jour.slice(0, 4);
+    const mois = jour.slice(5, 7);
+    let plusGrand = 0;
+    taratasy.forEach(function (t) {
+      if (String(t.daty || '').slice(0, 7) !== annee + '-' + mois) return;
+      const m = String(t.laharana || '').match(/^(\d+)\//);
+      if (m && Number(m[1]) > plusGrand) plusGrand = Number(m[1]);
+    });
+    return String(plusGrand + 1).padStart(3, '0') + '/' + mois + '-' + annee;
+  }
+
+  // Le numéro se pose tout seul. Il reste modifiable : on ne réécrit que
+  // celui qu'on avait posé, jamais celui qu'on a corrigé à la main.
+  let laharanaPose = '';
+  function poserLaharana() {
+    const champ = $('tarLaharana');
+    // Le départ garde son propre numéro, celui du registre du fokontany : il
+    // ne suit pas la file des certificats de résidence.
+    if (karazanaChoisie() === 'fifindramonina') {
+      if (champ.value && champ.value === laharanaPose) champ.value = '';
+      laharanaPose = '';
+      return;
+    }
+    if (champ.value && champ.value !== laharanaPose) return;
+    laharanaPose = laharanaSuivant();
+    champ.value = laharanaPose;
   }
 
   function lireFormulaire() {
     return {
       karazana: karazanaChoisie(),
-      laharana: $('tarLaharana').value.trim() || laharanaSuivant(),
+      laharana: $('tarLaharana').value.trim() || laharanaSuivant($('tarDaty').value),
       anarana: $('tarAnarana').value.trim(),
       laharana_cin: $('tarCin').value.trim() || null,
       teraka_daty: $('tarTerakaDaty').value || null,
@@ -257,7 +282,11 @@
       dire(client ? 'Midira aloha.' : 'Tsy azo ampiasaina eto ity pejy ity.', true);
       return Promise.resolve();
     }
-    return client.from('taratasy').select('*').eq('owner_email', email).order('daty', { ascending: false })
+    // Seuls les certificats de résidence se listent. Les départs sont
+    // archivés : ils ne s'ouvrent que par leur numéro et le nom.
+    return client.from('taratasy').select('*')
+      .eq('owner_email', email).eq('karazana', 'fonenana')
+      .order('daty', { ascending: false })
       .then(function (res) {
         if (res.error) { dire(expliquer(res), true); return; }
         taratasy = res.data || [];
@@ -286,7 +315,7 @@
       '</tr>';
     }).join('');
     $('tarVide').style.display = taratasy.length ? 'none' : '';
-    if (!$('tarLaharana').value) $('tarLaharana').placeholder = laharanaSuivant();
+    poserLaharana();
     direValidite();
   }
 
@@ -305,6 +334,8 @@
       .forEach(function (id) { $(id).value = ''; });
     $('tarOlona').value = '';
     $('tarDaty').value = aujourdhui();
+    // Le numéro du papier suivant, et non celui qu'on vient de donner.
+    laharanaPose = '';
     afficher();
   }
 
@@ -316,6 +347,10 @@
     if (!t.anarana) { dire('Soraty ny anaran\'ilay olona.', true); return; }
     if (t.karazana === 'fifindramonina') {
       if (!t.fonenana_taloha || !t.fonenana_vaovao) { dire('Soraty ny fonenana taloha sy ny vaovao.', true); return; }
+      if (!$('tarLaharana').value.trim()) { dire('Soraty ny laharan\'ny taratasy : tsy atao ho azy izy eto.', true); return; }
+      // Il ne se reprend pas : on le dit avant, pas après.
+      if (!window.confirm('Rehefa voatahiry dia tsy azo ovaina na fafana intsony ity taratasy fifindra-monina ity.\n\nLaharana : ' +
+        t.laharana + '\nAnarana : ' + t.anarana + '\n\nTohizana ?')) return;
     } else if (!t.fonenana) {
       dire('Soraty ny fonenana.', true); return;
     }
@@ -326,7 +361,9 @@
       // Le PDF part du formulaire et non de la ligne relue : la personne
       // l'attend maintenant, et non après un aller-retour au serveur.
       fabriquerPdf(t);
-      dire('Vita ny taratasy, ary voatahiry.');
+      dire(t.karazana === 'fifindramonina'
+        ? 'Voatahiry sy voahidy. Ny laharana « ' + t.laharana + ' » sy ny anarana no manokatra azy indray.'
+        : 'Vita ny taratasy, ary voatahiry.');
       vider();
       charger();
     }, function () {
@@ -350,8 +387,9 @@
 
   // ---------- Les boutons ----------
 
-  $('tarKarazana').addEventListener('change', function () { ajusterChamps(); direValidite(); });
-  $('tarDaty').addEventListener('change', direValidite);
+  $('tarKarazana').addEventListener('change', function () { ajusterChamps(); direValidite(); poserLaharana(); });
+  // Changer la date peut changer le mois, donc le numéro.
+  $('tarDaty').addEventListener('change', function () { direValidite(); poserLaharana(); });
   $('tarOlona').addEventListener('change', prendreLaPersonne);
   $('tarVokatra').addEventListener('click', delivrer);
   $('tarListe').addEventListener('click', function (e) {
@@ -365,7 +403,70 @@
     }
   });
 
+  // ---------- L'archive des départs ----------
+  // Un départ ne se feuillette pas : il s'ouvre, et seulement pour qui sait
+  // déjà de quel papier il parle — son numéro et le nom qui y figure.
+
+  let ouvert = null;
+
+  function direArchive(texte, erreur) {
+    const el = $('tarArchiveMessage');
+    el.textContent = texte || '';
+    el.style.color = erreur ? 'var(--red)' : 'var(--cyan)';
+  }
+
+  function montrerLouvert() {
+    const boite = $('tarArchiveResultat');
+    if (!ouvert) { boite.style.display = 'none'; boite.innerHTML = ''; return; }
+    boite.style.display = '';
+    boite.innerHTML =
+      '<div style="border:1px solid var(--line); border-radius:10px; padding:0.8rem 0.9rem; font-size:0.82rem; line-height:1.7;">' +
+        '<div><strong>' + echapper(ouvert.anarana) + '</strong> · <span style="font-family:var(--font-mono);">' + echapper(ouvert.laharana || '—') + '</span></div>' +
+        '<div style="color:var(--muted);">Daty : ' + dateFr(ouvert.daty) + '</div>' +
+        '<div>Avy tao : ' + echapper(ouvert.fonenana_taloha || '—') + '</div>' +
+        '<div>Ho ao : ' + echapper(ouvert.fonenana_vaovao || '—') + '</div>' +
+        (ouvert.laharana_cin ? '<div style="color:var(--muted);">CIN : ' + echapper(ouvert.laharana_cin) + '</div>' : '') +
+        '<button type="button" class="btn btn-sm" id="tarArchivePdf" style="width:auto; margin-top:0.6rem;">📄 PDF</button>' +
+      '</div>';
+    $('tarArchivePdf').addEventListener('click', function () { fabriquerPdf(ouvert); });
+  }
+
+  function ouvrirArchive() {
+    const client = sb();
+    const email = monEmail();
+    const laharana = $('tarArchiveLaharana').value.trim();
+    const anarana = $('tarArchiveAnarana').value.trim();
+    ouvert = null;
+    montrerLouvert();
+    if (!client || !email) { direArchive('Midira aloha.', true); return; }
+    if (!laharana || !anarana) { direArchive('Soraty ny laharana SY ny anarana.', true); return; }
+    direArchive('Mikaroka…');
+    // Les deux ensemble, et l'un ne suffit pas : c'est ce qui tient l'archive
+    // fermée à qui la feuilletterait.
+    client.from('taratasy').select('*')
+      .eq('owner_email', email).eq('karazana', 'fifindramonina')
+      .eq('laharana', laharana).ilike('anarana', anarana)
+      .then(function (res) {
+        if (res.error) { direArchive(expliquer(res), true); return; }
+        const trouve = (res.data || [])[0];
+        if (!trouve) {
+          direArchive('Tsy misy taratasy mifanaraka amin\'io laharana sy io anarana io.', true);
+          return;
+        }
+        ouvert = trouve;
+        direArchive('Hita ilay taratasy.');
+        montrerLouvert();
+      }, function () {
+        direArchive('Tsy tratra ny serveur : jereo ny réseau.', true);
+      });
+  }
+
+  $('tarArchiveSokafy').addEventListener('click', ouvrirArchive);
+
   window.renderTaratasy = function () {
+    direArchive('');
+    ouvert = null;
+    montrerLouvert();
     dire('');
     ajusterChamps();
     if (!$('tarDaty').value) $('tarDaty').value = aujourdhui();
