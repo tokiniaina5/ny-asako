@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="df72bfa7">
+<meta name="ny-asako-version" content="fbd0aac1">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -777,7 +777,10 @@
 
             <div class="panel">
               <h3>📇 Pièces enregistrées</h3>
-              <input type="search" id="pieceRecherche" placeholder="🔍 Rechercher un nom ou un numéro..." autocomplete="off" style="width:100%; margin-bottom:0.8rem; box-sizing:border-box;">
+              <div class="field">
+                <label for="pieceRecherche">Fikarohana</label>
+                <input type="search" id="pieceRecherche" placeholder="Anarana na laharana..." autocomplete="off">
+              </div>
               <div class="table-scroll">
                 <table>
                   <thead>
@@ -872,7 +875,12 @@
           <div id="communHistorique" style="display:none;">
             <div class="panel">
               <h3>📜 Historique des fandoavana</h3>
-              <input type="search" id="histoRecherche" placeholder="🔍 Rechercher un nom, une cotisation, une période..." autocomplete="off" style="width:100%; margin-bottom:0.8rem; box-sizing:border-box;">
+              <!-- Dans un .field : hors de lui, le navigateur dessine le champ
+                   en clair au milieu du fond sombre. -->
+              <div class="field">
+                <label for="histoRecherche">Fikarohana</label>
+                <input type="search" id="histoRecherche" placeholder="Anarana, adidy, vanim-potoana..." autocomplete="off">
+              </div>
               <p id="histoRecap" style="font-size:0.8rem; color:var(--cyan); margin:0 0 0.6rem; min-height:1.1em;"></p>
               <p id="histoMessage" style="font-size:0.78rem; margin:0 0 0.6rem; min-height:1.1em;"></p>
 
