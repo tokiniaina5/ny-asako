@@ -24,24 +24,24 @@
     try { localStorage.removeItem(CLE); } catch (e) {}
   }
 
+  // Tant que personne n'a choisi d'image, c'est le logo qui habille le fond :
+  // un écran uni ne disait pas dans quelle application on se trouvait.
+  const LOGO = '/icone-512.png';
+  // Le logo ne se recadre pas comme une photo : étiré en « cover », il devient
+  // un « N » géant et flou. Il reste au milieu, à une taille qui se lit sans
+  // gêner les fenêtres posées par-dessus.
+  const TAILLE_LOGO = 'min(55vmin, 420px)';
+
   // « cover » et non « contain » : l'image remplit l'écran et se recadre, au
   // lieu de laisser deux bandes vides sur les côtés. « fixed » pour qu'elle
   // reste en place pendant qu'on descend dans le fil.
   function appliquer(url) {
     const b = document.body;
-    if (url) {
-      b.style.backgroundImage = 'url("' + url + '")';
-      b.style.backgroundSize = 'cover';
-      b.style.backgroundPosition = 'center';
-      b.style.backgroundRepeat = 'no-repeat';
-      b.style.backgroundAttachment = 'fixed';
-    } else {
-      b.style.backgroundImage = '';
-      b.style.backgroundSize = '';
-      b.style.backgroundPosition = '';
-      b.style.backgroundRepeat = '';
-      b.style.backgroundAttachment = '';
-    }
+    b.style.backgroundImage = 'url("' + (url || LOGO) + '")';
+    b.style.backgroundSize = url ? 'cover' : TAILLE_LOGO;
+    b.style.backgroundPosition = 'center';
+    b.style.backgroundRepeat = 'no-repeat';
+    b.style.backgroundAttachment = 'fixed';
   }
 
   // Le fond est posé avant tout le reste : on ne veut pas voir l'application
@@ -84,11 +84,15 @@
     function montrer() {
       const url = lire();
       if (apercu) {
-        apercu.style.backgroundImage = url ? 'url("' + url + '")' : '';
+        // L'aperçu montre ce qu'on verra : le logo quand rien n'est choisi.
+        apercu.style.backgroundImage = 'url("' + (url || LOGO) + '")';
+        apercu.style.backgroundSize = url ? 'cover' : 'contain';
         apercu.classList.toggle('vide', !url);
       }
       retirer.disabled = !url;
-      dire(url ? 'Une image habille le fond.' : 'Aucune image : le fond reste uni.');
+      dire(url
+        ? 'Une image habille le fond.'
+        : 'Aucune image choisie : le logo Ny asako habille le fond.');
     }
     montrer();
 

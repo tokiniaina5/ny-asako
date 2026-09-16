@@ -151,7 +151,9 @@
     background-position: center;
     background-repeat: no-repeat;
   }
-  .fond-apercu.vide{ background: var(--bg); }
+  /* Vide, il montre le logo : la couleur seule, sans effacer l'image que
+     fond.js y pose. */
+  .fond-apercu.vide{ background-color: var(--bg); }
   /* .btn-primary prend toute la largeur partout ailleurs — c'est voulu pour
      un bouton seul, au bas d'un formulaire. Ces deux-là vont par paire : le
      premier chassait le second sur la ligne suivante. */
