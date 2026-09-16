@@ -16,7 +16,6 @@
   function $(id) { return document.getElementById(id); }
 
   const CLE = 'stockmanager_commun_code';
-  const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
   let fangatahana = [];
   let alalana = [];
@@ -71,6 +70,7 @@
   function montrer(ouverte) {
     $('communContenu').style.display = ouverte ? '' : 'none';
     $('communPorte').style.display = ouverte ? 'none' : '';
+    if (ouverte) $('porteJereo').style.display = 'none';
     const onglet = $('ongletFangatahana');
     if (onglet) onglet.style.display = jeSuisLeProprietaire() ? '' : 'none';
   }
@@ -81,7 +81,7 @@
     const client = sb();
     const email = monEmail();
     if (!client || !email) return Promise.resolve(null);
-    return client.from('commun_alalana').select('code,active').ilike('email', email)
+    return client.from('commun_alalana').select('code,active,voamarina,nampiasaina_at').ilike('email', email)
       .then(function (res) {
         if (res.error) { dire('porteMessage', expliquer(res), true); return null; }
         return (res.data || [])[0] || null;
@@ -100,10 +100,18 @@
     }
     return maLigne().then(function (ligne) {
       const garde = codeGarde();
-      const ok = !!(ligne && ligne.active && garde && String(ligne.code).trim().toUpperCase() === garde);
+      const codeMety = !!(ligne && ligne.active && garde && String(ligne.code).trim().toUpperCase() === garde);
+      // Le code juste ne suffit pas : le propriétaire doit encore dire oui.
+      const ok = codeMety && !!ligne.voamarina;
       montrer(ok);
       if (!ok) {
-        if (ligne && ligne.active && !garde) {
+        if (codeMety) {
+          dire('porteMessage', 'Voaray ny code. Nampandrenesina ny tompon\'ny site : misokatra ny pejy rehefa nohamafisiny.');
+          $('porteJereo').style.display = '';
+          // Une seule fois par ouverture de page : sa boîte ne doit pas se
+          // remplir parce qu'on a rouvert l'onglet trois fois.
+          if (!signalEnvoye) { signalEnvoye = true; signaler(garde); }
+        } else if (ligne && ligne.active && !garde) {
           dire('porteMessage', 'Efa nomena alalana ianao : soraty eto ambany ny code nomen\'ny tompon\'ny site.');
         } else if (ligne && !ligne.active) {
           dire('porteMessage', 'Nesorina ny alalanao. Mangataha indray raha ilaina.', true);
@@ -112,6 +120,19 @@
       }
       return ok;
     });
+  }
+
+  // Prévenir le propriétaire que le code vient d'être saisi. Le navigateur
+  // n'écrit pas lui-même dans la table des accès : c'est la fonction qui
+  // marque l'heure et envoie le message.
+  let signalEnvoye = false;
+  function signaler(code) {
+    const client = sb();
+    if (!client || !client.functions || !client.functions.invoke) return Promise.resolve();
+    let appareil = '';
+    try { appareil = String(navigator.userAgent || '').slice(0, 160); } catch (e) {}
+    return client.functions.invoke('commun-fiditra', { body: { code: code, appareil: appareil } })
+      .then(function () {}, function () {});
   }
 
   function montrerMonStatut() {
@@ -175,23 +196,29 @@
       }
       garderLeCode(tape);
       $('porteCode').value = '';
-      dire('porteMessage', '');
-      montrer(true);
-      // La vue ouverte doit se remplir : elle était cachée quand on l'a dressée.
-      if (typeof choisirOngletCommun === 'function') choisirOngletCommun('tableau');
+      // La suite est l'affaire de verifier() : il préviendra le propriétaire
+      // si la confirmation manque, et n'ouvrira que si elle est là.
+      verifier().then(function (ouverte) {
+        if (!ouverte) return;
+        dire('porteMessage', '');
+        // La vue ouverte doit se remplir : elle était cachée quand on l'a dressée.
+        if (typeof choisirOngletCommun === 'function') choisirOngletCommun('tableau');
+      });
     });
   }
 
   $('porteMangataka').addEventListener('click', mangataka);
   $('porteSokafy').addEventListener('click', sokafana);
+  // Confirmée entre-temps : on regarde à nouveau plutôt que de recharger.
+  $('porteJereo').addEventListener('click', function () {
+    dire('porteMessage', 'Fanamarinana…');
+    verifier().then(function (ouverte) {
+      if (ouverte && typeof choisirOngletCommun === 'function') choisirOngletCommun('tableau');
+      else dire('porteMessage', 'Mbola tsy nohamafisin\'ny tompon\'ny site.');
+    });
+  });
 
   // ---------- Le côté du propriétaire ----------
-
-  function nouveauCode() {
-    const octets = new Uint8Array(8);
-    crypto.getRandomValues(octets);
-    return Array.from(octets).map(function (b) { return ALPHABET[b % ALPHABET.length]; }).join('');
-  }
 
   function chargerAdmin() {
     const client = sb();
@@ -231,11 +258,23 @@
     $('admFangatahanaVide').style.display = fangatahana.length ? 'none' : '';
 
     $('admAlalanaListe').innerHTML = alalana.map(function (a) {
+      const miandry = !!a.nampiasaina_at && !a.voamarina;
+      const etat = !a.active
+        ? 'Nesorina'
+        : (a.voamarina
+          ? 'Misokatra'
+          : (miandry
+            ? '<span style="color:var(--amber);">Nosoratana ny code ' + dateFr(a.nampiasaina_at) + ' — miandry anao</span>'
+            : '<span style="color:var(--muted);">Mbola tsy nosoratana ny code</span>'));
       return '<tr>' +
-        '<td>' + echapper(a.anarana || '—') + '<div style="color:var(--muted); font-size:0.75rem;">' + echapper(a.email) + '</div></td>' +
+        '<td>' + echapper(a.anarana || '—') + '<div style="color:var(--muted); font-size:0.75rem;">' + echapper(a.email) + '</div>' +
+          (a.appareil ? '<div style="color:var(--muted); font-size:0.7rem;">' + echapper(String(a.appareil).slice(0, 60)) + '</div>' : '') + '</td>' +
         '<td style="font-family:var(--font-mono); font-size:1rem; letter-spacing:0.12em;">' + echapper(a.code) + '</td>' +
-        '<td>' + (a.active ? 'Misokatra' : 'Nesorina') + '</td>' +
+        '<td>' + etat + '</td>' +
         '<td style="white-space:nowrap;">' +
+          (a.active && !a.voamarina
+            ? '<button type="button" class="btn btn-primary btn-sm" data-hamafiso="' + echapper(a.id) + '">✅ Hamafiso</button> '
+            : '') +
           '<button type="button" class="btn btn-sm" data-code-vaovao="' + echapper(a.id) + '">Code vaovao</button> ' +
           (a.active
             ? '<button type="button" class="btn btn-red btn-sm" data-esory="' + echapper(a.id) + '">Esorina</button>'
@@ -246,31 +285,40 @@
     $('admAlalanaVide').style.display = alalana.length ? 'none' : '';
   }
 
-  function accorder(id) {
+  // Le code n'est pas écrit d'ici : la fonction « commun-code » le tire, le
+  // pose comme accès, et l'envoie par email avec un lien qui ouvre la page.
+  // Le navigateur n'a pas le droit d'écrire dans la table des accès — c'est
+  // ce qui empêche quiconque de s'en accorder un.
+  function demanderUnCode(email, anarana, quoi) {
     const client = sb();
-    const f = fangatahana.filter(function (x) { return x.id === id; })[0];
-    if (!client || !f) return;
-    const code = nouveauCode();
-    const email = String(f.email).trim().toLowerCase();
-    const dejaLa = alalana.filter(function (a) { return String(a.email).toLowerCase() === email; })[0];
-    dire('admMessage', 'Mamorona code…');
-
-    const pose = dejaLa
-      ? client.from('commun_alalana').update({ code: code, active: true, anarana: f.anarana || null, updated_at: new Date().toISOString() }).eq('id', dejaLa.id)
-      : client.from('commun_alalana').insert({ email: email, anarana: f.anarana || null, code: code });
-
-    pose.then(function (res) {
-      if (res.error) { dire('admMessage', expliquer(res), true); return; }
-      return client.from('commun_fangatahana').update({ statut: 'ekena', updated_at: new Date().toISOString() }).eq('id', f.id)
-        .then(function () {
-          // Le code s'affiche, il ne s'envoie pas : c'est au propriétaire de
-          // le dire à la personne, de vive voix.
-          dire('admMessage', 'Code ho an\'i ' + (f.anarana || f.email) + ' : ' + code + ' — lazao azy mivantana.');
+    if (!client || !client.functions || !client.functions.invoke) {
+      dire('admMessage', 'Mbola tsy voapetraka ny fonction « commun-code ».', true);
+      return;
+    }
+    dire('admMessage', quoi + '…');
+    client.functions.invoke('commun-code', { body: { email: email, anarana: anarana || null } })
+      .then(function (res) {
+        const data = (res && res.data) || {};
+        if ((res && res.error && !data.code) || !data.code) {
+          dire('admMessage', 'Tsy nety : ' + ((res && res.error && res.error.message) || data.error || 'tsy fantatra'), true);
           chargerAdmin();
-        });
-    }, function () {
-      dire('admMessage', 'Tsy tratra ny serveur : jereo ny réseau.', true);
-    });
+          return;
+        }
+        // Le code revient ici aussi : si le mail n'est pas parti, le
+        // propriétaire peut encore le dire lui-même.
+        dire('admMessage', data.sent
+          ? 'Lasa tamin\'ny ' + email + ' ny mailaka. Code : ' + data.code
+          : 'Tsy lasa ny mailaka (' + (data.error || 'antony tsy fantatra') + '). Code : ' + data.code + ' — lazao azy mivantana.');
+        chargerAdmin();
+      }, function (err) {
+        dire('admMessage', 'Tsy tratra ny fonction : ' + ((err && err.message) || 'réseau'), true);
+      });
+  }
+
+  function accorder(id) {
+    const f = fangatahana.filter(function (x) { return x.id === id; })[0];
+    if (!f) return;
+    demanderUnCode(String(f.email).trim().toLowerCase(), f.anarana, 'Mandefa ny code');
   }
 
   function refuser(id) {
@@ -303,18 +351,67 @@
   });
 
   $('admAlalanaListe').addEventListener('click', function (e) {
+    const hamafiso = e.target.closest('[data-hamafiso]');
+    if (hamafiso) {
+      changerAcces(hamafiso.dataset.hamafiso, { voamarina: true, active: true }, 'Nohamafisina : misokatra aminy izao ny pejy.');
+      return;
+    }
     const vaovao = e.target.closest('[data-code-vaovao]');
     const esory = e.target.closest('[data-esory]');
     const averina = e.target.closest('[data-averina]');
     if (vaovao) {
-      const code = nouveauCode();
-      changerAcces(vaovao.dataset.codeVaovao, { code: code, active: true }, 'Code vaovao : ' + code + ' — lazao azy mivantana.');
+      const a = alalana.filter(function (x) { return x.id === vaovao.dataset.codeVaovao; })[0];
+      if (a) demanderUnCode(String(a.email).trim().toLowerCase(), a.anarana, 'Mandefa code vaovao');
     } else if (esory) {
-      changerAcces(esory.dataset.esory, { active: false }, 'Nesorina ny alalana.');
+      // Retirer, c'est aussi défaire la confirmation : un accès rendu plus
+      // tard devra être confirmé à nouveau.
+      changerAcces(esory.dataset.esory, { active: false, voamarina: false }, 'Nesorina ny alalana.');
     } else if (averina) {
       changerAcces(averina.dataset.averina, { active: true }, 'Naverina ny alalana.');
     }
   });
+
+  // ---------- Le lien reçu par email ----------
+  // « ?commun=<code> » : la personne a cliqué dans son message. On garde le
+  // code et on ouvre la page — elle n'a rien à recopier. L'adresse est
+  // nettoyée aussitôt : un code qui reste dans la barre se recopie par-dessus
+  // l'épaule, et se retrouve dans l'historique.
+  (function () {
+    let params;
+    try { params = new URLSearchParams(window.location.search); } catch (e) { return; }
+    const code = String(params.get('commun') || '').trim().toUpperCase();
+    if (!code) return;
+
+    garderLeCode(code);
+    params.delete('commun');
+    const reste = params.toString();
+    try { history.replaceState(null, '', window.location.pathname + (reste ? '?' + reste : '')); } catch (e) {}
+
+    // L'application n'est pas encore ouverte au chargement : elle attend la
+    // session, parfois l'écran de connexion. On rappelle, puis on renonce.
+    function ouvrirQuandPret(reste) {
+      const ecran = document.getElementById('appScreen');
+      if (ecran && getComputedStyle(ecran).display !== 'none' && typeof ouvrirDepuisLeMenu === 'function') {
+        ouvrirDepuisLeMenu('commun');
+        return;
+      }
+      if (reste > 0) setTimeout(function () { ouvrirQuandPret(reste - 1); }, 1000);
+    }
+    setTimeout(function () { ouvrirQuandPret(20); }, 600);
+  })();
+
+  // La session Supabase arrive parfois après l'ouverture de la page : la
+  // vérification, faite trop tôt, ne voyait aucune ligne et refermait la porte
+  // devant quelqu'un qui avait le droit d'entrer. On la refait dès que la
+  // session est là, si la page est ouverte et qu'un code est gardé ici.
+  try {
+    if (window.__sb && window.__sb.auth && window.__sb.auth.onAuthStateChange) {
+      window.__sb.auth.onAuthStateChange(function () {
+        const vue = document.getElementById('dash-commun');
+        if (vue && vue.classList.contains('active') && codeGarde()) verifier();
+      });
+    }
+  } catch (e) {}
 
   // Appelées par common.js.
   window.renderPorteCommun = verifier;

@@ -110,3 +110,18 @@ from information_schema.tables
 where table_schema = 'public'
   and table_name in ('commun_fangatahana', 'commun_alalana')
 order by table_name;
+
+-- ============================================================
+-- Deuxième temps : le code saisi se confirme
+--
+-- Le code accordé ne suffit plus à entrer. Quand la personne le saisit, la
+-- ligne le retient (nampiasaina_at) et le propriétaire en est averti ; la
+-- page ne s'ouvre vraiment qu'une fois qu'il a confirmé (voamarina).
+--
+-- Un code lu par-dessus l'épaule, ou reçu dans une boîte ouverte par un
+-- autre, n'ouvre donc rien tout seul.
+-- ============================================================
+
+alter table public.commun_alalana add column if not exists nampiasaina_at timestamptz;
+alter table public.commun_alalana add column if not exists voamarina boolean not null default false;
+alter table public.commun_alalana add column if not exists appareil text;
