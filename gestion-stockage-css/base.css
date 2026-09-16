@@ -311,10 +311,10 @@
      Le champ de recherche du menu est partout : taper deux lettres trouve une
      page plus vite que de parcourir la liste. */
 
-  /* Une seule porte pour le menu à la fois : le ☰ du bord gauche de la
-     rangée. Le hamburger flottant, qui la remplaçait au large, ferait
-     maintenant double emploi. */
-  #menuFlottant{ display:none; }
+  /* Deux portes pour le menu, partout : le ☰ du bord gauche de la rangée, et
+     le hamburger flottant qu'on pose où l'on veut. La rangée s'efface quand
+     on descend dans la page ; le bouton flottant, lui, reste à portée. */
+  #menuFlottant{ display:flex; }
 
   /* Le champ de recherche du menu : il tient la première ligne, là où le
      pouce arrive après avoir touché la loupe. */
