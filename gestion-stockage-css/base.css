@@ -13,6 +13,28 @@
     --font-body: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
+  /* Le mode jour. Tout le site lit ses couleurs dans ces variables : les
+     changer ici suffit à éclairer chaque page. Le mode nuit reste celui
+     d'origine — c'est lui qu'on trouve sans rien avoir choisi.
+     Le cyan, l'ambre et le rouge sont foncés d'un cran : clairs, ils se
+     perdaient sur le blanc. */
+  :root{ color-scheme: dark; }
+  :root[data-theme="jour"]{
+    color-scheme: light;
+    --bg: #eef2f5;
+    --panel: #ffffff;
+    --panel-2: #f3f6f8;
+    --line: #d4dce1;
+    --cyan: #0e858e;
+    --amber: #b0650a;
+    --violet: #555dd0;
+    --red: #c43a3a;
+    --text: #15212b;
+    --muted: #5a6a72;
+  }
+  /* Le texte sombre sur le cyan foncé ne se lisait plus : blanc, en jour. */
+  :root[data-theme="jour"] .btn-primary{ color: #ffffff; }
+
   *{ box-sizing:border-box; margin:0; padding:0; }
   html,body{ background:var(--bg); color:var(--text); font-family:var(--font-body); min-height:100vh; }
   button, input, select{ font-family: inherit; }

@@ -30,8 +30,10 @@
   // sur un écran d'ordinateur donnaient un « N » flou.
   const LOGO = '/fond-logo.svg';
   // Le fond du logo. L'écran entier en prend la couleur : le logo n'est plus
-  // une vignette posée sur du noir, il est l'écran.
-  const COULEUR_LOGO = '#131a20';
+  // une vignette posée sur du noir, il est l'écran. La couleur des panneaux,
+  // lue dans le thème : sombre la nuit, claire le jour — le dessin du logo, lui,
+  // est transparent autour du « N ».
+  const COULEUR_LOGO = 'var(--panel)';
 
   // Une photo : « cover », elle remplit l'écran et se recadre, au lieu de
   // laisser deux bandes vides sur les côtés.

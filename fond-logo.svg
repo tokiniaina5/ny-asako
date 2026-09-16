@@ -3,9 +3,9 @@
        Même dessin que les icônes PNG (outils/icones.mjs) — mêmes couleurs,
        mêmes proportions — mais nette à toute taille : étirée sur un écran
        d'ordinateur, l'icône de 512 pixels devenait floue.
-       Sans coin arrondi : elle couvre l'écran, et un coin rogné laisserait du
-       vide là où elle déborde. -->
-  <rect width="512" height="512" fill="#131a20"/>
+       Sans carré de fond : c'est la page qui en donne la couleur (fond.js),
+       celle du thème — sombre la nuit, claire le jour. -->
+
   <g fill="#4fd8e0">
     <!-- Les deux montants : de 30 % à 41 %, et de 59 % à 70 % ; du haut à 28 %
          au bas à 72 %. -->
