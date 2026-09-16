@@ -124,16 +124,74 @@
         '<td>' + dateFr(p.daty_nahazoana) + '</td>' +
         '<td' + (lany ? ' style="color:var(--red);" title="Lany daty"' : '') + '>' +
           dateFr(p.daty_fahataperana) + (lany ? ' ⚠️' : '') + '</td>' +
+        '<td>' + (p.sary
+          ? '<img data-sary="' + echapper(p.sary) + '" alt="Sarin\'ny karatra" title="Sokafy ny sary" style="width:46px; height:30px; object-fit:cover; border-radius:4px; border:1px solid var(--line); cursor:pointer;">'
+          : '—') + '</td>' +
         '<td style="white-space:nowrap;">' +
           '<button type="button" class="btn btn-sm" data-ovay="' + echapper(p.id) + '">Ovaina</button> ' +
           '<button type="button" class="btn btn-red btn-sm" data-fafao="' + echapper(p.id) + '">Fafana</button>' +
         '</td>' +
       '</tr>';
     }).join('');
+    signerLesSary();
     vide.style.display = liste.length ? 'none' : '';
     vide.textContent = pieces.length
       ? 'Tsy misy mifanaraka amin\'ny fikarohana.'
       : 'Mbola tsy misy CIN na passeport voasoratra.';
+  }
+
+  // ---------- Les photos ----------
+  // Le bucket est fermé : une photo de CIN ne s'ouvre pas avec une simple
+  // adresse. On demande donc une adresse signée, valable dix minutes, et
+  // seulement pour ce qui est affiché.
+  const BUCKET = 'pieces-identite';
+
+  function monId() {
+    const client = sb();
+    if (!client || !client.auth || !client.auth.getUser) return Promise.resolve('');
+    return client.auth.getUser().then(function (r) {
+      return (r && r.data && r.data.user) ? r.data.user.id : '';
+    }, function () { return ''; });
+  }
+
+  function signerLesSary() {
+    const client = sb();
+    const images = [].slice.call($('piecesListe').querySelectorAll('img[data-sary]'));
+    if (!client || !images.length) return;
+    const chemins = images.map(function (i) { return i.dataset.sary; });
+    client.storage.from(BUCKET).createSignedUrls(chemins, 600).then(function (res) {
+      if (res.error || !res.data) return;
+      const parChemin = {};
+      res.data.forEach(function (x) { if (x && x.path && x.signedUrl) parChemin[x.path] = x.signedUrl; });
+      images.forEach(function (i) {
+        const url = parChemin[i.dataset.sary];
+        if (url) i.src = url;
+      });
+    }, function () {});
+  }
+
+  // La photo part APRÈS la ligne : c'est la ligne qui lui donne son nom, et
+  // une photo sans ligne resterait seule dans le bucket.
+  function envoyerSary(ligneId, ancienChemin) {
+    const blob = window.__piecePhoto;
+    const client = sb();
+    if (!blob || !client || !ligneId) return Promise.resolve(null);
+    return monId().then(function (uid) {
+      if (!uid) return null;
+      const chemin = uid + '/' + ligneId + '-' + Date.now() + '.jpg';
+      return client.storage.from(BUCKET).upload(chemin, blob, { contentType: 'image/jpeg', upsert: true })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return client.from('pieces_identite').update({ sary: chemin }).eq('id', ligneId);
+        })
+        .then(function (res) {
+          if (res && res.error) throw res.error;
+          // L'ancienne photo n'a plus de ligne qui la nomme : elle ne ferait
+          // que dormir dans le bucket.
+          if (ancienChemin && ancienChemin !== chemin) client.storage.from(BUCKET).remove([ancienChemin]);
+          return chemin;
+        });
+    });
   }
 
   // ---------- Le comptage des personnes (onglet Tableau de bord) ----------
@@ -253,6 +311,7 @@
     ['pieceNumero', 'pieceNom', 'pieceDelivrance', 'pieceExpiration'].forEach(function (id) { $(id).value = ''; });
     $('pieceEnregistrer').textContent = 'Enregistrer';
     $('pieceAnnuler').style.display = 'none';
+    if (typeof window.__viderPhotoPiece === 'function') window.__viderPhotoPiece();
     ajusterType();
   }
 
@@ -298,19 +357,34 @@
       updated_at: new Date().toISOString()
     };
     const correction = !!enEdition;
+    const ancienne = correction ? (pieces.filter(function (x) { return x.id === enEdition; })[0] || {}).sary : null;
+    // select() : on récupère l'identifiant de la ligne, celui qui nommera la
+    // photo.
     const requete = correction
-      ? client.from('pieces_identite').update(ligne).eq('id', enEdition)
-      : client.from('pieces_identite').insert(Object.assign({ owner_email: email }, ligne));
+      ? client.from('pieces_identite').update(ligne).eq('id', enEdition).select('id').maybeSingle()
+      : client.from('pieces_identite').insert(Object.assign({ owner_email: email }, ligne)).select('id').maybeSingle();
 
     const bouton = $('pieceEnregistrer');
     bouton.disabled = true;
     dire('Mitahiry…');
     requete.then(function (res) {
-      bouton.disabled = false;
-      if (res.error) { dire(expliquer(res), true); return; }
-      vider();
-      dire(correction ? 'Voaova.' : 'Voatahiry.');
-      charger();
+      if (res.error) { bouton.disabled = false; dire(expliquer(res), true); return; }
+      const ligneId = (res.data && res.data.id) || enEdition;
+      const avecPhoto = !!window.__piecePhoto;
+      if (avecPhoto) dire('Mandefa ny sary…');
+      return envoyerSary(ligneId, ancienne).then(function () {
+        bouton.disabled = false;
+        vider();
+        dire(correction ? 'Voaova.' : 'Voatahiry.');
+        charger();
+      }, function (err) {
+        // La ligne, elle, est écrite : le dire, plutôt que de laisser croire
+        // que rien n'a été enregistré.
+        bouton.disabled = false;
+        vider();
+        dire('Voatahiry, fa tsy lasa ny sary : ' + ((err && err.message) || 'tsy fantatra'), true);
+        charger();
+      });
     }, function () {
       bouton.disabled = false;
       dire('Tsy tratra ny serveur : jereo ny réseau.', true);
@@ -324,6 +398,9 @@
     if (!window.confirm('Fafana ve ny ' + (TYPES[p.karazana] || p.karazana) + ' ' + p.laharana + ' (' + p.anarana + ') ?')) return;
     client.from('pieces_identite').delete().eq('id', id).then(function (res) {
       if (res.error) { dire(expliquer(res), true); return; }
+      // La photo suit la ligne : gardée seule, elle ne serait plus qu'une
+      // image de pièce d'identité que rien ne réclame.
+      if (p.sary) client.storage.from(BUCKET).remove([p.sary]);
       if (enEdition === id) vider();
       dire('Voafafa.');
       charger();
@@ -337,6 +414,13 @@
   $('pieceAnnuler').addEventListener('click', function () { vider(); dire(''); });
   $('pieceRecherche').addEventListener('input', afficher);
   $('piecesListe').addEventListener('click', function (e) {
+    const sary = e.target.closest('img[data-sary]');
+    if (sary) {
+      // L'adresse signée est déjà dans l'image : on l'ouvre en grand plutôt
+      // que d'en redemander une.
+      if (sary.src) window.open(sary.src, '_blank', 'noopener');
+      return;
+    }
     const ovay = e.target.closest('[data-ovay]');
     const fafao = e.target.closest('[data-fafao]');
     if (ovay) {

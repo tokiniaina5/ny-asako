@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="e5aadfd2">
+<meta name="ny-asako-version" content="71597969">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -728,6 +728,27 @@
                   <input type="date" id="pieceExpiration">
                 </div>
               </div>
+              <!-- Photographier la carte plutôt que recopier douze chiffres.
+                   La puce biométrique, elle, ne se lit pas dans un navigateur :
+                   ce qui est lu ici est ce qui est imprimé (pieces-scan.js). -->
+              <div style="margin-bottom:0.9rem;">
+                <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                  <button type="button" class="btn btn-violet btn-sm" id="pieceScanBtn" style="width:auto;">📷 Scanner la carte</button>
+                  <button type="button" class="btn btn-sm" id="pieceScanEffacer" style="width:auto; display:none;">Effacer la photo</button>
+                </div>
+                <!-- Le recours quand il n'y a pas d'appareil photo ouvrable. -->
+                <input type="file" id="pieceScanFichier" accept="image/*" capture="environment" style="display:none;">
+                <div id="pieceScanZone" style="display:none; margin-top:0.7rem;">
+                  <video id="pieceScanVideo" playsinline muted style="width:100%; max-width:420px; border-radius:10px; background:#000;"></video>
+                  <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.5rem;">
+                    <button type="button" class="btn btn-primary btn-sm" id="pieceScanPrendre" style="width:auto;">Alaina ny sary</button>
+                    <button type="button" class="btn btn-sm" id="pieceScanFermer" style="width:auto;">Ajanona</button>
+                  </div>
+                </div>
+                <img id="pieceScanApercu" alt="Sarin'ny karatra" style="display:none; margin-top:0.7rem; max-width:220px; border-radius:10px; border:1px solid var(--line);">
+                <p id="pieceScanStatut" style="font-size:0.75rem; color:var(--muted); margin-top:0.5rem; line-height:1.5; min-height:1.1em;"></p>
+              </div>
+
               <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
                 <button type="button" class="btn btn-primary btn-sm" id="pieceEnregistrer" style="width:auto;">Enregistrer</button>
                 <button type="button" class="btn btn-sm" id="pieceAnnuler" style="width:auto; display:none;">Annuler</button>
@@ -741,7 +762,7 @@
               <div class="table-scroll">
                 <table>
                   <thead>
-                    <tr><th>Type</th><th>Numéro</th><th>Nom</th><th>Délivrée le</th><th>Expire le</th><th></th></tr>
+                    <tr><th>Type</th><th>Numéro</th><th>Nom</th><th>Délivrée le</th><th>Expire le</th><th>Sary</th><th></th></tr>
                   </thead>
                   <tbody id="piecesListe"></tbody>
                 </table>
@@ -2158,10 +2179,11 @@
 <script src="gestion-stockage-js/fond.js?v=9130e24f"></script>
 <script src="gestion-stockage-js/carte-libre.js?v=732ab00c"></script>
 <script src="gestion-stockage-js/equipe.js?v=20fc09e5"></script>
-<script src="gestion-stockage-js/pieces-identite.js?v=37af2f5c"></script>
+<script src="gestion-stockage-js/pieces-identite.js?v=367b9c4f"></script>
 <script src="gestion-stockage-js/vue-mpiasa.js?v=bff76752"></script>
 <script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=83aa83fa"></script>
+<script src="gestion-stockage-js/pieces-scan.js?v=32b0df95"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
 
 
