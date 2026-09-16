@@ -717,3 +717,55 @@
   .poignees:not(:has(.poignee-deplacer)) .poignee.hd{ border-radius:0 24px 0 0; }
   .poignees:not(:has(.poignee-deplacer)) .poignee.bg{ border-radius:0 0 0 24px; }
   .poignees:not(:has(.poignee-deplacer)) .poignee.bd{ border-radius:0 0 24px 0; }
+
+  /* La barre de défilement, dans ces fenêtres rondes. Celle du navigateur est
+     un rectangle gris à flèches, collé au bord droit : elle recouvrait la
+     courbe des deux coins et en dépassait en haut comme en bas. Elle devient
+     un trait fin, arrondi, sans flèches, sur un rail transparent — et le rail
+     s'arrête avant les coins, pour que la courbe reste entière. */
+  /* Pour Firefox seulement. Chrome, lui, abandonne toutes les règles
+     ::-webkit-scrollbar dès que ces deux propriétés sont posées — le rail
+     reprendrait alors toute la hauteur, coins compris. */
+  @supports not selector(::-webkit-scrollbar){
+    .fenetre-page,
+    .nav-list.floating,
+    .panneau-boite,
+    #notifPanel,
+    #marketPanel,
+    #fbComposer.composer-flottant{
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+    }
+  }
+  .fenetre-page::-webkit-scrollbar,
+  .nav-list.floating::-webkit-scrollbar,
+  .panneau-boite::-webkit-scrollbar,
+  #notifPanel::-webkit-scrollbar,
+  #marketPanel::-webkit-scrollbar,
+  #fbComposer.composer-flottant::-webkit-scrollbar{ width: 8px; }
+  .fenetre-page::-webkit-scrollbar-button,
+  .nav-list.floating::-webkit-scrollbar-button,
+  .panneau-boite::-webkit-scrollbar-button,
+  #notifPanel::-webkit-scrollbar-button,
+  #marketPanel::-webkit-scrollbar-button,
+  #fbComposer.composer-flottant::-webkit-scrollbar-button{ display: none; }
+  .fenetre-page::-webkit-scrollbar-track{ background: transparent; margin: 28px 0; }
+  .nav-list.floating::-webkit-scrollbar-track,
+  .panneau-boite::-webkit-scrollbar-track,
+  #notifPanel::-webkit-scrollbar-track,
+  #marketPanel::-webkit-scrollbar-track,
+  #fbComposer.composer-flottant::-webkit-scrollbar-track{ background: transparent; margin: 24px 0; }
+  .fenetre-page::-webkit-scrollbar-thumb,
+  .nav-list.floating::-webkit-scrollbar-thumb,
+  .panneau-boite::-webkit-scrollbar-thumb,
+  #notifPanel::-webkit-scrollbar-thumb,
+  #marketPanel::-webkit-scrollbar-thumb,
+  #fbComposer.composer-flottant::-webkit-scrollbar-thumb{
+    background: var(--line);
+    border-radius: 999px;
+    /* Une bordure transparente l'amincit sans toucher à la zone qu'on saisit. */
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .fenetre-page::-webkit-scrollbar-thumb:hover,
+  .nav-list.floating::-webkit-scrollbar-thumb:hover{ background-color: var(--muted); }
