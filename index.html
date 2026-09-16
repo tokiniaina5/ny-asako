@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="dedddcc5">
+<meta name="ny-asako-version" content="c50cafbf">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -125,7 +125,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=d7bedec9">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=ac7843b3">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=885f114a">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -716,11 +716,6 @@
           <div class="dash-tab" data-dash="comptes">👥 Gestion de compte</div>
         </div>
 
-        <div class="global-search" style="position:relative; margin:0 0 1.2rem;">
-          <input type="text" id="globalSearchInput" placeholder="🔍 Rechercher un article, un mouvement..." autocomplete="off" style="width:100%; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.82rem; box-sizing:border-box;">
-          <div id="globalSearchResults" style="display:none; position:absolute; top:110%; left:0; right:0; background:var(--panel); border:1px solid var(--line); border-radius:10px; max-height:340px; overflow-y:auto; z-index:60; box-shadow:0 8px 24px rgba(0,0,0,0.35);"></div>
-        </div>
-
         <!-- ===== ACCUEIL ===== -->
         <div class="dash-view active" id="dash-accueil">
           <!-- « Stock » vivait derrière la fenêtre de l'Accueil, hors de
@@ -768,6 +763,21 @@
 
         <!-- ===== ARTICLES ===== -->
         <div class="dash-view" id="dash-articles">
+          <!-- Les onglets du stock et la recherche vivent dans la fenêtre des
+               Articles. Posés dehors, derrière elle, ils s'affichaient à nu sur
+               le fond d'écran dès que la fenêtre ne couvrait pas tout.
+               Les onglets n'ont pas d'identifiant : la rangée de dehors (pour
+               passer d'une vue du stock à l'autre) peut les répéter. -->
+          <div class="dash-tabs">
+            <div class="dash-tab" data-dash="dashboard">📊 Tableau de bord</div>
+            <div class="dash-tab" data-dash="historique">📜 Historique des mouvements</div>
+            <div class="dash-tab" data-dash="ajouter">➕ Ajouter</div>
+            <div class="dash-tab" data-dash="comptes">👥 Gestion de compte</div>
+          </div>
+          <div class="global-search" style="position:relative; margin:0 0 1.2rem;">
+            <input type="text" id="globalSearchInput" placeholder="🔍 Rechercher un article, un mouvement..." autocomplete="off" style="width:100%; padding:0.6rem 0.8rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.82rem; box-sizing:border-box;">
+            <div id="globalSearchResults" style="display:none; position:absolute; top:110%; left:0; right:0; background:var(--panel); border:1px solid var(--line); border-radius:10px; max-height:340px; overflow-y:auto; z-index:60; box-shadow:0 8px 24px rgba(0,0,0,0.35);"></div>
+          </div>
           <div class="table-scroll">
             <table id="stockTable">
               <thead>
@@ -2584,7 +2594,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=99715e29"></script>
+<script src="gestion-stockage-js/common.js?v=506c5009"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>

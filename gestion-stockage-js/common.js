@@ -4688,12 +4688,15 @@
     const vue = document.querySelector('.dash-view.active');
     return vue ? vue.id.replace(/^dash-/, '') : 'accueil';
   }
+  // La rangée de dehors ne sert qu'aux vues du stock posées dans la page —
+  // tableau de bord, historique, ajout, comptes, achat — pour passer de l'une
+  // à l'autre. Avec l'Accueil ou les Articles, qui s'ouvrent en fenêtre, elle
+  // restait seule derrière elles, à nu sur le fond d'écran. Les Articles
+  // portent maintenant leurs propres onglets, et la recherche.
+  const VUES_DANS_LA_PAGE = ['dashboard', 'historique', 'ajouter', 'comptes', 'acheter'];
   function updateSubTabsVisibility(){
-    const surLAccueil = vueAffichee() === 'accueil';
     const subTabs = document.getElementById('stockSubTabs');
-    if(subTabs) subTabs.style.display = surLAccueil ? 'none' : '';
-    const recherche = document.querySelector('#section-stock .global-search');
-    if(recherche) recherche.style.display = surLAccueil ? 'none' : '';
+    if(subTabs) subTabs.style.display = VUES_DANS_LA_PAGE.indexOf(vueAffichee()) >= 0 ? '' : 'none';
   }
   updateSubTabsVisibility();
 
@@ -4776,8 +4779,9 @@
     document.querySelectorAll('.dash-tab').forEach(function(t){ t.classList.remove('active'); });
     document.querySelectorAll('.dash-view').forEach(function(v){ v.classList.remove('active'); });
     view.classList.add('active');
-    const tab = document.querySelector('.dash-tab[data-dash="' + nom + '"]');
-    if(tab) tab.classList.add('active');
+    // Un même onglet peut paraître deux fois — dehors et dans les Articles :
+    // les deux s'allument.
+    document.querySelectorAll('.dash-tab[data-dash="' + nom + '"]').forEach(function(t){ t.classList.add('active'); });
     rafraichirVue(nom);
     if(typeof updateSubTabsVisibility === 'function') updateSubTabsVisibility();
     return true;
@@ -4828,7 +4832,7 @@
       if(!view) return;
       document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.dash-view').forEach(v => v.classList.remove('active'));
-      tab.classList.add('active');
+      document.querySelectorAll('.dash-tab[data-dash="' + tab.dataset.dash + '"]').forEach(t => t.classList.add('active'));
       view.classList.add('active');
       rafraichirVue(tab.dataset.dash);
       updateSubTabsVisibility();

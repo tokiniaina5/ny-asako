@@ -841,6 +841,15 @@
   #stockMainTabs #barComposer .epingle-retirer,
   #stockMainTabs #barAccueil .epingle-retirer{ top: -6px; right: -6px; }
 
+  /* La rangée des vues du stock, quand elle paraît dans la page : une barre
+     pleine aux coins ronds, et non des mots posés à même le fond d'écran. */
+  #stockSubTabs{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 0.2rem 0.6rem;
+  }
+
   /* Les icônes posées sur le fond : la même tuile, sous leur nom. */
   .icone-bureau .emoji{
     width: 50px; height: 50px;
