@@ -3020,6 +3020,9 @@
         if(typeof saveLastView === 'function') saveLastView();
         return;
       }
+      // En automatique, fermer une page, c'est en avoir fini avec elle : son
+      // icône quitte la rangée du même geste (la rangée, plus bas, en décide).
+      if(el && typeof window.__pageFermee === 'function') window.__pageFermee(el.id);
       const navStock = document.querySelector('.nav-item[data-section="stock"]');
       if(navStock) navStock.click();
       if(typeof showDashView === 'function') showDashView('accueil');
@@ -3792,6 +3795,29 @@
       if(bouton) bouton.style.display = 'none';
     });
 
+    // Une page fermée à sa croix. En automatique, son icône s'en va avec elle :
+    // la rangée garde ce dont on se sert, et une page qu'on vient de fermer
+    // n'en fait plus partie. En manuel, rien ne part sans la croix de l'icône.
+    //
+    // Botika et Écrire ne sont pas concernés : ce sont les deux entrées fixes,
+    // le chemin du retour, et ils n'ont pas de clé d'épingle.
+    function cleDeLaPage(id){
+      if(!id) return '';
+      if(id.indexOf('section-') === 0) return 'section:' + id.slice(8);
+      if(id === 'dash-articles') return 'id:menuArticles';
+      if(id === 'dash-commun') return 'id:menuCommun';
+      return '';
+    }
+    window.__pageFermee = function(id){
+      if(lireMode() !== 'auto') return;
+      const cle = cleDeLaPage(id);
+      if(!cle) return;
+      ecrireEpingles(lireEpingles().filter(function(e){ return e.cle !== cle; }));
+      const bouton = rangee.querySelector('[data-epingle="' + cle + '"]');
+      if(bouton) bouton.remove();
+      mesurer();
+    };
+
     function retirer(cle){
       ecrireEpingles(lireEpingles().filter(function(e){ return e.cle !== cle; }));
       const bouton = rangee.querySelector('[data-epingle="' + cle + '"]');
@@ -3886,13 +3912,34 @@
       rangee.classList.toggle('reste-a-gauche', rangee.scrollLeft > 4);
     }
 
-    // En automatique, la rangée se tient à six : la plus anciennement ouverte
-    // s'efface pour la nouvelle. En manuel, rien ne part sans qu'on le dise.
+    // Quand chaque entrée a vraiment servi. Pas « vu » : celui-ci se posait
+    // aussi au premier remplissage de la rangée, une entrée après l'autre dans
+    // l'ordre du menu. Passer en automatique gardait alors les six dernières
+    // du menu — Portefeuille, Fond d'écran, Paramètres — et renvoyait les
+    // Articles et les Notifications dont on se sert tous les jours.
+    const CLE_UTILISE = 'stockmanager_barre_utilise';
+    function lireUsages(){
+      try{ return JSON.parse(localStorage.getItem(CLE_UTILISE)) || {}; }catch(e){ return {}; }
+    }
+    function noterUsage(cle){
+      const u = lireUsages();
+      u[cle] = Date.now();
+      try{ localStorage.setItem(CLE_UTILISE, JSON.stringify(u)); }catch(e){}
+    }
+
+    // En automatique, la rangée se tient à six : celles qui ont servi le plus
+    // récemment restent. À égalité — jamais servies —, l'ordre du menu
+    // départage : ce qui y vient en tête est ce qui compte le plus.
+    // En manuel, rien ne part sans qu'on le dise.
     function elaguer(){
       if(lireMode() !== 'auto') return;
       let liste = lireEpingles();
       if(liste.length <= GARDEES) return;
-      liste.sort(function(a, b){ return (b.vu || 0) - (a.vu || 0); });
+      const usages = lireUsages();
+      liste.sort(function(a, b){
+        const ecart = (usages[b.cle] || 0) - (usages[a.cle] || 0);
+        return ecart !== 0 ? ecart : rangDansLeMenu(a.cle) - rangDansLeMenu(b.cle);
+      });
       liste.slice(GARDEES).forEach(function(e){
         const bouton = rangee.querySelector('[data-epingle="' + e.cle + '"]');
         if(bouton) bouton.remove();
@@ -3906,7 +3953,9 @@
     // poser un second exemplaire à côté du premier.
     const JUMEAUX = { menuAccueil: 'barAccueil', composerToggle: 'barComposer' };
 
-    function epingler(entree){
+    // remplissage : l'entrée est posée par « Averina ny sary rehetra » ou le
+    // premier démarrage, et non choisie. Elle n'a donc pas servi.
+    function epingler(entree, remplissage){
       const jumeau = JUMEAUX[entree.id];
       if(jumeau){
         // Déjà posée sur le fond : la rappeler du menu la remettrait aussi
@@ -3920,6 +3969,7 @@
       }
       const cle = cleDe(entree);
       if(surLeFond(cle)) return;
+      if(!remplissage) noterUsage(cle);
       const liste = lireEpingles();
       const connue = liste.filter(function(e){ return e.cle === cle; })[0];
       if(connue) connue.vu = Date.now();
@@ -4370,7 +4420,7 @@
         // « Espace admin » est masqué pour les clients : la rangée n'a pas à
         // montrer ce que le menu cache.
         if(getComputedStyle(entree).display === 'none') return;
-        epingler(entree);
+        epingler(entree, true);
       });
       mesurer();
     }
