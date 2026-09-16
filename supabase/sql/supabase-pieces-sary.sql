@@ -13,7 +13,10 @@
 -- compte : "<auth.uid()>/<fichier>.jpg".
 -- ============================================================
 
+-- Deux faces : une CIN ne dit pas tout du même côté — le numéro et le nom
+-- devant, la date et le lieu derrière.
 alter table public.pieces_identite add column if not exists sary text;
+alter table public.pieces_identite add column if not exists sary_verso text;
 
 -- ---------- Le bucket ----------
 insert into storage.buckets (id, name, public)

@@ -4,7 +4,11 @@
 // pas, et son contenu est scellé par l'État. Ce qui se lit ici, c'est ce qui
 // est imprimé sur la carte — photographié, puis déchiffré.
 //
-// Deux lectures, dans cet ordre :
+// Deux faces, car une CIN ne dit pas tout du même côté : le numéro et le nom
+// devant, la date et le lieu derrière. Les deux lectures se complètent, et
+// c'est leur texte réuni qu'on interroge.
+//
+// Deux lectures pour chaque face, dans cet ordre :
 //   1. le code (QR, code-barres) quand la carte en porte un et que le
 //      navigateur sait les voir — instantané et sûr ;
 //   2. le texte, sinon : les deux lignes du bas d'un passeport (la MRZ, faite
@@ -20,12 +24,24 @@
 
   function $(id) { return document.getElementById(id); }
 
+  const FACES = {
+    recto: { apercu: 'pieceScanApercu', nom: 'recto' },
+    verso: { apercu: 'pieceScanApercuVerso', nom: 'ambadika' }
+  };
+
   let flux = null;
   let chargementOcr = null;
+  let faceEnCours = 'recto';
+  // Le texte lu de chaque face : on les interroge ensemble, une CIN ne disant
+  // pas tout du même côté.
+  let textes = { recto: '', verso: '' };
+  // Ce que la lecture a posé dans le formulaire. Une correction à la main ne
+  // doit pas être effacée par la lecture de la face suivante.
+  let posesAuto = {};
 
-  // La photo prise attend ici que pieces-identite.js l'envoie, une fois la
-  // ligne enregistrée : avant cela, elle n'aurait pas de ligne à rejoindre.
-  window.__piecePhoto = null;
+  // Les photos attendent ici que pieces-identite.js les envoie, une fois la
+  // ligne enregistrée : avant cela, elles n'auraient pas de ligne à rejoindre.
+  window.__piecePhoto = { recto: null, verso: null };
 
   function statut(texte, erreur) {
     const el = $('pieceScanStatut');
@@ -44,7 +60,8 @@
     $('pieceScanZone').style.display = 'none';
   }
 
-  function ouvrirCamera() {
+  function ouvrirCamera(face) {
+    faceEnCours = face;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       $('pieceScanFichier').click();
       return;
@@ -59,7 +76,7 @@
         v.srcObject = s;
         v.play();
         $('pieceScanZone').style.display = '';
-        statut('Apetraho eo anoloana ny karatra, dia tsindrio « Alaina ny sary ».');
+        statut('Apetraho eo anoloana ny ' + FACES[face].nom + ' ny karatra, dia tsindrio « Alaina ny sary ».');
       }, function () {
         statut('Tsy nisokatra ny appareil photo : safidio ny sary avy amin\'ny rakitra.', true);
         $('pieceScanFichier').click();
@@ -78,11 +95,11 @@
     return c;
   }
 
-  function garderLaPhoto(canvas) {
+  function garderLaPhoto(canvas, face) {
     canvas.toBlob(function (blob) {
       if (!blob) return;
-      window.__piecePhoto = blob;
-      const img = $('pieceScanApercu');
+      window.__piecePhoto[face] = blob;
+      const img = $(FACES[face].apercu);
       if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
       const url = URL.createObjectURL(blob);
       img.dataset.url = url;
@@ -161,7 +178,7 @@
   // Les mots imprimés sur toutes les cartes : ils ne sont le nom de personne.
   const MOTS_CARTE = ['REPOBLIKA', 'MALAGASY', 'CARTE', 'NATIONALE', 'IDENTITE', 'IDENTITY',
     'PASSEPORT', 'PASSPORT', 'NATIONAL', 'FIRENENA', 'KARAPANONDRO', 'MINISTERE', 'SEXE',
-    'DATE', 'LIEU', 'ADRESSE', 'PROFESSION', 'SIGNATURE'];
+    'DATE', 'LIEU', 'ADRESSE', 'PROFESSION', 'SIGNATURE', 'FONENANA', 'TERAKA', 'RAY', 'RENY'];
 
   function chiffresDeCarte(texte) {
     const suites = texte.match(/\d[\d\s.]{8,20}\d/g) || [];
@@ -181,6 +198,25 @@
     return m[3] + '-' + m[2] + '-' + m[1];
   }
 
+  // Le verso d'une CIN porte deux dates : la naissance et la délivrance. Prendre
+  // la première venue, c'était inscrire l'une pour l'autre. On cherche donc la
+  // date qui suit le mot qui l'annonce ; et quand aucun mot ne l'annonce mais
+  // qu'une naissance est nommée, on préfère ne rien écrire.
+  const MOTS_DELIVRANCE = ['NOMENA', 'DELIVR', 'DÉLIVR', 'ISSUE', 'NATAO'];
+  const MOTS_NAISSANCE = ['TERAKA', 'NAISSANCE', 'BIRTH', 'NEE LE', 'NE LE'];
+
+  function dateDeDelivrance(texte) {
+    const haut = texte.toUpperCase();
+    for (let i = 0; i < MOTS_DELIVRANCE.length; i++) {
+      const place = haut.indexOf(MOTS_DELIVRANCE[i]);
+      if (place < 0) continue;
+      const trouvee = premiereDate(texte.slice(place, place + 80));
+      if (trouvee) return trouvee;
+    }
+    const naissance = MOTS_NAISSANCE.some(function (m) { return haut.indexOf(m) >= 0; });
+    return naissance ? '' : premiereDate(texte);
+  }
+
   function nomProbable(texte) {
     const lignes = texte.split('\n').map(function (l) { return l.trim(); });
     for (let i = 0; i < lignes.length; i++) {
@@ -195,85 +231,106 @@
     return '';
   }
 
+  // Le vide se remplit ; ce que la personne a corrigé reste. Une seconde
+  // lecture, elle, peut reprendre ce que la première avait posé.
   function poser(id, valeur) {
     if (!valeur) return false;
     const el = $(id);
+    if (el.value && el.value !== posesAuto[id]) return false;
     el.value = valeur;
+    posesAuto[id] = valeur;
     // Le champ « date d'expiration » ne paraît que pour un passeport : le
-    // type doit avoir été posé avant, et son changement annoncé.
+    // changement du type doit être annoncé.
     el.dispatchEvent(new Event('change'));
     return true;
   }
 
-  function remplir(texte) {
-    const brut = String(texte || '');
+  function remplir() {
+    const brut = (textes.recto + '\n' + textes.verso).trim();
     const mrz = lireMrz(brut);
     let poses = 0;
 
     if (mrz) {
-      poser('pieceType', 'passeport');
+      // La MRZ ne se trompe pas de type : c'est un passeport, et le dire
+      // fait paraître le champ de la date d'expiration.
+      const type = $('pieceType');
+      type.value = 'passeport';
+      type.dispatchEvent(new Event('change'));
       poses += poser('pieceNumero', mrz.laharana) ? 1 : 0;
       poses += poser('pieceNom', mrz.anarana) ? 1 : 0;
       poses += poser('pieceExpiration', mrz.fahataperana) ? 1 : 0;
     } else {
       poses += poser('pieceNumero', chiffresDeCarte(brut)) ? 1 : 0;
       poses += poser('pieceNom', nomProbable(brut)) ? 1 : 0;
-      poses += poser('pieceDelivrance', premiereDate(brut)) ? 1 : 0;
+      poses += poser('pieceDelivrance', dateDeDelivrance(brut)) ? 1 : 0;
     }
 
+    const reste = !window.__piecePhoto.verso
+      ? ' Alaivo koa ny ambadika (verso) : any matetika no misy ny daty sy ny toerana.'
+      : '';
     statut(poses
-      ? 'Vaky ny karatra : hamarino tsara ireo saha vao mitahiry.'
-      : 'Tsy azo vakiana ny karatra : soraty an-tanana ireo saha. Voatahiry ihany ny sary.', !poses);
+      ? 'Vaky ny karatra : hamarino tsara ireo saha vao mitahiry.' + reste
+      : 'Tsy azo vakiana ny karatra : soraty an-tanana ireo saha. Voatahiry ihany ny sary.' + reste, !poses);
   }
 
-  function lire(canvas) {
-    statut('Famakiana…');
+  function lire(canvas, face) {
+    statut('Famakiana ny ' + FACES[face].nom + '…');
     lireCode(canvas).then(function (texte) {
-      if (texte) { remplir(texte); return null; }
-      return lireTexte(canvas).then(remplir);
+      if (texte) return texte;
+      return lireTexte(canvas);
+    }).then(function (texte) {
+      textes[face] = String(texte || '');
+      remplir();
     }).catch(function () {
       statut('Tsy tafiditra ny mpamaky soratra : jereo ny réseau, na soraty an-tanana ireo saha.', true);
     });
   }
 
-  function traiter(canvas) {
-    garderLaPhoto(canvas);
-    lire(canvas);
+  function traiter(canvas, face) {
+    garderLaPhoto(canvas, face);
+    lire(canvas, face);
   }
 
   // ---------- Les boutons ----------
 
-  $('pieceScanBtn').addEventListener('click', ouvrirCamera);
+  $('pieceScanBtn').addEventListener('click', function () { ouvrirCamera('recto'); });
+  $('pieceScanVersoBtn').addEventListener('click', function () { ouvrirCamera('verso'); });
   $('pieceScanFermer').addEventListener('click', function () { arreterCamera(); statut(''); });
   $('pieceScanPrendre').addEventListener('click', function () {
     const v = $('pieceScanVideo');
     if (!v.videoWidth) { statut('Mbola tsy vonona ny appareil photo.', true); return; }
+    const face = faceEnCours;
     const canvas = versCanvas(v, v.videoWidth, v.videoHeight);
     arreterCamera();
-    traiter(canvas);
+    traiter(canvas, face);
   });
 
   $('pieceScanFichier').addEventListener('change', function () {
     const f = this.files && this.files[0];
     this.value = '';
     if (!f) return;
+    const face = faceEnCours;
     const img = new Image();
     img.onload = function () {
-      traiter(versCanvas(img, img.naturalWidth, img.naturalHeight));
+      traiter(versCanvas(img, img.naturalWidth, img.naturalHeight), face);
       URL.revokeObjectURL(img.src);
     };
     img.onerror = function () { statut('Tsy voavaky ilay sary.', true); };
     img.src = URL.createObjectURL(f);
   });
 
-  // Effacer la photo : celle d'une autre personne, prise par erreur, ne doit
-  // pas partir avec la ligne qu'on est en train d'écrire.
+  // Effacer les photos : celles d'une autre personne, prises par erreur, ne
+  // doivent pas partir avec la ligne qu'on est en train d'écrire.
   function viderPhoto() {
-    window.__piecePhoto = null;
-    const img = $('pieceScanApercu');
-    if (img.dataset.url) { URL.revokeObjectURL(img.dataset.url); delete img.dataset.url; }
-    img.removeAttribute('src');
-    img.style.display = 'none';
+    window.__piecePhoto = { recto: null, verso: null };
+    textes = { recto: '', verso: '' };
+    posesAuto = {};
+    Object.keys(FACES).forEach(function (face) {
+      const img = $(FACES[face].apercu);
+      if (img.dataset.url) { URL.revokeObjectURL(img.dataset.url); delete img.dataset.url; }
+      img.removeAttribute('src');
+      img.style.display = 'none';
+    });
     $('pieceScanEffacer').style.display = 'none';
     arreterCamera();
     statut('');

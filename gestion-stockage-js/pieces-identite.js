@@ -105,6 +105,17 @@
       });
   }
 
+  // Recto et verso côte à côte, chacun ouvrable.
+  function vignettes(p) {
+    return [
+      { chemin: p.sary, titre: 'Recto' },
+      { chemin: p.sary_verso, titre: 'Verso' }
+    ].filter(function (f) { return f.chemin; }).map(function (f) {
+      return '<img data-sary="' + echapper(f.chemin) + '" alt="' + f.titre + '" title="' + f.titre + ' — sokafy" ' +
+        'style="width:46px; height:30px; object-fit:cover; border-radius:4px; border:1px solid var(--line); cursor:pointer; margin-right:0.3rem;">';
+    }).join('');
+  }
+
   function afficher() {
     const corps = $('piecesListe');
     const vide = $('piecesVide');
@@ -124,9 +135,7 @@
         '<td>' + dateFr(p.daty_nahazoana) + '</td>' +
         '<td' + (lany ? ' style="color:var(--red);" title="Lany daty"' : '') + '>' +
           dateFr(p.daty_fahataperana) + (lany ? ' ⚠️' : '') + '</td>' +
-        '<td>' + (p.sary
-          ? '<img data-sary="' + echapper(p.sary) + '" alt="Sarin\'ny karatra" title="Sokafy ny sary" style="width:46px; height:30px; object-fit:cover; border-radius:4px; border:1px solid var(--line); cursor:pointer;">'
-          : '—') + '</td>' +
+        '<td style="white-space:nowrap;">' + (vignettes(p) || '—') + '</td>' +
         '<td style="white-space:nowrap;">' +
           '<button type="button" class="btn btn-sm" data-ovay="' + echapper(p.id) + '">Ovaina</button> ' +
           '<button type="button" class="btn btn-red btn-sm" data-fafao="' + echapper(p.id) + '">Fafana</button>' +
@@ -170,27 +179,43 @@
     }, function () {});
   }
 
-  // La photo part APRÈS la ligne : c'est la ligne qui lui donne son nom, et
-  // une photo sans ligne resterait seule dans le bucket.
-  function envoyerSary(ligneId, ancienChemin) {
-    const blob = window.__piecePhoto;
+  // Les photos partent APRÈS la ligne : c'est la ligne qui leur donne leur
+  // nom, et une photo sans ligne resterait seule dans le bucket.
+  //
+  // Deux faces, deux fichiers, deux colonnes : la carte ne dit pas tout du
+  // même côté, et l'une peut arriver sans l'autre.
+  const FACES = [
+    { cle: 'recto', colonne: 'sary' },
+    { cle: 'verso', colonne: 'sary_verso' }
+  ];
+
+  function envoyerSary(ligneId, ancienne) {
+    const photos = window.__piecePhoto || {};
     const client = sb();
-    if (!blob || !client || !ligneId) return Promise.resolve(null);
+    const aEnvoyer = FACES.filter(function (f) { return photos[f.cle]; });
+    if (!aEnvoyer.length || !client || !ligneId) return Promise.resolve(null);
     return monId().then(function (uid) {
       if (!uid) return null;
-      const chemin = uid + '/' + ligneId + '-' + Date.now() + '.jpg';
-      return client.storage.from(BUCKET).upload(chemin, blob, { contentType: 'image/jpeg', upsert: true })
-        .then(function (res) {
-          if (res.error) throw res.error;
-          return client.from('pieces_identite').update({ sary: chemin }).eq('id', ligneId);
-        })
-        .then(function (res) {
-          if (res && res.error) throw res.error;
-          // L'ancienne photo n'a plus de ligne qui la nomme : elle ne ferait
-          // que dormir dans le bucket.
-          if (ancienChemin && ancienChemin !== chemin) client.storage.from(BUCKET).remove([ancienChemin]);
-          return chemin;
-        });
+      const maj = {};
+      const remplacees = [];
+      return Promise.all(aEnvoyer.map(function (f) {
+        const chemin = uid + '/' + ligneId + '-' + f.cle + '-' + Date.now() + '.jpg';
+        return client.storage.from(BUCKET).upload(chemin, photos[f.cle], { contentType: 'image/jpeg', upsert: true })
+          .then(function (res) {
+            if (res.error) throw res.error;
+            maj[f.colonne] = chemin;
+            const avant = ancienne && ancienne[f.colonne];
+            if (avant && avant !== chemin) remplacees.push(avant);
+          });
+      })).then(function () {
+        return client.from('pieces_identite').update(maj).eq('id', ligneId);
+      }).then(function (res) {
+        if (res && res.error) throw res.error;
+        // Les anciennes photos n'ont plus de ligne qui les nomme : elles ne
+        // feraient que dormir dans le bucket.
+        if (remplacees.length) client.storage.from(BUCKET).remove(remplacees);
+        return maj;
+      });
     });
   }
 
@@ -357,7 +382,7 @@
       updated_at: new Date().toISOString()
     };
     const correction = !!enEdition;
-    const ancienne = correction ? (pieces.filter(function (x) { return x.id === enEdition; })[0] || {}).sary : null;
+    const ancienne = correction ? (pieces.filter(function (x) { return x.id === enEdition; })[0] || {}) : null;
     // select() : on récupère l'identifiant de la ligne, celui qui nommera la
     // photo.
     const requete = correction
@@ -370,7 +395,8 @@
     requete.then(function (res) {
       if (res.error) { bouton.disabled = false; dire(expliquer(res), true); return; }
       const ligneId = (res.data && res.data.id) || enEdition;
-      const avecPhoto = !!window.__piecePhoto;
+      const photos = window.__piecePhoto || {};
+      const avecPhoto = !!(photos.recto || photos.verso);
       if (avecPhoto) dire('Mandefa ny sary…');
       return envoyerSary(ligneId, ancienne).then(function () {
         bouton.disabled = false;
@@ -400,7 +426,8 @@
       if (res.error) { dire(expliquer(res), true); return; }
       // La photo suit la ligne : gardée seule, elle ne serait plus qu'une
       // image de pièce d'identité que rien ne réclame.
-      if (p.sary) client.storage.from(BUCKET).remove([p.sary]);
+      const fichiers = [p.sary, p.sary_verso].filter(Boolean);
+      if (fichiers.length) client.storage.from(BUCKET).remove(fichiers);
       if (enEdition === id) vider();
       dire('Voafafa.');
       charger();
