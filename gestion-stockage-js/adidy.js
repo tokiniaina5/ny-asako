@@ -237,6 +237,8 @@
         versements = res.data || [];
         dire('adidyFandoavanaMessage', '');
         afficherPersonnes();
+        // Un versement qui vient d'être marqué change aussi les totaux.
+        chargerTous().then(afficherTotaux);
       }, function () {
         dire('adidyFandoavanaMessage', 'Tsy tratra ny serveur : jereo ny réseau.', true);
       });
@@ -305,6 +307,88 @@
       }, function () { dire('adidyFandoavanaMessage', 'Tsy tratra ny serveur.', true); });
     }
   }
+
+  // ---------- L'argent entré ----------
+  // Compté sur la date du versement et non sur la période couverte : une
+  // cotisation de janvier payée en mars est de l'argent entré en mars.
+
+  let tous = [];
+
+  function moisDe(iso) {
+    return String(iso || '').slice(0, 7);
+  }
+  function moisCle(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  function chargerTous() {
+    const client = sb();
+    const email = monEmail();
+    if (!client || !email) { tous = []; return Promise.resolve(); }
+    return client.from('adidy_fandoavana').select('vola,daty').eq('owner_email', email)
+      .then(function (res) {
+        tous = (res.error ? [] : (res.data || []));
+      }, function () { tous = []; });
+  }
+
+  const COULEURS = (typeof chartColors !== 'undefined') ? chartColors : ['#4fd8e0', '#f2a33c'];
+  let graphiqueVola = null;
+
+  function afficherTotaux() {
+    const maintenant = new Date();
+    const volana = moisCle(maintenant);
+    const taona = String(maintenant.getFullYear());
+    const somme = function (liste) {
+      return liste.reduce(function (s, v) { return s + Number(v.vola || 0); }, 0);
+    };
+    const duMois = somme(tous.filter(function (v) { return moisDe(v.daty) === volana; }));
+    const deLAnnee = somme(tous.filter(function (v) { return String(v.daty || '').slice(0, 4) === taona; }));
+    const total = somme(tous);
+
+    const recap = $('adidyTotaux');
+    if (recap) {
+      recap.textContent = 'Vola voaangona : ' + ariary(duMois) + ' ity volana ity · ' +
+        ariary(deLAnnee) + ' ity taona ity · ' + ariary(total) + ' hatramin\'izao.';
+    }
+
+    // Le tableau de bord de « Commun » porte les mêmes chiffres : on n'ouvre
+    // pas un onglet pour savoir ce que l'autre affiche déjà.
+    const poser = function (id, valeur) { const el = $(id); if (el) el.textContent = ariary(valeur); };
+    poser('communKpiVolaVolana', duMois);
+    poser('communKpiVolaTaona', deLAnnee);
+    poser('communKpiVolaTotal', total);
+
+    const canvas = $('communChartVola');
+    if (!canvas || !window.Chart) return;
+    const mois = [];
+    for (let i = 11; i >= 0; i--) mois.push(new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1));
+    const parMois = mois.map(function (m) {
+      const cle = moisCle(m);
+      return somme(tous.filter(function (v) { return moisDe(v.daty) === cle; }));
+    });
+    if (graphiqueVola) graphiqueVola.destroy();
+    graphiqueVola = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: mois.map(function (m) { return m.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }); }),
+        datasets: [{ data: parMois, backgroundColor: COULEURS[1] || COULEURS[0], borderRadius: 4, maxBarThickness: 42 }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: function (c) { return ariary(c.parsed.y); } } }
+        },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: '#1f2a30' }, beginAtZero: true } }
+      }
+    });
+  }
+
+  // Appelée par common.js à l'ouverture du tableau de bord : il montre
+  // l'argent entré, que l'onglet Adidy ait été ouvert ou non.
+  window.renderVolaVoaangona = function () {
+    return chargerTous().then(afficherTotaux);
+  };
 
   // ---------- Les boutons ----------
 
