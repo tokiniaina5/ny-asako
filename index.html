@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="e372b4fb">
+<meta name="ny-asako-version" content="903713a6">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -125,7 +125,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=821571f5">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=8a1364e8">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=fa6071e3">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -562,6 +562,7 @@
         <button type="button" class="nav-action" id="menuTheme" aria-label="Mode andro / alina" aria-expanded="false">🌙 Andro / Alina</button>
         <button type="button" class="nav-action" id="menuArticles">📋 Articles</button>
         <button type="button" class="nav-action" id="menuCommun">🗂️ Administratif Fokontany</button>
+        <button type="button" class="nav-action" id="menuCommunAdmin">🏛️ Administratif Commun</button>
         <button type="button" class="nav-action" id="notifToggle" aria-label="Notifications" aria-expanded="false" style="position:relative;">
           <span>🔔 Notifications</span>
           <span id="notifBadge" style="display:none; background:#ff6b6b; color:#fff; font-size:0.62rem; font-weight:700; border-radius:999px; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 4px;">0</span>
@@ -1201,6 +1202,21 @@
             </div>
           </div>
           </div>
+        </div>
+
+        <!-- ===== ADMINISTRATIF COMMUN ===== -->
+        <!-- Le tableau de bord de l'Administratif Fokontany, et lui seul, à
+             regarder sans rien pouvoir y changer. Ce ne sont pas des chiffres
+             recopiés : le même bloc (#communCorps) vient s'y poser le temps
+             qu'on regarde, puis retourne chez lui (common.js). Mêmes données,
+             même porte : sans alalana, rien ne s'y montre. -->
+        <div class="dash-view" id="dash-communadmin">
+          <div class="section-head"><div>
+            <h2>🏛️ Administratif Commun</h2>
+            <p>Tableau de bord an'ny Administratif Fokontany. Jerena fotsiny : tsy azo ovaina eto ny ao anatiny.</p>
+          </div></div>
+          <p id="communAdminMessage" class="empty-hint" style="display:none;"></p>
+          <div id="communAdminCorps" class="lecture-seule"></div>
         </div>
 
         <!-- ===== DASHBOARD ===== -->
@@ -2598,7 +2614,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=a508a5b6"></script>
+<script src="gestion-stockage-js/common.js?v=b37fb5ae"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2618,7 +2634,7 @@
 <script src="gestion-stockage-js/fitaovana.js?v=bf90a8a5"></script>
 <script src="gestion-stockage-js/photocopie.js?v=362c711f"></script>
 <script src="gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
-<script src="gestion-stockage-js/commun-alalana.js?v=5ffa6ad0"></script>
+<script src="gestion-stockage-js/commun-alalana.js?v=98febf34"></script>
 <script src="gestion-stockage-js/taratasy.js?v=ae2680ae"></script>
 <script src="gestion-stockage-js/adidy.js?v=cff1cd41"></script>
 <script src="gestion-stockage-js/theme.js?v=096262fd"></script>

@@ -6,6 +6,12 @@
   }
   .dash-tab:hover, .pc-onglet:hover{ color:var(--text); }
   .dash-tab.active, .pc-onglet.active{ color:var(--cyan); border-color:var(--cyan); }
+  /* L'Administratif Commun regarde, il ne touche pas : rien de ce qui s'y
+     montre ne répond au doigt, sauf les graphiques qu'on survole. */
+  .lecture-seule button, .lecture-seule input, .lecture-seule select,
+  .lecture-seule textarea, .lecture-seule a, .lecture-seule [contenteditable]{
+    pointer-events:none;
+  }
   /* appel vidéo : au centre de la rangée, en évidence sans être criard */
   .dash-tab-call{ color:var(--cyan); }
   .dash-tab-call:hover{ color:var(--text); }

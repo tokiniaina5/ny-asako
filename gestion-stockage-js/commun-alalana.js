@@ -437,6 +437,9 @@
       window.__sb.auth.onAuthStateChange(function () {
         const vue = document.getElementById('dash-commun');
         if (vue && vue.classList.contains('active') && codeGarde()) verifier();
+        // L'Administratif Commun passe par la même porte : même retard possible.
+        const commun = document.getElementById('dash-communadmin');
+        if (commun && commun.classList.contains('active') && typeof ouvrirCommunAdmin === 'function') ouvrirCommunAdmin();
       });
     }
   } catch (e) {}

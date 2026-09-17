@@ -2837,7 +2837,7 @@
     // « Ny asako », la bannière d'essai et la rangée du bas.
     const PAGES = [
       'dash-accueil',
-      'dash-articles', 'dash-commun', 'section-factures', 'section-inviter', 'section-contact',
+      'dash-articles', 'dash-commun', 'dash-communadmin', 'section-factures', 'section-inviter', 'section-contact',
       // Les outils de bureau (fitaovana.js).
       'section-word', 'section-excel', 'section-notes', 'section-kajy',
       'section-calendrier', 'section-horaire',
@@ -3808,6 +3808,7 @@
       if(id.indexOf('section-') === 0) return 'section:' + id.slice(8);
       if(id === 'dash-articles') return 'id:menuArticles';
       if(id === 'dash-commun') return 'id:menuCommun';
+      if(id === 'dash-communadmin') return 'id:menuCommunAdmin';
       return '';
     }
     window.__pageFermee = function(id){
@@ -3832,7 +3833,8 @@
       const cible = cle.indexOf('section:') === 0
         ? document.getElementById('section-' + cle.slice(8))
         : (cle === 'id:menuArticles' ? document.getElementById('dash-articles')
-          : (cle === 'id:menuCommun' ? document.getElementById('dash-commun') : null));
+          : (cle === 'id:menuCommun' ? document.getElementById('dash-commun')
+            : (cle === 'id:menuCommunAdmin' ? document.getElementById('dash-communadmin') : null)));
       if(cible && cible.classList.contains('active')){
         const navStock = document.querySelector('.nav-item[data-section="stock"]');
         if(navStock) navStock.click();
@@ -4759,8 +4761,53 @@
     }
   }
 
+  // Le tableau de bord du Fokontany vit dans sa fenêtre ; l'Administratif
+  // Commun le lui emprunte. Une seule vue est ouverte à la fois
+  // (showDashView), si bien que le bloc n'a jamais à être à deux endroits.
+  function rangerTableauCommun(chez){
+    const corps = document.getElementById('communCorps');
+    const hote = chez === 'communadmin'
+      ? document.getElementById('communAdminCorps')
+      : document.getElementById('communContenu');
+    if(!corps || !hote || corps.parentElement === hote) return corps;
+    if(chez === 'communadmin') hote.appendChild(corps);
+    else {
+      // Sa place d'origine : juste après la rangée d'onglets.
+      const onglets = hote.querySelector('.dash-tabs');
+      hote.insertBefore(corps, onglets ? onglets.nextSibling : hote.firstChild);
+    }
+    return corps;
+  }
+  function ouvrirCommunAdmin(){
+    const corps = rangerTableauCommun('communadmin');
+    const message = document.getElementById('communAdminMessage');
+    if(!corps) return;
+    corps.style.display = 'none';
+    function montrer(ouverte){
+      // La fenêtre a pu être quittée pendant qu'on attendait le serveur.
+      if(!document.getElementById('dash-communadmin').classList.contains('active')) return;
+      corps.style.display = ouverte ? '' : 'none';
+      if(message){
+        message.style.display = ouverte ? 'none' : '';
+        message.textContent = ouverte ? '' :
+          '🔐 Mila alalana ity pejy ity : sokafy aloha ny « Administratif Fokontany » miaraka amin\'ny code nomen\'ny tompon\'ny site.';
+      }
+      if(!ouverte) return;
+      // Les mêmes lectures que l'onglet Tableau de bord du Fokontany.
+      if(typeof renderPiecesIdentite === 'function') renderPiecesIdentite();
+      if(typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
+      if(typeof renderTaratasyIsa === 'function') renderTaratasyIsa();
+    }
+    if(typeof renderPorteCommun === 'function') renderPorteCommun().then(montrer, function(){ montrer(false); });
+    else montrer(true);
+  }
+
   function rafraichirVue(nom){
-    if(nom === 'commun') choisirOngletCommun(ongletCommun);
+    if(nom === 'commun'){
+      rangerTableauCommun('commun');
+      choisirOngletCommun(ongletCommun);
+    }
+    if(nom === 'communadmin') ouvrirCommunAdmin();
     // Gardes typeof : showDashView tourne aussi au démarrage, pour rouvrir
     // la vue quittée, et tous les fichiers ne sont pas encore chargés.
     if(nom === 'dashboard'){
@@ -4813,6 +4860,8 @@
   if(menuArticles) menuArticles.addEventListener('click', function(){ ouvrirDepuisLeMenu('articles'); });
   const menuCommun = document.getElementById('menuCommun');
   if(menuCommun) menuCommun.addEventListener('click', function(){ ouvrirDepuisLeMenu('commun'); });
+  const menuCommunAdmin = document.getElementById('menuCommunAdmin');
+  if(menuCommunAdmin) menuCommunAdmin.addEventListener('click', function(){ ouvrirDepuisLeMenu('communadmin'); });
   document.querySelectorAll('#dash-commun [data-commun]').forEach(function(tab){
     tab.addEventListener('click', function(){ choisirOngletCommun(tab.dataset.commun); });
   });
