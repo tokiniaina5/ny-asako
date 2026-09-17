@@ -25,6 +25,8 @@
   };
 
   let taratasy = [];
+  // Les départs : leur numéro et leur date seulement (laharanaSuivant).
+  let numerosDepart = [];
   let personnes = [];
 
   function sb() {
@@ -135,12 +137,15 @@
   // Le numéro repart à 1 chaque mois : « 001/09-2026 ». Compté sur le plus
   // grand numéro déjà donné ce mois-là, et non sur le nombre de papiers —
   // un papier effacé ne doit pas rendre son numéro à un autre.
-  function laharanaSuivant(daty) {
+  //
+  // Chaque sorte de papier a sa propre file : les départs se comptent entre
+  // eux, les certificats de résidence entre eux.
+  function laharanaSuivant(daty, karazana) {
     const jour = String(daty || $('tarDaty').value || aujourdhui()).slice(0, 10);
     const annee = jour.slice(0, 4);
     const mois = jour.slice(5, 7);
     let plusGrand = 0;
-    taratasy.forEach(function (t) {
+    ((karazana || karazanaChoisie()) === 'fifindramonina' ? numerosDepart : taratasy).forEach(function (t) {
       if (String(t.daty || '').slice(0, 7) !== annee + '-' + mois) return;
       const m = String(t.laharana || '').match(/^(\d+)\//);
       if (m && Number(m[1]) > plusGrand) plusGrand = Number(m[1]);
@@ -153,13 +158,6 @@
   let laharanaPose = '';
   function poserLaharana() {
     const champ = $('tarLaharana');
-    // Le départ garde son propre numéro, celui du registre du fokontany : il
-    // ne suit pas la file des certificats de résidence.
-    if (karazanaChoisie() === 'fifindramonina') {
-      if (champ.value && champ.value === laharanaPose) champ.value = '';
-      laharanaPose = '';
-      return;
-    }
     if (champ.value && champ.value !== laharanaPose) return;
     laharanaPose = laharanaSuivant();
     champ.value = laharanaPose;
@@ -168,7 +166,7 @@
   function lireFormulaire() {
     return {
       karazana: karazanaChoisie(),
-      laharana: $('tarLaharana').value.trim() || laharanaSuivant($('tarDaty').value),
+      laharana: $('tarLaharana').value.trim() || laharanaSuivant($('tarDaty').value, karazanaChoisie()),
       anarana: $('tarAnarana').value.trim(),
       laharana_cin: $('tarCin').value.trim() || null,
       teraka_daty: $('tarTerakaDaty').value || null,
@@ -284,17 +282,24 @@
     }
     // Seuls les certificats de résidence se listent. Les départs sont
     // archivés : ils ne s'ouvrent que par leur numéro et le nom.
-    return client.from('taratasy').select('*')
-      .eq('owner_email', email).eq('karazana', 'fonenana')
-      .order('daty', { ascending: false })
-      .then(function (res) {
-        if (res.error) { dire(expliquer(res), true); return; }
-        taratasy = res.data || [];
-        afficher();
-        compter();
-      }, function () {
-        dire('Tsy tratra ny serveur : jereo ny réseau.', true);
-      });
+    // Des départs, on ne lit que le numéro et la date : de quoi donner le
+    // numéro suivant sans rien montrer de l'archive.
+    return Promise.all([
+      client.from('taratasy').select('*')
+        .eq('owner_email', email).eq('karazana', 'fonenana')
+        .order('daty', { ascending: false }),
+      client.from('taratasy').select('laharana,daty')
+        .eq('owner_email', email).eq('karazana', 'fifindramonina')
+    ]).then(function (r) {
+      const res = r[0];
+      if (res.error) { dire(expliquer(res), true); return; }
+      taratasy = res.data || [];
+      numerosDepart = (r[1] && !r[1].error && r[1].data) || [];
+      afficher();
+      compter();
+    }, function () {
+      dire('Tsy tratra ny serveur : jereo ny réseau.', true);
+    });
   }
 
   function afficher() {
@@ -348,7 +353,6 @@
     if (!t.anarana) { dire('Soraty ny anaran\'ilay olona.', true); return; }
     if (t.karazana === 'fifindramonina') {
       if (!t.fonenana_taloha || !t.fonenana_vaovao) { dire('Soraty ny fonenana taloha sy ny vaovao.', true); return; }
-      if (!$('tarLaharana').value.trim()) { dire('Soraty ny laharan\'ny taratasy : tsy atao ho azy izy eto.', true); return; }
       // Il ne se reprend pas : on le dit avant, pas après.
       if (!window.confirm('Rehefa voatahiry dia tsy azo ovaina na fafana intsony ity taratasy fifindra-monina ity.\n\nLaharana : ' +
         t.laharana + '\nAnarana : ' + t.anarana + '\n\nTohizana ?')) return;
