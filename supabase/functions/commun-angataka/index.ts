@@ -1,4 +1,4 @@
-// Quelqu'un demande à entrer dans « Administratif » : l'inscrire, et le dire.
+// Quelqu'un demande à entrer dans « Administratif Fokontany » : l'inscrire, et le dire.
 //
 // La demande s'écrivait jusqu'ici directement depuis le navigateur : elle
 // attendait sagement dans la table, et le propriétaire ne l'apprenait qu'en
@@ -118,18 +118,18 @@ Deno.serve(async (req: Request) => {
   const texte = [
     "Bonjour,",
     "",
-    (anarana ? anarana + " (" + email + ")" : email) + " demande l'accès à « Administratif ».",
+    (anarana ? anarana + " (" + email + ")" : email) + " demande l'accès à « Administratif Fokontany ».",
     "",
     hafatra ? "Message : " + hafatra : "Sans message.",
     "Heure : " + new Date().toLocaleString("fr-FR"),
     "",
-    "Ouvrez « Administratif » puis l'onglet « Fangatahana » : « Omeo code » lui envoie",
+    "Ouvrez « Administratif Fokontany » puis l'onglet « Fangatahana » : « Omeo code » lui envoie",
     "son code, « Lavina » refuse la demande.",
     "",
     Deno.env.get("OWNER_NAME") ?? "",
   ].join("\n");
 
-  const envoi = await prevenir(ownerEmail, "Demande d'accès à « Administratif »", texte);
+  const envoi = await prevenir(ownerEmail, "Demande d'accès à « Administratif Fokontany »", texte);
 
   return json({ ok: true, sent: envoi.sent, error: envoi.error });
 });

@@ -1,4 +1,4 @@
-// Accorder l'entrée de « Administratif », et l'envoyer par email.
+// Accorder l'entrée de « Administratif Fokontany », et l'envoyer par email.
 //
 // Le propriétaire presse « Omeo code » ; cette fonction, elle seule, écrit
 // l'accès (clé de service, jamais exposée au navigateur) :
@@ -146,7 +146,7 @@ Deno.serve(async (req: Request) => {
   const texte = [
     "Bonjour,",
     "",
-    "Votre accès à la page « Administratif » est ouvert.",
+    "Votre accès à la page « Administratif Fokontany » est ouvert.",
     "",
     "Ouvrez ce lien : la page s'ouvre sans rien à recopier.",
     lien,
@@ -158,7 +158,7 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("OWNER_NAME") ?? "",
   ].join("\n");
 
-  const envoi = await envoyer(cible, "Votre accès à « Administratif » — Gestion de Stockage", texte);
+  const envoi = await envoyer(cible, "Votre accès à « Administratif Fokontany » — Gestion de Stockage", texte);
 
   // Le code revient au propriétaire : si le mail n'est pas parti, il peut le
   // dire lui-même plutôt que de laisser la personne dehors.
