@@ -54,6 +54,207 @@
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
   }
+  // ---------- Un vrai .docx ----------
+  // Le .doc d'avant n'était qu'une page HTML renommée : Word l'ouvrait, mais en
+  // prévenant que le format ne correspondait pas à l'extension, et d'autres
+  // logiciels la refusaient. Un .docx est un zip de quelques fichiers XML ; on
+  // les écrit ici, à partir de ce que la page d'édition contient.
+  //
+  // JSZip n'est chargé qu'au moment d'exporter : personne ne doit le payer à
+  // l'ouverture de l'application.
+  let chargementZip = null;
+  function chargerZip() {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    if (chargementZip) return chargementZip;
+    chargementZip = new Promise(function (ok, non) {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload = function () { window.JSZip ? ok(window.JSZip) : non(new Error('JSZip')); };
+      s.onerror = function () { chargementZip = null; non(new Error('JSZip')); };
+      document.head.appendChild(s);
+    });
+    return chargementZip;
+  }
+
+  function xml(t) {
+    return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+
+  // Ce que l'éditeur produit — titres, gras, italique, souligné, listes,
+  // alignement, retours à la ligne — traduit en paragraphes Word.
+  function htmlVersParagraphes(racine) {
+    const paragraphes = [];
+    const listes = [];          // une numérotation par liste ordonnée : chacune repart à 1
+    let enCours = null;         // paragraphe en train de recevoir du texte hors bloc
+
+    function alignement(el) {
+      const a = ((el.style && el.style.textAlign) || el.getAttribute('align') || '').toLowerCase();
+      return { center: 'center', right: 'right', justify: 'both', left: 'left' }[a] || '';
+    }
+
+    function runs(noeud, fmt, sortie) {
+      if (noeud.nodeType === 3) {
+        const t = noeud.nodeValue;
+        if (!t) return;
+        const rPr = (fmt.b ? '<w:b/>' : '') + (fmt.i ? '<w:i/>' : '') + (fmt.u ? '<w:u w:val="single"/>' : '');
+        sortie.push('<w:r>' + (rPr ? '<w:rPr>' + rPr + '</w:rPr>' : '') +
+          '<w:t xml:space="preserve">' + xml(t) + '</w:t></w:r>');
+        return;
+      }
+      if (noeud.nodeType !== 1) return;
+      const tag = noeud.tagName;
+      if (tag === 'BR') { sortie.push('<w:r><w:br/></w:r>'); return; }
+      const s = noeud.style || {};
+      const f = {
+        b: fmt.b || tag === 'B' || tag === 'STRONG' || s.fontWeight === 'bold' || Number(s.fontWeight) >= 600,
+        i: fmt.i || tag === 'I' || tag === 'EM' || s.fontStyle === 'italic',
+        u: fmt.u || tag === 'U' || /underline/.test(s.textDecoration || '')
+      };
+      noeud.childNodes.forEach(function (n) { runs(n, f, sortie); });
+    }
+
+    function paragraphe(contenu, options) {
+      const o = options || {};
+      let pPr = '';
+      if (o.style) pPr += '<w:pStyle w:val="' + o.style + '"/>';
+      if (o.numId) pPr += '<w:numPr><w:ilvl w:val="' + (o.niveau || 0) + '"/><w:numId w:val="' + o.numId + '"/></w:numPr>';
+      if (o.jc) pPr += '<w:jc w:val="' + o.jc + '"/>';
+      paragraphes.push('<w:p>' + (pPr ? '<w:pPr>' + pPr + '</w:pPr>' : '') + contenu.join('') + '</w:p>');
+    }
+
+    function clore() {
+      if (enCours) { paragraphe(enCours); enCours = null; }
+    }
+
+    const BLOCS = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'PRE'];
+    function estBloc(n) { return n.nodeType === 1 && BLOCS.indexOf(n.tagName) >= 0; }
+
+    function liste(el, niveau) {
+      const ordonnee = el.tagName === 'OL';
+      let numId = 1;
+      if (ordonnee) { listes.push(1); numId = listes.length + 1; }
+      el.childNodes.forEach(function (li) {
+        if (li.nodeType !== 1) return;
+        if (li.tagName === 'UL' || li.tagName === 'OL') { liste(li, Math.min(niveau + 1, 2)); return; }
+        const contenu = [];
+        const sousListes = [];
+        li.childNodes.forEach(function (n) {
+          if (n.nodeType === 1 && (n.tagName === 'UL' || n.tagName === 'OL')) sousListes.push(n);
+          else runs(n, {}, contenu);
+        });
+        paragraphe(contenu, { numId: numId, niveau: niveau, jc: alignement(li) });
+        sousListes.forEach(function (sl) { liste(sl, Math.min(niveau + 1, 2)); });
+      });
+    }
+
+    function bloc(el) {
+      const tag = el.tagName;
+      if (tag === 'UL' || tag === 'OL') { liste(el, 0); return; }
+      // Un bloc qui en contient d'autres (des div dans des div) : on descend.
+      if (Array.prototype.some.call(el.childNodes, estBloc)) { parcourir(el); return; }
+      const contenu = [];
+      el.childNodes.forEach(function (n) { runs(n, {}, contenu); });
+      const style = tag === 'H1' ? 'Heading1' : (/^H[2-6]$/.test(tag) ? 'Heading2' : '');
+      paragraphe(contenu, { style: style, jc: alignement(el) });
+    }
+
+    function parcourir(parent) {
+      parent.childNodes.forEach(function (n) {
+        if (estBloc(n)) { clore(); bloc(n); return; }
+        if (!enCours) enCours = [];
+        runs(n, {}, enCours);
+      });
+      clore();
+    }
+
+    parcourir(racine);
+    return { corps: paragraphes.join('') || '<w:p/>', listesOrdonnees: listes.length };
+  }
+
+  function fabriquerDocx(htmlDoc) {
+    return chargerZip().then(function (JSZip) {
+      const racine = document.createElement('div');
+      racine.innerHTML = htmlDoc || '';
+      const r = htmlVersParagraphes(racine);
+
+      // Trois niveaux de liste, à puces (abstrait 0) ou numérotées (abstrait 1).
+      function niveaux(puce) {
+        let s = '';
+        for (let n = 0; n < 3; n++) {
+          s += '<w:lvl w:ilvl="' + n + '"><w:start w:val="1"/>' +
+            (puce ? '<w:numFmt w:val="bullet"/><w:lvlText w:val="' + ['•', '◦', '▪'][n] + '"/>'
+                  : '<w:numFmt w:val="decimal"/><w:lvlText w:val="%' + (n + 1) + '."/>') +
+            '<w:lvlJc w:val="left"/><w:pPr><w:ind w:left="' + (720 * (n + 1)) + '" w:hanging="360"/></w:pPr></w:lvl>';
+        }
+        return s;
+      }
+      let nums = '<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>';
+      for (let k = 0; k < r.listesOrdonnees; k++) {
+        nums += '<w:num w:numId="' + (k + 2) + '"><w:abstractNumId w:val="1"/>' +
+          '<w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/></w:lvlOverride></w:num>';
+      }
+
+      const zip = new JSZip();
+      zip.file('[Content_Types].xml',
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+          '<Default Extension="xml" ContentType="application/xml"/>' +
+          '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+          '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+          '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>' +
+        '</Types>');
+      zip.file('_rels/.rels',
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+        '</Relationships>');
+      zip.file('word/_rels/document.xml.rels',
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+          '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>' +
+        '</Relationships>');
+      zip.file('word/styles.xml',
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<w:styles ' + W + '>' +
+          '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault>' +
+          '<w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+          '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>' +
+          '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/>' +
+            '<w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:style>' +
+          '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/>' +
+            '<w:pPr><w:keepNext/><w:spacing w:before="200" w:after="100"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style>' +
+        '</w:styles>');
+      zip.file('word/numbering.xml',
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<w:numbering ' + W + '>' +
+          '<w:abstractNum w:abstractNumId="0">' + niveaux(true) + '</w:abstractNum>' +
+          '<w:abstractNum w:abstractNumId="1">' + niveaux(false) + '</w:abstractNum>' +
+          nums +
+        '</w:numbering>');
+      zip.file('word/document.xml',
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<w:document ' + W + '><w:body>' + r.corps +
+          // A4, marges de 2,5 cm.
+          '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
+          '<w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>' +
+        '</w:body></w:document>');
+
+      // JSZip ajoute une entrée pour chaque dossier ; Word n'en a pas besoin.
+      Object.keys(zip.files).forEach(function (k) { if (zip.files[k].dir) delete zip.files[k]; });
+
+      return zip.generateAsync({
+        type: 'blob',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      });
+    });
+  }
+  // Pour vérifier l'export sans rien télécharger.
+  window.__fabriquerDocx = fabriquerDocx;
+
   function tete(titre, sous) {
     return '<div class="section-head"><div><h2>' + titre + '</h2><p>' + sous + '</p></div></div>';
   }
@@ -169,7 +370,7 @@
         '<p id="wordStatut" style="font-size:0.75rem; color:var(--muted); margin:0.5rem 0 0;">' +
           (doc.maj ? 'Voatahiry : ' + quand(doc.maj) : '') + '</p>' +
         '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.8rem;">' +
-          '<button type="button" class="btn btn-sm btn-primary" id="wordTelecharger" style="width:auto;">⬇ Alaina ho Word (.doc)</button>' +
+          '<button type="button" class="btn btn-sm btn-primary" id="wordTelecharger" style="width:auto;">⬇ Export Microsoft Word (.docx)</button>' +
           '<button type="button" class="btn btn-sm" id="wordImprimer" style="width:auto;">🖨 Pirinty / PDF</button>' +
         '</div>' +
         liens([['Word Online', 'https://www.office.com/launch/word'], ['Google Docs', 'https://docs.google.com/document/create']]) +
@@ -239,14 +440,21 @@
       ecrire('word_courant', docs[0] ? docs[0].id : null);
       rendreWord();
     });
-    // Word ouvre une page HTML nommée .doc comme un document à lui : pas de
-    // bibliothèque à charger, et le titre, les gras, les listes suivent.
+    // Un vrai .docx (fabriquerDocx). Sans réseau pour charger JSZip, on
+    // retombe sur l'ancien .doc — une page HTML que Word ouvre quand même —
+    // plutôt que de ne rien donner.
     z.querySelector('#wordTelecharger').addEventListener('click', function () {
       garderMaintenant();
-      const corps = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
-        '<head><meta charset="utf-8"><title>' + html(doc.titre) + '</title></head>' +
-        '<body style="font-family:Calibri,Arial,sans-serif;">' + doc.html + '</body></html>';
-      telecharger(nomFichier(doc.titre) + '.doc', '﻿' + corps, 'application/msword');
+      const bouton = this;
+      bouton.disabled = true;
+      fabriquerDocx(doc.html).then(function (blob) {
+        telecharger(nomFichier(doc.titre) + '.docx', blob);
+      }, function () {
+        const corps = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+          '<head><meta charset="utf-8"><title>' + html(doc.titre) + '</title></head>' +
+          '<body style="font-family:Calibri,Arial,sans-serif;">' + doc.html + '</body></html>';
+        telecharger(nomFichier(doc.titre) + '.doc', '﻿' + corps, 'application/msword');
+      }).then(function () { bouton.disabled = false; });
     });
     z.querySelector('#wordImprimer').addEventListener('click', function () {
       garderMaintenant();
@@ -366,7 +574,7 @@
         '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.8rem;">' +
           '<button type="button" class="btn btn-sm" id="excelLigne" style="width:auto;">＋ Andalana</button>' +
           '<button type="button" class="btn btn-sm" id="excelColonne" style="width:auto;">＋ Tsanganana</button>' +
-          '<button type="button" class="btn btn-sm btn-primary" id="excelTelecharger" style="width:auto;">⬇ Alaina ho Excel (.xlsx)</button>' +
+          '<button type="button" class="btn btn-sm btn-primary" id="excelTelecharger" style="width:auto;">⬇ Export Microsoft Excel (.xlsx)</button>' +
           '<label class="btn btn-sm" style="width:auto; cursor:pointer; margin:0;">⬆ Hampiditra fichier' +
             '<input type="file" id="excelImporter" accept=".xlsx,.xls,.csv" hidden></label>' +
         '</div>' +
