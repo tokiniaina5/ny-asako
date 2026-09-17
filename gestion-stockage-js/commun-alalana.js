@@ -154,7 +154,10 @@
           // remplir parce qu'on a rouvert l'onglet trois fois.
           if (!signalEnvoye) { signalEnvoye = true; signaler(garde); }
         } else if (ligne && ligne.active && !garde) {
-          dire('porteMessage', 'Efa nomena alalana ianao : soraty eto ambany ny code nomen\'ny tompon\'ny site.');
+          // Le code est tiré avec la demande (commun-angataka) : il ne reste
+          // qu'à attendre que le propriétaire valide.
+          dire('porteMessage', 'Nalefa ny fangatahanao miaraka amin\'ny code. Miandry ny fanamarinan\'ny tompon\'ny site : misokatra ny pejy rehefa voamarina.');
+          $('porteJereo').style.display = '';
         } else if (ligne && !ligne.active) {
           dire('porteMessage', 'Nesorina ny alalanao. Mangataha indray raha ilaina.', true);
         }
@@ -212,8 +215,9 @@
         const data = (res && res.data) || {};
         if (res && res.error && !data.ok) { ecrireLaDemande(email); return; }
         dire('porteMessage', data.sent
-          ? 'Nalefa ny fangatahanao, ary nampandrenesina ny tompon\'ny site.'
-          : 'Voatahiry ny fangatahanao. Tsy lasa ny mailaka, fa ho hitany ao amin\'ny pejiny ihany izy.');
+          ? 'Nalefa ny fangatahanao sy ny code, ary nampandrenesina ny tompon\'ny site. Misokatra ny pejy rehefa nohamafisiny.'
+          : 'Voatahiry ny fangatahanao sy ny code. Tsy lasa ny mailaka, fa ho hitany ao amin\'ny pejiny ihany izy.');
+        $('porteJereo').style.display = '';
         montrerMonStatut();
       }, function () { ecrireLaDemande(email); });
       return;
@@ -313,13 +317,22 @@
   function afficherAdmin() {
     const STATUTS = { miandry: 'Miandry', ekena: 'Ekena', lavina: 'Lavina' };
     $('admFangatahanaListe').innerHTML = fangatahana.map(function (f) {
+      // Le code tiré avec la demande, et le bouton pour valider sur place.
+      const acces = alalana.filter(function (a) {
+        return String(a.email).trim().toLowerCase() === String(f.email).trim().toLowerCase();
+      })[0];
+      const aValider = acces && acces.active && !acces.voamarina;
       return '<tr>' +
         '<td style="white-space:nowrap;">' + dateFr(f.created_at) + '</td>' +
         '<td>' + echapper(f.anarana || '—') + '<div style="color:var(--muted); font-size:0.75rem;">' + echapper(f.email) + '</div></td>' +
         '<td style="color:var(--muted);">' + echapper(f.hafatra || '—') + '</td>' +
-        '<td>' + echapper(STATUTS[f.statut] || f.statut) + '</td>' +
+        '<td>' + echapper(STATUTS[f.statut] || f.statut) +
+          (acces ? '<div style="font-family:var(--font-mono); font-size:0.85rem; letter-spacing:0.1em; margin-top:0.2rem;">' + echapper(acces.code) + '</div>' : '') +
+        '</td>' +
         '<td style="white-space:nowrap;">' +
-          '<button type="button" class="btn btn-primary btn-sm" data-ekena="' + echapper(f.id) + '">Omeo code</button> ' +
+          (aValider
+            ? '<button type="button" class="btn btn-primary btn-sm" data-valider="' + echapper(acces.id) + '" data-valider-email="' + echapper(f.email) + '">✅ Hamafiso</button> '
+            : '<button type="button" class="btn btn-primary btn-sm" data-ekena="' + echapper(f.id) + '">Omeo code</button> ') +
           '<button type="button" class="btn btn-red btn-sm" data-lavina="' + echapper(f.id) + '">Lavina</button>' +
         '</td>' +
       '</tr>';
@@ -393,9 +406,15 @@
   function refuser(id) {
     const client = sb();
     if (!client) return;
+    const f = fangatahana.filter(function (x) { return x.id === id; })[0];
     client.from('commun_fangatahana').update({ statut: 'lavina', updated_at: new Date().toISOString() }).eq('id', id)
       .then(function (res) {
         if (res.error) { dire('admMessage', expliquer(res), true); return; }
+        // Le code tiré avec la demande ne doit plus attendre une validation.
+        if (f && f.email) {
+          client.from('commun_alalana').update({ active: false, voamarina: false, updated_at: new Date().toISOString() })
+            .ilike('email', String(f.email).trim().toLowerCase()).then(function () {}, function () {});
+        }
         dire('admMessage', 'Nolavina.');
         chargerAdmin();
       }, function () { dire('admMessage', 'Tsy tratra ny serveur.', true); });
@@ -415,14 +434,17 @@
   $('admFangatahanaListe').addEventListener('click', function (e) {
     const ekena = e.target.closest('[data-ekena]');
     const lavina = e.target.closest('[data-lavina]');
-    if (ekena) accorder(ekena.dataset.ekena);
+    const validerBtn = e.target.closest('[data-valider]');
+    if (validerBtn) valider(validerBtn.dataset.valider, String(validerBtn.dataset.validerEmail || '').trim().toLowerCase());
+    else if (ekena) accorder(ekena.dataset.ekena);
     else if (lavina) refuser(lavina.dataset.lavina);
   });
 
   $('admAlalanaListe').addEventListener('click', function (e) {
     const hamafiso = e.target.closest('[data-hamafiso]');
     if (hamafiso) {
-      changerAcces(hamafiso.dataset.hamafiso, { voamarina: true, active: true }, 'Nohamafisina : misokatra aminy izao ny pejy.');
+      const a = alalana.filter(function (x) { return x.id === hamafiso.dataset.hamafiso; })[0];
+      valider(hamafiso.dataset.hamafiso, a && String(a.email).trim().toLowerCase());
       return;
     }
     const vaovao = e.target.closest('[data-code-vaovao]');
@@ -468,6 +490,69 @@
     }
     setTimeout(function () { ouvrirQuandPret(20); }, 600);
   })();
+
+  // « ?commun_valider=<email>&c=<code> » : le lien de l'email du
+  // propriétaire. Il ne valide rien à lui seul — un antivirus qui ouvre les
+  // liens le déclencherait. Il ouvre l'onglet des demandes et pose la
+  // question ; c'est le compte connecté du propriétaire qui écrit.
+  (function () {
+    let params;
+    try { params = new URLSearchParams(window.location.search); } catch (e) { return; }
+    const email = String(params.get('commun_valider') || '').trim().toLowerCase();
+    const code = String(params.get('c') || '').trim().toUpperCase();
+    if (!email) return;
+    params.delete('commun_valider');
+    params.delete('c');
+    const reste = params.toString();
+    try { history.replaceState(null, '', window.location.pathname + (reste ? '?' + reste : '')); } catch (e) {}
+
+    function essayer(n) {
+      const ecran = document.getElementById('appScreen');
+      const pret = ecran && getComputedStyle(ecran).display !== 'none' && monEmail() && typeof ouvrirDepuisLeMenu === 'function';
+      if (!pret) {
+        if (n > 0) setTimeout(function () { essayer(n - 1); }, 1000);
+        return;
+      }
+      if (!jeSuisLeProprietaire()) {
+        alert('Ity rohy ity dia an\'ny tompon\'ny site ihany : midira amin\'ny kaontiny vao manamarina.');
+        return;
+      }
+      ouvrirDepuisLeMenu('commun');
+      if (typeof choisirOngletCommun === 'function') choisirOngletCommun('fangatahana');
+      chargerAdmin().then(function () {
+        const a = alalana.filter(function (x) { return String(x.email).trim().toLowerCase() === email; })[0];
+        if (!a) { dire('admMessage', 'Tsy hita ny fangatahan\'i ' + email + '.', true); return; }
+        if (a.active && a.voamarina) { dire('admMessage', 'Efa voamarina teo aloha i ' + email + '.'); return; }
+        if (code && String(a.code).trim().toUpperCase() !== code) {
+          dire('admMessage', 'Efa niova ny code an\'i ' + email + ' : jereo ny fangatahana farany.', true);
+          return;
+        }
+        if (window.confirm('Hamafisina ve ny fidiran\'i ' + (a.anarana ? a.anarana + ' (' + email + ')' : email) +
+          ' ao amin\'ny « Administratif Fokontany » ?\n\nCode : ' + a.code)) {
+          valider(a.id, email);
+        }
+      });
+    }
+    setTimeout(function () { essayer(25); }, 800);
+  })();
+
+  // Valider : l'accès confirmé, et la demande marquée acceptée.
+  function valider(id, email) {
+    const client = sb();
+    if (!client) return;
+    const maintenant = new Date().toISOString();
+    client.from('commun_alalana').update({ voamarina: true, active: true, updated_at: maintenant }).eq('id', id)
+      .then(function (res) {
+        if (res.error) { dire('admMessage', expliquer(res), true); return; }
+        const suite = email
+          ? client.from('commun_fangatahana').update({ statut: 'ekena', updated_at: maintenant }).ilike('email', email)
+          : Promise.resolve();
+        return Promise.resolve(suite).then(function () {
+          dire('admMessage', 'Nohamafisina : misokatra aminy izao ny pejy.');
+          chargerAdmin();
+        });
+      }, function () { dire('admMessage', 'Tsy tratra ny serveur.', true); });
+  }
 
   // La session Supabase arrive parfois après l'ouverture de la page : la
   // vérification, faite trop tôt, ne voyait aucune ligne et refermait la porte

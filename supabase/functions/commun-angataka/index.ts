@@ -20,6 +20,14 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+function nouveauCode(): string {
+  // Même alphabet que commun-code : ni O/0, ni I/1.
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const octets = new Uint8Array(8);
+  crypto.getRandomValues(octets);
+  return Array.from(octets).map((b) => alphabet[b % alphabet.length]).join("");
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -128,6 +136,32 @@ async function traiter(req: Request): Promise<Response> {
 
   if (ecrit.error) return json({ error: ecrit.error.message }, 502);
 
+  // Le code se tire avec la demande : le propriétaire n'a plus qu'à valider.
+  // L'accès est posé actif mais NON confirmé — rien ne s'ouvre tant qu'il n'a
+  // pas dit oui. Une personne déjà confirmée garde son accès tel quel.
+  const { data: acces } = await admin.from("commun_alalana")
+    .select("id,code,active,voamarina").ilike("email", email).limit(1);
+  const dejaAcces = (acces ?? [])[0];
+  let code = "";
+  if (dejaAcces && dejaAcces.active && dejaAcces.voamarina) {
+    code = dejaAcces.code;
+  } else {
+    code = nouveauCode();
+    const pose = dejaAcces
+      ? await admin.from("commun_alalana").update({
+        code, active: true, voamarina: false, anarana: anarana || null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", dejaAcces.id)
+      : await admin.from("commun_alalana").insert({ email, anarana: anarana || null, code, active: true, voamarina: false });
+    if (pose.error) return json({ error: pose.error.message }, 502);
+  }
+
+  // Le lien ouvre le site, où le propriétaire doit être connecté : c'est son
+  // compte, et non la possession du lien, qui valide. Un lien qui validerait
+  // à lui seul serait déclenché par le premier antivirus qui l'ouvre.
+  const appUrl = (Deno.env.get("APP_URL") ?? "https://ny-asako.netlify.app/").replace(/\/+$/, "/");
+  const lienValider = appUrl + "?commun_valider=" + encodeURIComponent(email) + "&c=" + encodeURIComponent(code);
+
   const texte = [
     "Bonjour,",
     "",
@@ -136,8 +170,12 @@ async function traiter(req: Request): Promise<Response> {
     hafatra ? "Message : " + hafatra : "Sans message.",
     "Heure : " + new Date().toLocaleString("fr-FR"),
     "",
-    "Ouvrez « Administratif Fokontany » puis l'onglet « Fangatahana » : « Omeo code » lui envoie",
-    "son code, « Lavina » refuse la demande.",
+    "Code de la demande : " + code,
+    "",
+    "Pour valider, ouvrez ce lien (connecté à votre compte) puis confirmez :",
+    lienValider,
+    "",
+    "Sinon : « Administratif Fokontany » > onglet « Fangatahana » > « ✅ Hamafiso » ou « Lavina ».",
     "",
     Deno.env.get("OWNER_NAME") ?? "",
   ].join("\n");
@@ -145,5 +183,6 @@ async function traiter(req: Request): Promise<Response> {
   const envoi = await prevenir(ownerEmail, "Demande d'accès à « Administratif Fokontany »", texte);
 
   if (!envoi.sent) console.error("commun-angataka : mail non parti", envoi.error);
-  return json({ ok: true, sent: envoi.sent, error: envoi.error });
+  // Le code ne revient pas à la personne : c'est la validation qui ouvre.
+  return json({ ok: true, sent: envoi.sent, error: envoi.error, enAttente: !(dejaAcces && dejaAcces.active && dejaAcces.voamarina) });
 }
