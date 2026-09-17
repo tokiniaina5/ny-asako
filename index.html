@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="7d1df4f5">
+<meta name="ny-asako-version" content="64572bc1">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -125,7 +125,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=d7bedec9">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=c58b5873">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=8a1364e8">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -578,6 +578,8 @@
              Le style la retire pour tout autre que lui. -->
         <div class="nav-item seulement-mpiasa" id="navMoi" data-section="moi">🙋 Ny momba ahy</div>
         <div class="nav-item" data-section="factures">🧾 Factures</div>
+        <!-- Scan, photos et photocopies (photocopie.js). -->
+        <div class="nav-item" data-section="photocopie">📠 Photocopie</div>
         <!-- Les outils de bureau : ils ne gardent rien ailleurs que dans ce
              navigateur (fitaovana.js). -->
         <div class="nav-item" data-section="word">📝 Word</div>
@@ -2586,6 +2588,8 @@
       <section class="section" id="section-kajy"><div class="fitaovana" data-outil="kajy"></div></section>
       <section class="section" id="section-calendrier"><div class="fitaovana" data-outil="calendrier"></div></section>
       <section class="section" id="section-horaire"><div class="fitaovana" data-outil="horaire"></div></section>
+      <!-- Vide : photocopie.js la remplit. -->
+      <section class="section" id="section-photocopie"><div class="photocopie"></div></section>
 
     </main>
   </div>
@@ -2594,7 +2598,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=506c5009"></script>
+<script src="gestion-stockage-js/common.js?v=4c97e0a2"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2612,6 +2616,7 @@
 <script src="gestion-stockage-js/vue-mpiasa.js?v=bff76752"></script>
 <script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=bf90a8a5"></script>
+<script src="gestion-stockage-js/photocopie.js?v=362c711f"></script>
 <script src="gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
 <script src="gestion-stockage-js/commun-alalana.js?v=5ffa6ad0"></script>
 <script src="gestion-stockage-js/taratasy.js?v=666d726e"></script>

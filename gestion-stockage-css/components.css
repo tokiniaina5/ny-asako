@@ -1,11 +1,11 @@
 /* ---------- Tableau de bord (Stock) ---------- */
   .dash-tabs{ display:flex; gap:0.4rem; margin-bottom:1.4rem; border-bottom:1px solid var(--line); flex-wrap:wrap; }
-  .dash-tab{
+  .dash-tab, .pc-onglet{
     padding:0.65rem 1.1rem; font-size:0.85rem; color:var(--muted); cursor:pointer;
     border-bottom:2px solid transparent; font-family:var(--font-mono); user-select:none;
   }
-  .dash-tab:hover{ color:var(--text); }
-  .dash-tab.active{ color:var(--cyan); border-color:var(--cyan); }
+  .dash-tab:hover, .pc-onglet:hover{ color:var(--text); }
+  .dash-tab.active, .pc-onglet.active{ color:var(--cyan); border-color:var(--cyan); }
   /* appel vidéo : au centre de la rangée, en évidence sans être criard */
   .dash-tab-call{ color:var(--cyan); }
   .dash-tab-call:hover{ color:var(--text); }
