@@ -4932,3 +4932,42 @@
       }
     });
   }
+  // Les noms complets (.champ-anarana) : une zone de texte qui grandit avec
+  // le nom au lieu de le couper. Elle reste un champ d'une seule ligne pour
+  // le reste du code : Entrée n'y ajoute rien, et un retour à la ligne collé
+  // devient une espace.
+  (function(){
+    function ajuster(el){
+      if(!el.offsetParent) return;          // cachée : mesurée quand elle paraîtra
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 2 + 'px';
+    }
+    document.querySelectorAll('textarea.champ-anarana').forEach(function(el){
+      // Les scripts écrivent .value directement (scan de la CIN, choix d'une
+      // personne, remise à zéro) : sans ce relais, la hauteur ne suivrait pas.
+      const proto = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+      Object.defineProperty(el, 'value', {
+        configurable: true,
+        get: function(){ return proto.get.call(el); },
+        set: function(v){ proto.set.call(el, v); ajuster(el); }
+      });
+      el.addEventListener('keydown', function(e){ if(e.key === 'Enter') e.preventDefault(); });
+      el.addEventListener('input', function(){
+        if(/[\r\n]/.test(proto.get.call(el))){
+          const pos = el.selectionStart;
+          proto.set.call(el, proto.get.call(el).replace(/\s*[\r\n]+\s*/g, ' '));
+          el.setSelectionRange(pos, pos);
+        }
+        ajuster(el);
+      });
+      el.addEventListener('focus', function(){ ajuster(el); });
+    });
+    // La page qui s'ouvre, la fenêtre qu'on élargit : la largeur change, la
+    // hauteur nécessaire aussi.
+    function toutAjuster(){ document.querySelectorAll('textarea.champ-anarana').forEach(ajuster); }
+    window.addEventListener('resize', toutAjuster);
+    if(window.ResizeObserver){
+      const ro = new ResizeObserver(toutAjuster);
+      document.querySelectorAll('textarea.champ-anarana').forEach(function(el){ ro.observe(el.parentElement); });
+    }
+  })();
