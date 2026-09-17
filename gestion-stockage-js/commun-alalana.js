@@ -77,9 +77,42 @@
 
   // ---------- La porte ----------
 
-  function maLigne() {
-    const client = sb();
+  // Qui est là, pour le serveur. « Midira aloha » répondait à quatre
+  // situations différentes — lien d'employé, Supabase absent, session du
+  // serveur perdue, pas de compte — et laissait la personne sans piste. La
+  // règle d'accès du serveur lit l'email de la SESSION Supabase : c'est elle
+  // qui compte, pas seulement le compte ouvert dans la page.
+  function identite() {
+    if (typeof MODE_MPIASA !== 'undefined' && MODE_MPIASA) {
+      return Promise.resolve({ ok: false, pourquoi: 'Tsy azo ampiasaina amin\'ny rohy mpiasa ity pejy ity : sokafy ny site amin\'ny kaontinao manokana (email sy tenimiafina).' });
+    }
+    const client = window.__sb || null;
+    if (!client) {
+      return Promise.resolve({ ok: false, pourquoi: 'Tsy tafiditra ny fifandraisana amin\'ny serveur : havaozy ny pejy (actualiser).' });
+    }
     const email = monEmail();
+    const lire = (client.auth && client.auth.getSession)
+      ? client.auth.getSession().then(function (r) {
+          const u = r && r.data && r.data.session && r.data.session.user;
+          return u && u.email ? String(u.email).trim().toLowerCase() : '';
+        }, function () { return ''; })
+      : Promise.resolve('');
+    return lire.then(function (emailSession) {
+      if (!emailSession) {
+        return { ok: false, pourquoi: email
+          ? 'Tsy tafiditra amin\'ny serveur ny kaontinao (' + email + ') : tsindrio « Se déconnecter », dia midira indray amin\'ny email sy tenimiafina.'
+          : 'Midira amin\'ny kaontinao aloha.' };
+      }
+      if (email && email !== emailSession) {
+        return { ok: false, pourquoi: 'Kaonty roa samy hafa no misokatra (' + email + ' / ' + emailSession + ') : mivoaha dia midira indray.' };
+      }
+      return { ok: true, client: client, email: emailSession };
+    });
+  }
+
+  function maLigne(emailSession) {
+    const client = sb();
+    const email = emailSession || monEmail();
     if (!client || !email) return Promise.resolve(null);
     return client.from('commun_alalana').select('code,active,voamarina,nampiasaina_at').ilike('email', email)
       .then(function (res) {
@@ -92,13 +125,18 @@
     // Le propriétaire n'a pas à se demander l'entrée à lui-même.
     if (jeSuisLeProprietaire()) { montrer(true); return Promise.resolve(true); }
 
-    const client = sb();
-    if (!client || !monEmail()) {
-      montrer(false);
-      dire('porteMessage', 'Midira amin\'ny kaontinao aloha.', true);
-      return Promise.resolve(false);
-    }
-    return maLigne().then(function (ligne) {
+    return identite().then(function (moi) {
+      if (!moi.ok) {
+        montrer(false);
+        dire('porteMessage', moi.pourquoi, true);
+        return false;
+      }
+      // Un message d'une vérification précédente ne doit pas rester affiché.
+      dire('porteMessage', '');
+      return maLigne(moi.email).then(suiteVerifier);
+    });
+  }
+  function suiteVerifier(ligne) {
       const garde = codeGarde();
       const codeMety = !!(ligne && ligne.active && garde && String(ligne.code).trim().toUpperCase() === garde);
       // Une fois l'accès confirmé, c'est le compte qui ouvre : la personne
@@ -123,7 +161,6 @@
         montrerMonStatut();
       }
       return ok;
-    });
   }
 
   // Prévenir le propriétaire que le code vient d'être saisi. Le navigateur
@@ -158,9 +195,13 @@
   }
 
   function mangataka() {
-    const client = sb();
-    const email = monEmail();
-    if (!client || !email) { dire('porteMessage', 'Midira amin\'ny kaontinao aloha.', true); return; }
+    dire('porteMessage', 'Fanamarinana…');
+    identite().then(function (moi) {
+      if (!moi.ok) { dire('porteMessage', moi.pourquoi, true); return; }
+      envoyerLaDemande(moi.client, moi.email);
+    });
+  }
+  function envoyerLaDemande(client, email) {
     dire('porteMessage', 'Mandefa ny fangatahana…');
     // La fonction pose la demande ET prévient le propriétaire : écrite
     // seulement dans la table, elle attendait qu'il pense à venir la voir.
@@ -169,22 +210,22 @@
         body: { hafatra: $('porteHafatra').value.trim() || null, anarana: monNom() || null }
       }).then(function (res) {
         const data = (res && res.data) || {};
-        if (res && res.error && !data.ok) { ecrireLaDemande(); return; }
+        if (res && res.error && !data.ok) { ecrireLaDemande(email); return; }
         dire('porteMessage', data.sent
           ? 'Nalefa ny fangatahanao, ary nampandrenesina ny tompon\'ny site.'
           : 'Voatahiry ny fangatahanao. Tsy lasa ny mailaka, fa ho hitany ao amin\'ny pejiny ihany izy.');
         montrerMonStatut();
-      }, function () { ecrireLaDemande(); });
+      }, function () { ecrireLaDemande(email); });
       return;
     }
-    ecrireLaDemande();
+    ecrireLaDemande(email);
   }
 
   // Le recours, quand la fonction n'est pas déployée ou ne répond pas : la
   // demande s'écrit quand même, le propriétaire la verra dans son onglet.
-  function ecrireLaDemande() {
+  function ecrireLaDemande(emailSession) {
     const client = sb();
-    const email = monEmail();
+    const email = emailSession || monEmail();
     if (!client || !email) return;
     client.from('commun_fangatahana').insert({
       email: email,
