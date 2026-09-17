@@ -68,7 +68,20 @@ async function prevenir(dest: string, sujet: string, texte: string): Promise<{ s
   return res.ok ? { sent: true, error: "" } : { sent: false, error: await res.text() };
 }
 
+// Une exception non rattrapée rendait une réponse sans en-têtes CORS : le
+// navigateur n'en voyait qu'un « Failed to fetch », la page se rabattait sur
+// l'écriture directe, et personne ne savait ce qui avait cassé.
 Deno.serve(async (req: Request) => {
+  try {
+    return await traiter(req);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("commun-angataka", message);
+    return json({ error: "erreur interne : " + message }, 500);
+  }
+});
+
+async function traiter(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "méthode refusée" }, 405);
 
@@ -131,5 +144,6 @@ Deno.serve(async (req: Request) => {
 
   const envoi = await prevenir(ownerEmail, "Demande d'accès à « Administratif Fokontany »", texte);
 
+  if (!envoi.sent) console.error("commun-angataka : mail non parti", envoi.error);
   return json({ ok: true, sent: envoi.sent, error: envoi.error });
-});
+}

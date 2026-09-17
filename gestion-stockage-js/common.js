@@ -1447,12 +1447,14 @@
     };
   }
 
-  // Le logo voyage dans les informations du compte : quelques kilo-octets une
-  // fois réduit. Au-delà, on s'abstient plutôt que de faire échouer tout
-  // l'enregistrement du profil — la copie locale, elle, reste en place.
-  const LOGO_MAX_SERVER_CHARS = 200000;
-  function logoForServer(logo){
-    return (logo && logo.length <= LOGO_MAX_SERVER_CHARS) ? logo : null;
+  // Le logo ne va plus dans les informations du compte. Supabase recopie ces
+  // informations dans le jeton de connexion, et ce jeton part dans l'en-tête
+  // de chaque requête : avec un logo dedans, il atteignait 33 000 caractères,
+  // et la passerelle des fonctions refusait la requête avant même de
+  // l'exécuter — la demande d'accès à l'Administratif ne partait jamais. Le
+  // logo reste sur l'appareil (profil local) ; null efface l'ancienne copie.
+  function logoForServer(){
+    return null;
   }
 
   // Ouvre l'application pour un utilisateur authentifié par Supabase.
@@ -1504,13 +1506,16 @@
   function openAppForAuthUserNow(user, opts){
     currentUser = profileFromAuthUser(user);
     saveLastEmail(currentUser.email);
-    // Compte créé avant que le logo ne suive le compte : cet appareil est le
-    // seul à l'avoir, on en dépose la copie pour les suivants.
+    // Un logo encore rangé dans le compte alourdit le jeton de chaque requête
+    // (voir logoForServer). On l'a déjà pris dans currentUser — il sera gardé
+    // sur l'appareil juste en dessous — puis on le retire du compte et on
+    // demande un jeton neuf, allégé.
     const serverLogo = ((user && user.user_metadata) || {}).logo;
-    if(currentUser.logo && !serverLogo){
+    if(serverLogo){
       const auth = sbAuth();
-      const copy = logoForServer(currentUser.logo);
-      if(auth && copy) auth.updateUser({ data: { logo: copy } }).then(function(){}, function(){});
+      if(auth) auth.updateUser({ data: { logo: null } }).then(function(res){
+        if(res && !res.error && auth.refreshSession) return auth.refreshSession();
+      }).then(function(){}, function(){});
     }
     if(isOwnerEmail(currentUser.email)) markOwnerDevice();
     // cache local (le logo reste sur l'appareil, il n'est pas envoyé au serveur)
