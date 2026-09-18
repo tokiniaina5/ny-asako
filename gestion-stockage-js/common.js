@@ -355,12 +355,16 @@
   }
   function saveNotifications(list){ localStorage.setItem(STORAGE_NOTIFICATIONS, JSON.stringify(list)); }
   // Ajoute une notification à la liste de ce téléphone, sans rien envoyer.
-  function ajouterNotificationLocale(type, message, date){
+  // action : un bouton dans la notification (ex. accepter une demande
+  // d'accès). { cle, libelle } — ce qu'il fait est enregistré à part, par
+  // window.__notifActions[cle] : une fonction ne se range pas en localStorage.
+  function ajouterNotificationLocale(type, message, date, action){
     const list = loadNotifications();
     list.unshift({
       type: type, message: message,
       date: date || new Date().toLocaleString('fr-FR'),
-      read: false
+      read: false,
+      action: action || null
     });
     saveNotifications(list.slice(0, 50));
     renderNotifications();
@@ -473,8 +477,39 @@
     if(type === 'modification') return '✏️';
     if(type === 'live') return '🔴';
     if(type === 'antso') return '📞';
+    if(type === 'fangatahana') return '🔐';
     return '🔔';
   }
+  window.__notifActions = window.__notifActions || {};
+  // Pour les autres fichiers (commun-alalana.js) : une notification avec bouton.
+  window.__ajouterNotificationAction = function(type, message, action){
+    ajouterNotificationLocale(type, message, null, action);
+  };
+  window.__marquerNotificationFaite = function(cle){
+    const list = loadNotifications();
+    list.forEach(function(n){ if(n.action && n.action.cle === cle){ n.action.fait = true; n.read = true; } });
+    saveNotifications(list);
+    renderNotifications();
+  };
+  // Le bouton d'une notification : l'action enregistrée, puis la notification
+  // marquée faite pour que le bouton ne se représente pas.
+  (function(){
+    const listEl = document.getElementById('notifList');
+    if(!listEl) return;
+    listEl.addEventListener('click', function(e){
+      const bouton = e.target.closest ? e.target.closest('[data-notif-action]') : null;
+      if(!bouton) return;
+      const cle = bouton.dataset.notifAction;
+      const faire = window.__notifActions[cle];
+      if(typeof faire !== 'function'){ bouton.textContent = 'Tsy azo atao eto'; return; }
+      bouton.disabled = true;
+      bouton.textContent = '…';
+      Promise.resolve(faire()).then(function(ok){
+        if(ok === false){ bouton.disabled = false; bouton.textContent = 'Andramo indray'; return; }
+        window.__marquerNotificationFaite(cle);
+      }, function(){ bouton.disabled = false; bouton.textContent = 'Andramo indray'; });
+    });
+  })();
   function renderNotifications(){
     const list = loadNotifications();
     const listEl = document.getElementById('notifList');
@@ -492,8 +527,13 @@
       return;
     }
     listEl.innerHTML = list.map(function(n){
+      const a = n.action;
+      const bouton = !a ? '' : (a.fait
+        ? '<span class="notif-date" style="color:var(--cyan);">✅ Vita</span>'
+        : '<button type="button" class="btn btn-primary btn-sm" style="width:auto; margin-top:0.35rem;" data-notif-action="' +
+            escapeHtml(a.cle) + '">' + escapeHtml(a.libelle || 'Ekena') + '</button>');
       return '<div class="notif-item"><span class="notif-icon">' + notifIcon(n.type) + '</span>' +
-        escapeHtml(n.message) + '<span class="notif-date">' + n.date + '</span></div>';
+        escapeHtml(n.message) + '<span class="notif-date">' + n.date + '</span>' + bouton + '</div>';
     }).join('');
   }
 

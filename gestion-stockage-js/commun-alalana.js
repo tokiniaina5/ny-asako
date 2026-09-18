@@ -537,22 +537,137 @@
   })();
 
   // Valider : l'accès confirmé, et la demande marquée acceptée.
+  // Rend true une fois validé : la notification s'en sert pour se marquer faite.
   function valider(id, email) {
     const client = sb();
-    if (!client) return;
+    if (!client) return Promise.resolve(false);
     const maintenant = new Date().toISOString();
-    client.from('commun_alalana').update({ voamarina: true, active: true, updated_at: maintenant }).eq('id', id)
+    return client.from('commun_alalana').update({ voamarina: true, active: true, updated_at: maintenant }).eq('id', id)
       .then(function (res) {
-        if (res.error) { dire('admMessage', expliquer(res), true); return; }
+        if (res.error) { dire('admMessage', expliquer(res), true); return false; }
         const suite = email
           ? client.from('commun_fangatahana').update({ statut: 'ekena', updated_at: maintenant }).ilike('email', email)
           : Promise.resolve();
         return Promise.resolve(suite).then(function () {
           dire('admMessage', 'Nohamafisina : misokatra aminy izao ny pejy.');
-          chargerAdmin();
+          fermerAnnonce(id);
+          if (jeSuisLeProprietaire()) chargerAdmin();
+          return true;
         });
-      }, function () { dire('admMessage', 'Tsy tratra ny serveur.', true); });
+      }, function () { dire('admMessage', 'Tsy tratra ny serveur.', true); return false; });
   }
+
+  // ---------- Le propriétaire est prévenu dans l'application ----------
+  // Une demande arrive avec son code (commun-angataka) : le propriétaire la
+  // voit dans ses notifications et dans un bandeau, avec « Ekena » — sans
+  // aller chercher l'onglet. On relit toutes les 30 secondes, et en revenant
+  // sur la page.
+  const CLE_ANNONCEES = 'stockmanager_commun_annoncees';
+  function annoncees() {
+    try { return JSON.parse(localStorage.getItem(CLE_ANNONCEES)) || []; } catch (e) { return []; }
+  }
+  function nomDe(a) { return a.anarana ? a.anarana + ' (' + a.email + ')' : a.email; }
+
+  function annoncer(a) {
+    const cle = 'commun:' + a.id + ':' + a.code;
+    // L'action se réenregistre à chaque lecture : après un rechargement, le
+    // bouton d'une notification déjà là doit encore répondre.
+    window.__notifActions = window.__notifActions || {};
+    window.__notifActions[cle] = function () { return valider(a.id, String(a.email).trim().toLowerCase()); };
+
+    const deja = annoncees();
+    if (deja.indexOf(cle) >= 0) return;
+    deja.push(cle);
+    try { localStorage.setItem(CLE_ANNONCEES, JSON.stringify(deja.slice(-200))); } catch (e) {}
+
+    if (typeof window.__ajouterNotificationAction === 'function') {
+      window.__ajouterNotificationAction('fangatahana',
+        nomDe(a) + ' mangataka hiditra ao amin\'ny « Administratif Fokontany ». Code : ' + a.code,
+        { cle: cle, libelle: '✅ Ekena' });
+    }
+    montrerAnnonce(a, cle);
+  }
+
+  // Le bandeau : en bas de l'écran, au-dessus de la rangée, jusqu'à ce qu'on
+  // réponde ou qu'on le ferme.
+  function montrerAnnonce(a, cle) {
+    let boite = document.getElementById('communAnnonces');
+    if (!boite) {
+      boite = document.createElement('div');
+      boite.id = 'communAnnonces';
+      boite.style.cssText = 'position:fixed; left:50%; transform:translateX(-50%); bottom:96px; z-index:9000; ' +
+        'display:flex; flex-direction:column; gap:0.5rem; width:min(420px, calc(100vw - 32px));';
+      document.body.appendChild(boite);
+    }
+    if (boite.querySelector('[data-annonce="' + a.id + '"]')) return;
+    const carte = document.createElement('div');
+    carte.dataset.annonce = a.id;
+    carte.setAttribute('role', 'alert');
+    carte.style.cssText = 'background:var(--panel); color:var(--text); border:1px solid var(--cyan); border-radius:16px; ' +
+      'padding:0.8rem 0.9rem; box-shadow:0 10px 30px rgba(0,0,0,0.35); font-size:0.82rem; line-height:1.45;';
+    carte.innerHTML =
+      '<div style="font-weight:600; margin-bottom:0.2rem;">🔐 Fangatahana vaovao</div>' +
+      '<div>' + echapper(nomDe(a)) + ' mangataka hiditra ao amin\'ny « Administratif Fokontany ».</div>' +
+      '<div style="font-family:var(--font-mono); letter-spacing:0.1em; margin:0.3rem 0;">Code : ' + echapper(a.code) + '</div>' +
+      '<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">' +
+        '<button type="button" class="btn btn-primary btn-sm" style="width:auto;" data-annonce-ekena>✅ Ekena</button>' +
+        '<button type="button" class="btn btn-sm" style="width:auto;" data-annonce-fermer>Aoriana</button>' +
+      '</div>';
+    carte.querySelector('[data-annonce-fermer]').addEventListener('click', function () { carte.remove(); });
+    carte.querySelector('[data-annonce-ekena]').addEventListener('click', function () {
+      const b = this;
+      b.disabled = true; b.textContent = '…';
+      window.__notifActions[cle]().then(function (ok) {
+        if (!ok) { b.disabled = false; b.textContent = 'Andramo indray'; return; }
+        if (typeof window.__marquerNotificationFaite === 'function') window.__marquerNotificationFaite(cle);
+        carte.innerHTML = '<div>✅ Nekena : misokatra ho an\'i ' + echapper(nomDe(a)) + ' ny pejy.</div>';
+        setTimeout(function () { carte.remove(); }, 3000);
+      });
+    });
+    boite.appendChild(carte);
+  }
+  function fermerAnnonce(id) {
+    const carte = document.querySelector('#communAnnonces [data-annonce="' + id + '"]');
+    if (carte) setTimeout(function () { carte.remove(); }, 2500);
+  }
+
+  let surveillanceEnCours = false;
+  function surveillerDemandes() {
+    if (surveillanceEnCours || document.hidden || !jeSuisLeProprietaire()) return;
+    const client = sb();
+    if (!client) return;
+    surveillanceEnCours = true;
+    client.from('commun_alalana').select('id,email,anarana,code,active,voamarina')
+      .eq('active', true).eq('voamarina', false)
+      .then(function (res) {
+        surveillanceEnCours = false;
+        if (res.error) return;
+        (res.data || []).forEach(annoncer);
+      }, function () { surveillanceEnCours = false; });
+  }
+  setTimeout(surveillerDemandes, 4000);
+  setInterval(surveillerDemandes, 30000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) surveillerDemandes(); });
+
+  // ---------- La personne : la page s'ouvre dès la validation ----------
+  // Tant que la porte est affichée et qu'une demande attend, on regarde
+  // toutes les 10 secondes : la validation ouvre la page sans qu'il faille
+  // recharger ni presser « Jereo indray ».
+  setInterval(function () {
+    if (document.hidden || jeSuisLeProprietaire()) return;
+    const vue = document.getElementById('dash-commun');
+    const porte = $('communPorte');
+    if (!vue || !vue.classList.contains('active') || !porte || porte.style.display === 'none') return;
+    if ($('porteJereo').style.display === 'none') return;   // rien n'attend de validation
+    verifier().then(function (ouverte) {
+      if (!ouverte) return;
+      dire('porteMessage', '');
+      if (typeof choisirOngletCommun === 'function') choisirOngletCommun('tableau');
+      if (typeof window.__ajouterNotificationAction === 'function') {
+        window.__ajouterNotificationAction('fangatahana', 'Nekena ny fangatahanao : misokatra izao ny « Administratif Fokontany ».', null);
+      }
+    });
+  }, 10000);
 
   // La session Supabase arrive parfois après l'ouverture de la page : la
   // vérification, faite trop tôt, ne voyait aucune ligne et refermait la porte
