@@ -99,6 +99,18 @@ document.addEventListener('DOMContentLoaded', function () {
     $('communCorps').classList.add('lecture-seule');
   }
 
+  // ---------- Sans réseau ----------
+  // Comme dans Ny asako : la page s'ouvre, mais les listes restent vides sans
+  // qu'on sache pourquoi. La bande le dit.
+  (function () {
+    var bande = $('bandeauReseau');
+    if (!bande) return;
+    function majReseau() { bande.hidden = navigator.onLine !== false; }
+    window.addEventListener('online', majReseau);
+    window.addEventListener('offline', majReseau);
+    majReseau();
+  })();
+
   // ---------- Notifications ----------
   // Pas de cloche ici : un bandeau bref suffit. Les demandes d'accès ont
   // déjà le leur, avec « Ekena » (commun-alalana.js).

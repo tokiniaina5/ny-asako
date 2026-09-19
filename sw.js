@@ -2,13 +2,14 @@
 //
 // Il rend l'application installable et lui permet de s'ouvrir sans réseau. Il
 // ne cherche pas à tout faire fonctionner hors ligne : le stock, le fil et le
-// portefeuille vivent sur le serveur. Ce qu'il garde, c'est la page et ses
-// fichiers, pour que l'application s'ouvre au lieu d'afficher un dinosaure.
+// portefeuille vivent sur le serveur. Ce qu'il garde, c'est la page, ses
+// fichiers et ses bibliothèques, pour que l'application s'ouvre au lieu
+// d'afficher un dinosaure. Les données (Supabase) ne passent jamais par lui.
 
 // Le nom porte l'empreinte du dernier envoi : outils/versionner.mjs le réécrit.
 // Chaque mise en ligne repart donc d'un cache neuf, et l'ancien est effacé —
 // sans quoi les fichiers de toutes les versions passées s'y empileraient.
-const CACHE = 'nyasako-cd644604';
+const CACHE = 'nyasako-053d861b';
 
 // Fichiers demandés avant toute chose, pour que la première ouverture hors
 // réseau trouve déjà de quoi s'afficher.
@@ -22,7 +23,13 @@ const SOCLE = [
   '/fokontany/manifest.webmanifest',
   // L'Administratif Commun aussi : la même page, sous son adresse.
   '/commun/',
-  '/commun/manifest.webmanifest'
+  '/commun/manifest.webmanifest',
+  // Les bibliothèques des pages (estUneBibliotheque, plus bas) : sans elles,
+  // une page ouverte hors réseau n'a ni Supabase, ni graphiques, ni PDF.
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js'
 ];
 
 self.addEventListener('install', function(e){
@@ -57,12 +64,54 @@ function estUnFichierDuSite(url){
   return /\.(css|js|png|jpg|jpeg|svg|webp|woff2?|ico)$/i.test(new URL(url, self.location.href).pathname);
 }
 
+// Les bibliothèques des CDN : du code, jamais des données. Sans elles, la
+// page gardée s'ouvrait hors réseau mais sans Supabase, ni graphiques, ni PDF.
+// Chargées avec crossorigin="anonymous" : leurs réponses sont lisibles, on
+// peut donc vérifier qu'elles sont bonnes avant de les garder.
+function estUneBibliotheque(url){
+  const hote = new URL(url).hostname;
+  return hote === 'cdn.jsdelivr.net' || hote === 'cdnjs.cloudflare.com';
+}
+
+// Quand ni le réseau ni le cache n'ont la page : un mot plutôt qu'un écran
+// d'erreur du navigateur.
+function pageHorsLigne(){
+  const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Hors ligne</title>' +
+    '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+    'background:#0a0d10;color:#e6edf0;font-family:system-ui,sans-serif;text-align:center;padding:24px;box-sizing:border-box}' +
+    'button{margin-top:18px;padding:10px 18px;border-radius:10px;border:0;background:#4fd8e0;color:#0a0d10;font-weight:600;font-size:15px}</style>' +
+    '</head><body><div><div style="font-size:42px">📡</div><h1 style="font-size:20px">Vous êtes hors ligne</h1>' +
+    '<p style="color:#9fb0b8;max-width:320px">Cette page n\'a pas encore été ouverte avec du réseau sur cet appareil. ' +
+    'Reconnectez-vous puis réessayez.</p><button onclick="location.reload()">Réessayer</button></div></body></html>';
+  return new Response(html, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
+
 self.addEventListener('fetch', function(e){
   const req = e.request;
   if(req.method !== 'GET') return;
-  // Supabase, les CDN, les images d'ailleurs : on ne s'en mêle pas. Les mettre
-  // en cache donnerait des réponses opaques, impossibles à vérifier, et des
-  // données périmées là où elles comptent le plus.
+
+  // Les bibliothèques : le cache d'abord, pour s'ouvrir vite et sans réseau ;
+  // le réseau ensuite, en arrière-plan, pour la prochaine fois
+  // (supabase-js@2 suit sa version 2 : une copie n'a qu'un temps).
+  if(estUneBibliotheque(req.url)){
+    e.respondWith(
+      caches.open(CACHE).then(function(cache){
+        return cache.match(req).then(function(trouve){
+          const frais = fetch(req).then(function(res){
+            if(res && res.ok) cache.put(req, res.clone());
+            return res;
+          });
+          if(trouve){ frais.catch(function(){}); return trouve; }
+          return frais;
+        });
+      })
+    );
+    return;
+  }
+
+  // Supabase, les cartes, les images d'ailleurs : on ne s'en mêle jamais.
+  // Ce sont les données : elles viennent toujours du serveur, en direct.
   if(!memeOrigine(req.url)) return;
 
   // Les pages : le réseau d'abord, pour ne jamais servir une version dépassée ;
@@ -81,6 +130,8 @@ self.addEventListener('fetch', function(e){
           : (chemin.indexOf('/commun') === 0 ? '/commun/' : '/');
         return caches.match(req).then(function(r){
           return r || caches.match(repli);
+        }).then(function(r){
+          return r || pageHorsLigne();
         });
       })
     );

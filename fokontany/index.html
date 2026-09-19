@@ -115,10 +115,16 @@
   /* L'Administratif Commun n'a pas d'onglets : le tableau de bord seul. */
   .app-commun #dash-commun .dash-tabs{ display:none !important; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="/gestion-stockage-js/supabase-init.js?v=cc96464f"></script>
 </head>
 <body>
+
+<!-- Sans réseau : la page gardée s'ouvre, mais Supabase ne répond pas (fokontany-app.js). -->
+<div class="bandeau-reseau" id="bandeauReseau" role="status" hidden>
+  <span aria-hidden="true">📡</span>
+  <span>Tsy misy connexion — mety ho tsy vaovao ny isa.</span>
+</div>
 
 <div id="loginScreen">
   <div class="login-card">
@@ -657,9 +663,9 @@
 
 <div id="fkToast" role="status"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="/gestion-stockage-js/fokontany-app.js?v=e485d663"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
+<script src="/gestion-stockage-js/fokontany-app.js?v=c1106905"></script>
 <script src="/gestion-stockage-js/pieces-identite.js?v=150aefad"></script>
 <script src="/gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
 <script src="/gestion-stockage-js/commun-alalana.js?v=8ba8f694"></script>

@@ -3757,8 +3757,13 @@
       // Les premières versions n'enregistraient que la clé.
       return brut.map(function(x){
         return (typeof x === 'string') ? { cle: x, vu: 0 } : x;
-      }).filter(function(x){ return x && x.cle; });
+      }).filter(function(x){ return x && x.cle && JAMAIS_EPINGLEES.indexOf(x.cle) < 0; });
     }
+    // Télécharger Fokontany / Commun : une action faite une fois, comme
+    // « Installer l'application ». Les deux icônes 📲, pareilles, restaient
+    // dans la rangée sans qu'on sache laquelle était laquelle. Écartées ici,
+    // elles disparaissent aussi des rangées où elles étaient déjà posées.
+    const JAMAIS_EPINGLEES = ['id:menuInstallFokontany', 'id:menuInstallCommun'];
     function ecrireEpingles(liste){
       try{ localStorage.setItem(CLE, JSON.stringify(liste)); }catch(e){}
     }
@@ -4045,7 +4050,7 @@
     function entreesEpinglables(){
       // « Ny momba ahy » n'existe que pour l'employé : ouvert dans le
       // navigateur du patron, il y laisserait une icône vers une page vide.
-      const hors = ['navStock', 'navMoi'];
+      const hors = ['navStock', 'navMoi', 'menuInstallFokontany', 'menuInstallCommun'];
       return [].slice.call(document.querySelectorAll('#navList .nav-action, #navList .nav-item[data-section]'))
         .filter(function(e){ return hors.indexOf(e.id) < 0; });
     }
