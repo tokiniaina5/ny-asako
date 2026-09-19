@@ -108,14 +108,16 @@
   document.getElementById('sendInviteBtn').addEventListener('click', function(){
     const email = document.getElementById('inviteEmail').value.trim();
     const link = document.getElementById('inviteLink').value;
-    const subject = encodeURIComponent('Invitation — Ny asako');
-    const body = encodeURIComponent('Salut,\n\nJe t\'invite à rejoindre Ny asako : ' + link + '\n\nÀ bientôt !');
+    const subject = encodeURIComponent('Confirmer ton invitation — Ny asako');
+    const body = encodeURIComponent('Salut,\n\nJe t\'invite à rejoindre Ny asako. Clique sur le lien pour confirmer ton inscription.\n\n✅ Confirmer : ' + link + '\n\nÀ bientôt !');
     window.location.href = 'mailto:' + email + '?subject=' + subject + '&body=' + body;
   });
 
   // ---------------- PARTAGE RÉSEAUX SOCIAUX ----------------
+  // Comme le lien de l'employé (equipe.js) : on demande de confirmer, et le
+  // lien vient juste après « Confirmer ».
   function inviteMessage(link){
-    return 'Salut ! Je t\'invite à essayer Ny asako : ' + link;
+    return 'Salut ! Je t\'invite à rejoindre Ny asako. Clique sur le lien pour confirmer ton inscription.\n\n✅ Confirmer : ' + link;
   }
   function copyToClipboardSilently(text){
     if(navigator.clipboard && navigator.clipboard.writeText){
@@ -175,7 +177,9 @@
       const link = document.getElementById('inviteLink').value;
       navigator.share({
         title: 'Ny asako',
-        text: inviteMessage(link),
+        // Le lien part dans « url » : le laisser aussi dans le texte le
+        // faisait apparaître deux fois dans le message.
+        text: inviteMessage('').trim(),
         url: link
       }).catch(function(){});
     });
