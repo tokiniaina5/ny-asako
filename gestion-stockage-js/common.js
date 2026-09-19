@@ -4919,6 +4919,55 @@
   if(menuCommun) menuCommun.addEventListener('click', function(){ ouvrirDepuisLeMenu('commun'); });
   const menuCommunAdmin = document.getElementById('menuCommunAdmin');
   if(menuCommunAdmin) menuCommunAdmin.addEventListener('click', function(){ ouvrirDepuisLeMenu('communadmin'); });
+  // L'adresse à ouvrir dans Chrome, dans une petite fenêtre et non une alerte :
+  // le texte d'une alerte ne se sélectionne pas, le lien ne se copiait pas.
+  // Un champ qu'on peut sélectionner, et un bouton qui copie.
+  function montrerAdresseAInstaller(adresse){
+    const ancien = document.getElementById('fenetreAdresseInstall');
+    if(ancien) ancien.remove();
+    const fond = document.createElement('div');
+    fond.id = 'fenetreAdresseInstall';
+    fond.setAttribute('role', 'dialog');
+    fond.style.cssText = 'position:fixed; inset:0; z-index:9500; background:rgba(4,8,10,0.6); display:flex; ' +
+      'align-items:center; justify-content:center; padding:16px;';
+    fond.innerHTML =
+      '<div style="width:min(440px, 100%); background:var(--panel); color:var(--text); border:1px solid var(--line); ' +
+        'border-radius:14px; padding:1.1rem 1.1rem 1rem; box-shadow:0 12px 40px rgba(0,0,0,0.45); font-size:0.88rem; line-height:1.55;">' +
+        '<p style="margin:0 0 0.7rem;">Tsy azo apetraka avy ato anaty app Ny asako ity app ity.</p>' +
+        '<p style="margin:0 0 0.5rem;">Sokafy ao amin\'ny <strong>Chrome</strong> (na Edge) ity rohy ity :</p>' +
+        '<input type="text" readonly data-adresse style="width:100%; box-sizing:border-box; padding:0.6rem 0.7rem; ' +
+          'border-radius:8px; border:1px solid var(--cyan); background:var(--bg); color:var(--text); font-family:var(--font-mono); font-size:0.82rem;">' +
+        '<div style="display:flex; gap:0.5rem; margin-top:0.6rem;">' +
+          '<button type="button" class="btn btn-primary btn-sm" data-adikao style="flex:1;">📋 Adikao ny rohy</button>' +
+          '<button type="button" class="btn btn-sm" data-hidio style="width:auto;">OK</button>' +
+        '</div>' +
+        '<p data-statut style="margin:0.5rem 0 0; font-size:0.78rem; color:var(--cyan); min-height:1.1em;"></p>' +
+        '<p style="margin:0.3rem 0 0; color:var(--muted); font-size:0.8rem;">Midira amin\'ny kaontinao, dia tsindrio « 📲 Installer ».</p>' +
+      '</div>';
+    document.body.appendChild(fond);
+    const champ = fond.querySelector('[data-adresse]');
+    const statut = fond.querySelector('[data-statut]');
+    champ.value = adresse;
+    champ.addEventListener('focus', function(){ champ.select(); });
+    champ.focus();
+    function fermer(){ fond.remove(); }
+    fond.querySelector('[data-hidio]').addEventListener('click', fermer);
+    fond.addEventListener('click', function(e){ if(e.target === fond) fermer(); });
+    fond.querySelector('[data-adikao]').addEventListener('click', function(){
+      champ.select();
+      const reussi = function(){ statut.textContent = '✓ Voadika : apetaho ao amin\'ny barre d\'adresse an\'ny Chrome.'; };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(adresse).then(reussi, function(){
+          try { if(document.execCommand('copy')) { reussi(); return; } } catch(e){}
+          statut.textContent = 'Safidio ilay rohy (efa voafantina) dia Ctrl+C.';
+        });
+      } else {
+        try { if(document.execCommand('copy')) { reussi(); return; } } catch(e){}
+        statut.textContent = 'Safidio ilay rohy (efa voafantina) dia Ctrl+C.';
+      }
+    });
+  }
+
   // Les deux applications s'installent depuis leur propre page, où le
   // propriétaire connecté trouve « 📲 Installer ». Dans un onglet, un nouvel
   // onglet suffit. Mais depuis Ny asako INSTALLÉE, la page s'ouvrait dans
@@ -4933,15 +4982,7 @@
       let installee = false;
       try { installee = !window.matchMedia('(display-mode: browser)').matches || window.navigator.standalone === true; } catch(e){}
       if(!installee){ window.open(p[1], '_blank'); return; }
-      const adresse = location.origin + p[1];
-      const dire = function(copiee){
-        alert('Tsy azo apetraka avy ato anaty app Ny asako ity app ity.\n\n' +
-          'Sokafy ao amin\'ny Chrome (na Edge) ity adiresy ity' + (copiee ? ' — efa voadika, apetaho fotsiny' : '') + ' :\n' +
-          adresse + '\n\nMidira amin\'ny kaontinao, dia tsindrio « 📲 Installer ».');
-      };
-      if(navigator.clipboard && navigator.clipboard.writeText){
-        navigator.clipboard.writeText(adresse).then(function(){ dire(true); }, function(){ dire(false); });
-      } else dire(false);
+      montrerAdresseAInstaller(location.origin + p[1]);
     });
   });
   document.querySelectorAll('#dash-commun [data-commun]').forEach(function(tab){
