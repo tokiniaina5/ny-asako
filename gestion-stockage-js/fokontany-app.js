@@ -21,9 +21,14 @@ var OWNER_EMAIL = 'rasolofonirainytokiniaina@gmail.com';
 function normEmail(email) { return (email || '').trim().toLowerCase(); }
 function isOwnerEmail(email) { return normEmail(email) === normEmail(OWNER_EMAIL); }
 
+// Ouverte par « /commun/ », la même page est l'Administratif Commun : le
+// tableau de bord seul, en lecture (le script de l'en-tête pose la classe).
+var APP_COMMUN = document.documentElement.classList.contains('app-commun');
+
 // ---------- Les onglets (les mêmes que dans common.js) ----------
 var ongletCommun = 'tableau';
 function choisirOngletCommun(nom) {
+  if (APP_COMMUN) nom = 'tableau';
   var PANNEAUX = {
     tableau: 'communCorps', pieces: 'communPieces',
     adidy: 'communAdidy', historique: 'communHistorique',
@@ -77,6 +82,14 @@ function ouvrirDepuisLeMenu(nom) {
 // leurs fonctions (renderPorteCommun…) n'existent.
 document.addEventListener('DOMContentLoaded', function () {
   function $(id) { return document.getElementById(id); }
+
+  if (APP_COMMUN) {
+    $('fkNomApp').textContent = 'Administratif Commun';
+    $('fkMarque').innerHTML = '🏛️ Administratif <span>Commun</span>';
+    $('fkTitreIos').setAttribute('content', 'Commun');
+    // Regarder sans toucher, comme dans Ny asako (components.css).
+    $('communCorps').classList.add('lecture-seule');
+  }
 
   // ---------- Notifications ----------
   // Pas de cloche ici : un bandeau bref suffit. Les demandes d'accès ont

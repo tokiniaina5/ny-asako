@@ -34,3 +34,10 @@
 # l'adresse sur « / » dès l'ouverture (paramètres gardés).
 /confirmation            /index.html  200
 /confirmation/           /index.html  200
+
+# L'Administratif Commun est la page du Fokontany, ouverte en lecture seule :
+# fokontany-app.js le reconnaît à l'adresse. Une seule page, et non deux
+# copies des mêmes onglets. Son manifeste, lui, existe vraiment
+# (commun/manifest.webmanifest) et passe avant ces règles.
+/commun                  /fokontany/index.html  200
+/commun/                 /fokontany/index.html  200

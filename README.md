@@ -20,6 +20,7 @@ Elle vivait jusqu'ici dans le dépôt du portfolio, à côté de pages qui n'ont
 | `outils/`               | `versionner.mjs` (empreintes) et `icones.mjs` (icônes PNG)        |
 | `demarrage/`            | Les écrans de lancement iOS, une image par taille d'appareil      |
 | `fokontany/`            | L'Administratif Fokontany, installable à part (`/fokontany/`)     |
+| `commun/`               | Le manifeste de l'Administratif Commun (`/commun/`, même page)    |
 | `sw.js`                 | Le service worker : installation et ouverture sans réseau         |
 | `LISEZ-MOI-SUPABASE.txt`| Le mode d'emploi : comment brancher la base et les fonctions      |
 

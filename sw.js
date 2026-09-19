@@ -8,7 +8,7 @@
 // Le nom porte l'empreinte du dernier envoi : outils/versionner.mjs le réécrit.
 // Chaque mise en ligne repart donc d'un cache neuf, et l'ancien est effacé —
 // sans quoi les fichiers de toutes les versions passées s'y empileraient.
-const CACHE = 'nyasako-ab925684';
+const CACHE = 'nyasako-8455afd7';
 
 // Fichiers demandés avant toute chose, pour que la première ouverture hors
 // réseau trouve déjà de quoi s'afficher.
@@ -19,7 +19,10 @@ const SOCLE = [
   '/icone-512.png',
   // L'Administratif Fokontany, installable à part, passe par ce même worker.
   '/fokontany/',
-  '/fokontany/manifest.webmanifest'
+  '/fokontany/manifest.webmanifest',
+  // L'Administratif Commun aussi : la même page, sous son adresse.
+  '/commun/',
+  '/commun/manifest.webmanifest'
 ];
 
 self.addEventListener('install', function(e){
@@ -71,9 +74,11 @@ self.addEventListener('fetch', function(e){
         caches.open(CACHE).then(function(c){ c.put(req, copie); });
         return res;
       }).catch(function(){
-        // Hors réseau, le Fokontany retombe sur sa propre page et non sur
-        // le stock : ce sont deux applications, installées chacune à part.
-        const repli = new URL(req.url).pathname.indexOf('/fokontany') === 0 ? '/fokontany/' : '/';
+        // Hors réseau, le Fokontany et le Commun retombent sur leur propre
+        // page et non sur le stock : ce sont des applications installées à part.
+        const chemin = new URL(req.url).pathname;
+        const repli = chemin.indexOf('/fokontany') === 0 ? '/fokontany/'
+          : (chemin.indexOf('/commun') === 0 ? '/commun/' : '/');
         return caches.match(req).then(function(r){
           return r || caches.match(repli);
         });

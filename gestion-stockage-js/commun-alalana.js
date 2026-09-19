@@ -486,7 +486,7 @@
         // Dans Ny asako, le Fokontany est au propriétaire : les autres vont à
         // son application (/fokontany/), qui trouve le code gardé ci-dessus
         // — même site, même localStorage. Les anciens emails menaient ici.
-        if (!jeSuisLeProprietaire() && window.location.pathname.indexOf('/fokontany') !== 0) {
+        if (!jeSuisLeProprietaire() && !/^\/(fokontany|commun)(\/|$)/.test(window.location.pathname)) {
           window.location.href = '/fokontany/';
           return;
         }

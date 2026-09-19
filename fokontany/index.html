@@ -11,6 +11,19 @@
 <title>Administratif Fokontany</title>
 <link rel="manifest" href="/fokontany/manifest.webmanifest">
 <meta name="theme-color" content="#0a0d10">
+<!-- « /commun/ » sert cette même page (_redirects) : c'est l'Administratif
+     Commun, le tableau de bord seul, à regarder sans rien changer. Il a son
+     manifeste, pour s'installer comme une troisième application. Posé ici,
+     avant que le navigateur ne lise le manifeste. -->
+<script>
+  (function(){
+    if(!/^\/commun(\/|$)/.test(location.pathname)) return;
+    document.documentElement.classList.add('app-commun');
+    document.title = 'Administratif Commun';
+    var m = document.querySelector('link[rel="manifest"]');
+    if(m) m.setAttribute('href', '/commun/manifest.webmanifest');
+  })();
+</script>
 <!-- Le thème choisi dans Ny asako vaut ici aussi (même localStorage). -->
 <script>
   (function(){
@@ -89,7 +102,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Fokontany">
+<meta name="apple-mobile-web-app-title" content="Fokontany" id="fkTitreIos">
 <link rel="apple-touch-icon" href="/icone-192.png">
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="/gestion-stockage-css/base.css?v=821571f5">
@@ -104,6 +117,8 @@
     width:min(420px, calc(100vw - 32px)); background:var(--panel); color:var(--text); border:1px solid var(--cyan);
     border-radius:14px; padding:0.8rem 0.9rem; font-size:0.82rem; line-height:1.45; box-shadow:0 10px 30px rgba(0,0,0,0.35); }
   #communAnnonces{ bottom:24px !important; }
+  /* L'Administratif Commun n'a pas d'onglets : le tableau de bord seul. */
+  .app-commun #dash-commun .dash-tabs{ display:none !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="/gestion-stockage-js/supabase-init.js?v=cc96464f"></script>
@@ -112,7 +127,7 @@
 
 <div id="loginScreen">
   <div class="login-card">
-    <div class="eyebrow">Administratif Fokontany</div>
+    <div class="eyebrow" id="fkNomApp">Administratif Fokontany</div>
     <h1>Fidirana</h1>
     <p class="sub">Ny kaonty Ny asako ihany no ampiasaina eto : email sy mot de passe mitovy.</p>
     <form id="fkLoginForm">
@@ -135,7 +150,7 @@
 
 <div id="appScreen">
   <header class="fk-barre">
-    <div class="brand">🗂️ Administratif <span>Fokontany</span></div>
+    <div class="brand" id="fkMarque">🗂️ Administratif <span>Fokontany</span></div>
     <div style="display:flex; align-items:center; gap:0.8rem;">
       <div class="fk-qui"><strong id="fkNom">—</strong><span id="fkEmail"></span></div>
       <button type="button" class="btn btn-sm" id="fkSortir" style="width:auto;">Hivoaka</button>
@@ -556,10 +571,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="/gestion-stockage-js/fokontany-app.js?v=c83a574b"></script>
+<script src="/gestion-stockage-js/fokontany-app.js?v=fd4d732a"></script>
 <script src="/gestion-stockage-js/pieces-identite.js?v=73a1d838"></script>
 <script src="/gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
-<script src="/gestion-stockage-js/commun-alalana.js?v=903022e0"></script>
+<script src="/gestion-stockage-js/commun-alalana.js?v=8ba8f694"></script>
 <script src="/gestion-stockage-js/taratasy.js?v=ae2680ae"></script>
 <script src="/gestion-stockage-js/adidy.js?v=cff1cd41"></script>
 </body>

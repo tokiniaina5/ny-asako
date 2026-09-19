@@ -12,3 +12,6 @@
 
 /fokontany/manifest.webmanifest
   Content-Type: application/manifest+json; charset=utf-8
+
+/commun/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
