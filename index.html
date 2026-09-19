@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="a7194e6b">
+<meta name="ny-asako-version" content="7bcc2dd0">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -918,14 +918,18 @@
                 <div class="kpi-card"><div class="kpi-label">Olona manana fanamarinam-ponenana</div><div class="kpi-value" id="communKpiFonenana">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Fanamarinam-ponenana manan-kery</div><div class="kpi-value" id="communKpiFonenanaKery">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Taratasy fifindra-monina</div><div class="kpi-value" id="communKpiFifindra">0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Sora-panambadiana</div><div class="kpi-value" id="communKpiFanambadiana">0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Sora-pahafatesana</div><div class="kpi-value" id="communKpiFahafatesana">0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Taratasy samihafa</div><div class="kpi-value" id="communKpiHafa">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Taratasy nomena ity volana ity</div><div class="kpi-value" id="communKpiTarVolana">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Taratasy nomena ity taona ity</div><div class="kpi-value" id="communKpiTarTaona">0</div></div>
               </div>
               <div class="chart-grid">
                 <div class="chart-panel"><h4>Taratasy nomena isam-bolana</h4><div class="chart-box" style="height:220px;"><canvas id="communChartTaratasy"></canvas></div></div>
+                <div class="chart-panel"><h4>Taratasy isaky ny karazana</h4><div class="chart-box" style="height:220px;"><canvas id="communChartTarKarazana"></canvas></div></div>
               </div>
               <div class="list-panel">
-                <h4>🏠 Fanamarinam-ponenana farany</h4>
+                <h4>🗂️ Taratasy farany</h4>
                 <div id="communListeTaratasy"></div>
               </div>
             </section>
@@ -1111,9 +1115,26 @@
               </div>
               <p class="empty-hint" id="histoVide">Mbola tsy misy fandoavana voasoratra.</p>
             </div>
+
+            <!-- Les papiers remis (taratasy.js), cherchés par le même champ.
+                 Des départs, seuls le numéro et la date : l'archive reste
+                 fermée. -->
+            <div class="panel">
+              <h3>📄 Historique des taratasy</h3>
+              <p id="histoTarRecap" style="font-size:0.8rem; color:var(--cyan); margin:0 0 0.6rem; min-height:1.1em;"></p>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Daty</th><th>Karazana</th><th>Olona</th><th>Laharana</th><th></th></tr>
+                  </thead>
+                  <tbody id="histoTarListe"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint" id="histoTarVide">Mbola tsy misy taratasy nomena.</p>
+            </div>
           </div>
 
-          <!-- Fanamarinam-ponenana sy fifindra-monina (taratasy.js). Le papier
+          <!-- Les papiers du fokontany (taratasy.js). Le papier
                se prépare ici ; il ne vaut que signé et cacheté par l'autorité
                compétente. -->
           <div id="communTaratasy" style="display:none;">
@@ -1125,14 +1146,22 @@
                   <select id="tarKarazana">
                     <option value="fonenana">Fanamarinam-ponenana</option>
                     <option value="fifindramonina">Fanamarinana fifindra-monina</option>
+                    <option value="fanambadiana">Sora-panambadiana (acte de mariage)</option>
+                    <option value="fahafatesana">Sora-pahafatesana (acte de décès)</option>
+                    <option value="hafa">Taratasy samihafa</option>
                   </select>
                 </div>
                 <div class="field">
                   <label for="tarOlona">Olona (avy ao amin'ny CIN / Passeport)</label>
                   <select id="tarOlona"></select>
                 </div>
+                <!-- Taratasy samihafa : son titre et son texte, écrits à la main. -->
+                <div class="field" id="tarLohatenyChamp" style="display:none;">
+                  <label for="tarLohateny">Lohatenin'ny taratasy</label>
+                  <input type="text" id="tarLohateny" placeholder="Ohatra : Fanamarinana fahalalam-pomba" autocomplete="off">
+                </div>
                 <div class="field">
-                  <label for="tarAnarana">Anarana feno</label>
+                  <label for="tarAnarana" id="tarAnaranaLabel">Anarana feno</label>
                   <textarea id="tarAnarana" class="champ-anarana" rows="1" placeholder="Nom et prénoms" autocomplete="off"></textarea>
                 </div>
                 <div class="field">
@@ -1146,6 +1175,24 @@
                 <div class="field">
                   <label for="tarTerakaToerana">Toerana nahaterahana</label>
                   <input type="text" id="tarTerakaToerana" placeholder="Antananarivo" autocomplete="off">
+                </div>
+                <!-- Le mariage : le second conjoint. -->
+                <div class="field" id="tarVadyChamp" style="display:none;">
+                  <label for="tarVady">Anaran'ny vady faharoa</label>
+                  <textarea id="tarVady" class="champ-anarana" rows="1" placeholder="Nom et prénoms" autocomplete="off"></textarea>
+                </div>
+                <div class="field" id="tarVadyCinChamp" style="display:none;">
+                  <label for="tarVadyCin">Laharana CIN an'ny vady faharoa</label>
+                  <input type="text" id="tarVadyCin" placeholder="101 234 567 890" autocomplete="off">
+                </div>
+                <!-- Le mariage et le décès : quand et où c'est arrivé. -->
+                <div class="field" id="tarZavaDatyChamp" style="display:none;">
+                  <label for="tarZavaDaty" id="tarZavaDatyLabel">Daty</label>
+                  <input type="date" id="tarZavaDaty">
+                </div>
+                <div class="field" id="tarZavaToeranaChamp" style="display:none;">
+                  <label for="tarZavaToerana" id="tarZavaToeranaLabel">Toerana</label>
+                  <input type="text" id="tarZavaToerana" placeholder="Toerana" autocomplete="off">
                 </div>
                 <div class="field" id="tarFonenanaChamp">
                   <label for="tarFonenana">Fonenana</label>
@@ -1171,6 +1218,10 @@
                   <label for="tarNote">Fanamarihana</label>
                   <input type="text" id="tarNote" placeholder="Raha misy" autocomplete="off">
                 </div>
+              </div>
+              <div class="field" id="tarVotoatinyChamp" style="display:none;">
+                <label for="tarVotoatiny">Votoatin'ny taratasy</label>
+                <textarea id="tarVotoatiny" rows="5" placeholder="Ny soratra rehetra hiseho ao amin'ny taratasy" autocomplete="off"></textarea>
               </div>
               <p id="tarValidite" style="font-size:0.76rem; color:var(--amber); margin:0 0 0.7rem; min-height:1.1em;"></p>
               <button type="button" class="btn btn-primary btn-sm" id="tarVokatra" style="width:auto;">📄 Vokaro ny PDF sy tehirizo</button>
@@ -1206,7 +1257,7 @@
             </div>
 
             <div class="panel">
-              <h3>🗂️ Fanamarinam-ponenana efa nomena</h3>
+              <h3>🗂️ Taratasy efa nomena</h3>
               <div class="table-scroll">
                 <table>
                   <thead>
@@ -2666,7 +2717,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=aedf1d6b"></script>
+<script src="gestion-stockage-js/common.js?v=75530775"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2687,7 +2738,7 @@
 <script src="gestion-stockage-js/photocopie.js?v=362c711f"></script>
 <script src="gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
 <script src="gestion-stockage-js/commun-alalana.js?v=8ba8f694"></script>
-<script src="gestion-stockage-js/taratasy.js?v=6c80e31f"></script>
+<script src="gestion-stockage-js/taratasy.js?v=1ae17057"></script>
 <script src="gestion-stockage-js/adidy.js?v=71cace69"></script>
 <script src="gestion-stockage-js/theme.js?v=096262fd"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>

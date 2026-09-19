@@ -1,5 +1,5 @@
 -- ============================================================
--- Taratasy : fanamarinam-ponenana sy fifindra-monina
+-- Taratasy : fanamarinam-ponenana, fifindra-monina, fanambadiana, fahafatesana, hafa
 --
 -- À COLLER DANS : Supabase > SQL Editor > New query > Run.
 -- Se relance sans risque : "if not exists" partout.
@@ -42,6 +42,26 @@ create table if not exists public.taratasy (
 );
 
 create index if not exists taratasy_owner_idx on public.taratasy (owner_email, daty desc);
+
+-- ---------- Mariage, décès, papiers divers ----------
+-- Ajoutés après coup : « add column if not exists » plutôt que dans le
+-- create table, pour qu'une base déjà créée les reçoive aussi.
+--   'fanambadiana' : acte de mariage
+--   'fahafatesana' : acte de décès
+--   'hafa'         : papier divers, avec son titre et son texte
+alter table public.taratasy drop constraint if exists taratasy_karazana_check;
+alter table public.taratasy add constraint taratasy_karazana_check
+  check (karazana in ('fonenana', 'fifindramonina', 'fanambadiana', 'fahafatesana', 'hafa'));
+
+-- Le mariage : le second conjoint.
+alter table public.taratasy add column if not exists anarana_faharoa text;
+alter table public.taratasy add column if not exists laharana_cin_faharoa text;
+-- Le mariage et le décès : quand et où c'est arrivé (daty reste la date du papier).
+alter table public.taratasy add column if not exists daty_zava date;
+alter table public.taratasy add column if not exists toerana_zava text;
+-- Le papier divers : son titre et son texte.
+alter table public.taratasy add column if not exists lohateny text;
+alter table public.taratasy add column if not exists votoatiny text;
 
 alter table public.taratasy enable row level security;
 

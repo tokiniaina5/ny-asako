@@ -1,4 +1,5 @@
-// Taratasy : fanamarinam-ponenana, sy fanamarinana fifindra-monina.
+// Taratasy : fanamarinam-ponenana, fanamarinana fifindra-monina,
+// sora-panambadiana, sora-pahafatesana, ary taratasy samihafa.
 //
 // Le papier se prépare ici, il ne s'y délivre pas : il ne vaut que signé et
 // cacheté par l'autorité compétente. Ce que cette page fait, c'est écrire
@@ -15,14 +16,31 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // Cinq sortes de papiers. Le départ seul est archivé (il ne se liste ni ne
+  // se modifie) ; les autres se listent, se réimpriment et s'effacent.
   const TITRES = {
     fonenana: 'FANAMARINAM-PONENANA',
-    fifindramonina: 'FANAMARINANA FIFINDRA-MONINA'
+    fifindramonina: 'FANAMARINANA FIFINDRA-MONINA',
+    fanambadiana: 'SORA-PANAMBADIANA',
+    fahafatesana: 'SORA-PAHAFATESANA',
+    hafa: 'TARATASY'
   };
   const NOMS = {
     fonenana: 'Fanamarinam-ponenana',
-    fifindramonina: 'Fifindra-monina'
+    fifindramonina: 'Fifindra-monina',
+    fanambadiana: 'Sora-panambadiana',
+    fahafatesana: 'Sora-pahafatesana',
+    hafa: 'Taratasy samihafa'
   };
+  // Un papier « samihafa » porte le titre qu'on lui a donné.
+  function titreDe(t) {
+    if (t.karazana === 'hafa' && t.lohateny) return String(t.lohateny).toUpperCase();
+    return TITRES[t.karazana] || 'TARATASY';
+  }
+  function nomDe(t) {
+    if (t.karazana === 'hafa' && t.lohateny) return t.lohateny;
+    return NOMS[t.karazana] || t.karazana;
+  }
 
   let taratasy = [];
   // Les départs : leur numéro et leur date seulement (laharanaSuivant).
@@ -74,6 +92,11 @@
     const e = res && res.error;
     if (!e) return '';
     const m = String(e.message || '');
+    // Les sortes nouvelles (mariage, décès, divers) demandent une base à jour :
+    // une colonne inconnue, ou une sorte refusée par la règle d'avant.
+    if (e.code === '23514' || e.code === 'PGRST204' || /column/i.test(m)) {
+      return 'Mila havaozina ny table « taratasy » ao amin\'ny Supabase (supabase-taratasy.sql).';
+    }
     if (e.code === '42P01' || e.code === 'PGRST205' || /does not exist|schema cache/i.test(m)) {
       return 'Mbola tsy misy ny table « taratasy » ao amin\'ny Supabase.';
     }
@@ -84,13 +107,26 @@
   // ---------- Ce que le formulaire montre ----------
 
   function karazanaChoisie() {
-    return $('tarKarazana').value === 'fifindramonina' ? 'fifindramonina' : 'fonenana';
+    const v = $('tarKarazana').value;
+    return TITRES[v] ? v : 'fonenana';
   }
+  // Chaque papier ne demande que ce qu'il écrit.
   function ajusterChamps() {
-    const depart = karazanaChoisie() === 'fifindramonina';
-    $('tarFonenanaChamp').style.display = depart ? 'none' : '';
-    $('tarTalohaChamp').style.display = depart ? '' : 'none';
-    $('tarVaovaoChamp').style.display = depart ? '' : 'none';
+    const k = karazanaChoisie();
+    const montrer = function (id, oui) { $(id).style.display = oui ? '' : 'none'; };
+    montrer('tarFonenanaChamp', k === 'fonenana' || k === 'hafa');
+    montrer('tarTalohaChamp', k === 'fifindramonina');
+    montrer('tarVaovaoChamp', k === 'fifindramonina');
+    montrer('tarVadyChamp', k === 'fanambadiana');
+    montrer('tarVadyCinChamp', k === 'fanambadiana');
+    montrer('tarZavaDatyChamp', k === 'fanambadiana' || k === 'fahafatesana');
+    montrer('tarZavaToeranaChamp', k === 'fanambadiana' || k === 'fahafatesana');
+    montrer('tarLohatenyChamp', k === 'hafa');
+    montrer('tarVotoatinyChamp', k === 'hafa');
+    $('tarAnaranaLabel').textContent = k === 'fanambadiana' ? 'Anaran\'ny vady voalohany'
+      : (k === 'fahafatesana' ? 'Anaran\'ilay maty' : 'Anarana feno');
+    $('tarZavaDatyLabel').textContent = k === 'fahafatesana' ? 'Daty nahafatesana' : 'Daty nanambadiana';
+    $('tarZavaToeranaLabel').textContent = k === 'fahafatesana' ? 'Toerana nahafatesana' : 'Toerana nanambadiana';
   }
 
   function chargerPersonnes() {
@@ -139,13 +175,14 @@
   // un papier effacé ne doit pas rendre son numéro à un autre.
   //
   // Chaque sorte de papier a sa propre file : les départs se comptent entre
-  // eux, les certificats de résidence entre eux.
+  // eux, les certificats de résidence entre eux, les mariages entre eux…
   function laharanaSuivant(daty, karazana) {
     const jour = String(daty || $('tarDaty').value || aujourdhui()).slice(0, 10);
     const annee = jour.slice(0, 4);
     const mois = jour.slice(5, 7);
+    const k = karazana || karazanaChoisie();
     let plusGrand = 0;
-    ((karazana || karazanaChoisie()) === 'fifindramonina' ? numerosDepart : taratasy).forEach(function (t) {
+    (k === 'fifindramonina' ? numerosDepart : taratasy.filter(function (t) { return t.karazana === k; })).forEach(function (t) {
       if (String(t.daty || '').slice(0, 7) !== annee + '-' + mois) return;
       const m = String(t.laharana || '').match(/^(\d+)\//);
       if (m && Number(m[1]) > plusGrand) plusGrand = Number(m[1]);
@@ -175,8 +212,22 @@
       fonenana_taloha: $('tarTaloha').value.trim() || null,
       fonenana_vaovao: $('tarVaovao').value.trim() || null,
       daty: $('tarDaty').value || aujourdhui(),
-      fanamarihana: $('tarNote').value.trim() || null
+      fanamarihana: $('tarNote').value.trim() || null,
+      anarana_faharoa: $('tarVady').value.trim() || null,
+      laharana_cin_faharoa: $('tarVadyCin').value.trim() || null,
+      daty_zava: $('tarZavaDaty').value || null,
+      toerana_zava: $('tarZavaToerana').value.trim() || null,
+      lohateny: $('tarLohateny').value.trim() || null,
+      votoatiny: $('tarVotoatiny').value.trim() || null
     };
+  }
+  // Ce qu'on envoie à la base : seulement les colonnes que ce papier remplit.
+  // Un certificat de résidence part donc sans les colonnes nouvelles, et
+  // s'enregistre même si la base n'a pas encore été mise à jour.
+  function pourLaBase(t) {
+    const ligne = {};
+    Object.keys(t).forEach(function (k) { if (t[k] !== null && t[k] !== undefined) ligne[k] = t[k]; });
+    return ligne;
   }
 
   // Le texte du papier, ligne à ligne. Écrit ici et non dans le PDF : le même
@@ -188,6 +239,30 @@
       ? ', teraka ny ' + dateFr(t.teraka_daty) + (t.teraka_toerana ? ' tao ' + t.teraka_toerana : '')
       : (t.teraka_toerana ? ', teraka tao ' + t.teraka_toerana : '');
 
+    if (t.karazana === 'fanambadiana') {
+      const vady = t.anarana_faharoa || '—';
+      const cinVady = t.laharana_cin_faharoa ? ', manana karapanondrom-pirenena laharana ' + t.laharana_cin_faharoa : '';
+      return [
+        'Izaho manao sonia eto ambany dia manamarina fa ' + nom + teraka + cin + ',',
+        'sy ' + vady + cinVady + ',',
+        'dia nivady ara-dalàna tamin\'ny ' + dateFr(t.daty_zava) + (t.toerana_zava ? ' tao ' + t.toerana_zava : '') + '.',
+        '',
+        'Natao ity taratasy ity mba hanamarinana izany, ary hampiasain\'ireo voakasika amin\'izay ilana azy.'
+      ];
+    }
+    if (t.karazana === 'fahafatesana') {
+      return [
+        'Izaho manao sonia eto ambany dia manamarina fa ' + nom + teraka + cin + ',',
+        'dia maty tamin\'ny ' + dateFr(t.daty_zava) + (t.toerana_zava ? ' tao ' + t.toerana_zava : '') + '.',
+        '',
+        'Natao ity taratasy ity mba hanamarinana izany, ary hampiasain\'ny fianakaviany amin\'izay ilana azy.'
+      ];
+    }
+    if (t.karazana === 'hafa') {
+      // Le texte tel qu'on l'a écrit, ses retours à la ligne compris.
+      const entete = 'Ho an\'i ' + nom + teraka + cin + (t.fonenana ? ', monina ao ' + t.fonenana : '') + '.';
+      return [entete, ''].concat(String(t.votoatiny || '').split(/\r?\n/));
+    }
     if (t.karazana === 'fifindramonina') {
       return [
         'Izaho manao sonia eto ambany dia manamarina fa ' + nom + teraka + cin + ',',
@@ -233,7 +308,7 @@
 
     doc.setFontSize(17);
     doc.setFont(undefined, 'bold');
-    doc.text(TITRES[t.karazana], 105, 56, { align: 'center' });
+    doc.text(titreDe(t), 105, 56, { align: 'center' });
 
     doc.setFont(undefined, 'normal');
     doc.setFontSize(11.5);
@@ -264,7 +339,7 @@
     doc.setLineWidth(0.2);
     doc.line(210 - marge - 60, bas + 30, 210 - marge, bas + 30);
 
-    const nomFichier = (NOMS[t.karazana] + '-' + (t.anarana || '') + '-' + (t.laharana || ''))
+    const nomFichier = (nomDe(t) + '-' + (t.anarana || '') + '-' + (t.laharana || ''))
       .replace(/[^A-Za-z0-9\-]+/g, '-') + '.pdf';
     doc.save(nomFichier);
   }
@@ -280,13 +355,12 @@
       dire(client ? 'Midira aloha.' : 'Tsy azo ampiasaina eto ity pejy ity.', true);
       return Promise.resolve();
     }
-    // Seuls les certificats de résidence se listent. Les départs sont
-    // archivés : ils ne s'ouvrent que par leur numéro et le nom.
-    // Des départs, on ne lit que le numéro et la date : de quoi donner le
-    // numéro suivant sans rien montrer de l'archive.
+    // Tout se liste, sauf les départs : archivés, ils ne s'ouvrent que par
+    // leur numéro et le nom. Des départs, on ne lit que le numéro et la date :
+    // de quoi donner le numéro suivant sans rien montrer de l'archive.
     return Promise.all([
       client.from('taratasy').select('*')
-        .eq('owner_email', email).eq('karazana', 'fonenana')
+        .eq('owner_email', email).neq('karazana', 'fifindramonina')
         .order('daty', { ascending: false }),
       client.from('taratasy').select('laharana,daty')
         .eq('owner_email', email).eq('karazana', 'fifindramonina')
@@ -297,6 +371,7 @@
       numerosDepart = (r[1] && !r[1].error && r[1].data) || [];
       afficher();
       compter();
+      afficherHistorique();
     }, function () {
       dire('Tsy tratra ny serveur : jereo ny réseau.', true);
     });
@@ -309,7 +384,7 @@
       const lany = fin && fin < auj;
       return '<tr>' +
         '<td style="white-space:nowrap;">' + dateFr(t.daty) + '</td>' +
-        '<td>' + echapper(NOMS[t.karazana] || t.karazana) + '</td>' +
+        '<td>' + echapper(nomDe(t)) + '</td>' +
         '<td>' + echapper(t.anarana) + '</td>' +
         '<td style="font-family:var(--font-mono); white-space:nowrap;">' + echapper(t.laharana || '—') + '</td>' +
         '<td style="white-space:nowrap;' + (lany ? ' color:var(--red);' : '') + '"' + (lany ? ' title="Lany andro"' : '') + '>' +
@@ -336,7 +411,8 @@
   }
 
   function vider() {
-    ['tarAnarana', 'tarCin', 'tarTerakaDaty', 'tarTerakaToerana', 'tarFonenana', 'tarTaloha', 'tarVaovao', 'tarLaharana', 'tarNote']
+    ['tarAnarana', 'tarCin', 'tarTerakaDaty', 'tarTerakaToerana', 'tarFonenana', 'tarTaloha', 'tarVaovao', 'tarLaharana', 'tarNote',
+      'tarVady', 'tarVadyCin', 'tarZavaDaty', 'tarZavaToerana', 'tarLohateny', 'tarVotoatiny']
       .forEach(function (id) { $(id).value = ''; });
     $('tarOlona').value = '';
     $('tarDaty').value = aujourdhui();
@@ -356,12 +432,20 @@
       // Il ne se reprend pas : on le dit avant, pas après.
       if (!window.confirm('Rehefa voatahiry dia tsy azo ovaina na fafana intsony ity taratasy fifindra-monina ity.\n\nLaharana : ' +
         t.laharana + '\nAnarana : ' + t.anarana + '\n\nTohizana ?')) return;
+    } else if (t.karazana === 'fanambadiana') {
+      if (!t.anarana_faharoa) { dire('Soraty ny anaran\'ny vady faharoa.', true); return; }
+      if (!t.daty_zava) { dire('Soraty ny daty nanambadiana.', true); return; }
+    } else if (t.karazana === 'fahafatesana') {
+      if (!t.daty_zava) { dire('Soraty ny daty nahafatesana.', true); return; }
+    } else if (t.karazana === 'hafa') {
+      if (!t.lohateny) { dire('Soraty ny lohatenin\'ny taratasy.', true); return; }
+      if (!t.votoatiny) { dire('Soraty ny votoatin\'ny taratasy.', true); return; }
     } else if (!t.fonenana) {
       dire('Soraty ny fonenana.', true); return;
     }
 
     dire('Mitahiry…');
-    client.from('taratasy').insert(Object.assign({ owner_email: email }, t)).then(function (res) {
+    client.from('taratasy').insert(Object.assign({ owner_email: email }, pourLaBase(t))).then(function (res) {
       if (res.error) { dire(expliquer(res), true); return; }
       // Le PDF part du formulaire et non de la ligne relue : la personne
       // l'attend maintenant, et non après un aller-retour au serveur.
@@ -423,6 +507,7 @@
     const personnes = new Set();
     let manankery = 0;
     taratasy.forEach(function (t) {
+      if (t.karazana !== 'fonenana') return;
       const cle = String(t.anarana || '').trim().toLowerCase().replace(/\s+/g, ' ');
       if (cle) personnes.add(cle);
       const fin = finDeValidite(t);
@@ -430,6 +515,11 @@
     });
     $('communKpiFonenana').textContent = personnes.size.toLocaleString('fr-FR');
     $('communKpiFonenanaKery').textContent = manankery.toLocaleString('fr-FR');
+    [['communKpiFanambadiana', 'fanambadiana'], ['communKpiFahafatesana', 'fahafatesana'], ['communKpiHafa', 'hafa']]
+      .forEach(function (p) {
+        const el = $(p[0]);
+        if (el) el.textContent = taratasy.filter(function (t) { return t.karazana === p[1]; }).length.toLocaleString('fr-FR');
+      });
     dessinerLesTaratasy(auj);
 
     // head : le serveur ne renvoie que le compte, aucune ligne.
@@ -441,20 +531,26 @@
       }, function () {});
   }
 
-  // Les papiers remis par mois, les deux sortes ensemble. Des départs, on n'a
+  // Les papiers remis par mois, toutes sortes ensemble. Des départs, on n'a
   // que la date (numerosDepart) : c'est assez pour compter, rien de plus.
-  const COULEURS = (typeof chartColors !== 'undefined') ? chartColors : ['#4fd8e0', '#f2a33c', '#8b93ff'];
+  const COULEURS = (typeof chartColors !== 'undefined') ? chartColors : ['#4fd8e0', '#f2a33c', '#8b93ff', '#6ee7b7', '#f472b6'];
+  // L'ordre des sortes, et la couleur de chacune, partout pareils.
+  const SORTES = ['fonenana', 'fifindramonina', 'fanambadiana', 'fahafatesana', 'hafa'];
+  function couleurDe(k) { return COULEURS[(SORTES.indexOf(k) + 2) % COULEURS.length]; }
+  // Tous les papiers, départs compris, réduits à leur sorte et leur date.
+  function toutesLesDates() {
+    return taratasy.map(function (t) { return { k: t.karazana, d: String(t.daty || '').slice(0, 10) }; })
+      .concat(numerosDepart.map(function (t) { return { k: 'fifindramonina', d: String(t.daty || '').slice(0, 10) }; }));
+  }
   let graphiqueTaratasy = null;
+  let graphiqueSortes = null;
   function dessinerLesTaratasy(auj) {
     const mois = auj.slice(0, 7);
     const taona = auj.slice(0, 4);
-    const dates = function (liste) { return liste.map(function (t) { return String(t.daty || '').slice(0, 10); }); };
-    const fonenana = dates(taratasy);
-    const departs = dates(numerosDepart);
-    const toutes = fonenana.concat(departs);
+    const toutes = toutesLesDates();
     const poser = function (id, n) { const el = $(id); if (el) el.textContent = n.toLocaleString('fr-FR'); };
-    poser('communKpiTarVolana', toutes.filter(function (d) { return d.slice(0, 7) === mois; }).length);
-    poser('communKpiTarTaona', toutes.filter(function (d) { return d.slice(0, 4) === taona; }).length);
+    poser('communKpiTarVolana', toutes.filter(function (x) { return x.d.slice(0, 7) === mois; }).length);
+    poser('communKpiTarTaona', toutes.filter(function (x) { return x.d.slice(0, 4) === taona; }).length);
 
     const liste = $('communListeTaratasy');
     if (liste) {
@@ -462,45 +558,122 @@
       liste.innerHTML = derniers.length
         ? derniers.map(function (t) {
             const fin = finDeValidite(t);
-            const valable = fin && fin >= auj;
+            let etat = '';
+            if (t.karazana === 'fonenana') {
+              etat = (fin && fin >= auj)
+                ? '<span style="white-space:nowrap; color:var(--cyan);">Manan-kery hatramin\'ny ' + dateFr(fin) + '</span>'
+                : '<span style="white-space:nowrap; color:var(--muted);">Lany daty</span>';
+            }
             return '<div class="list-row">' +
-              '<span>' + echapper(t.anarana) + ' <span style="color:var(--muted);">· ' + dateFr(t.daty) + '</span></span>' +
-              '<span style="white-space:nowrap; color:' + (valable ? 'var(--cyan)' : 'var(--muted)') + ';">' +
-                (valable ? 'Manan-kery hatramin\'ny ' + dateFr(fin) : 'Lany daty') + '</span>' +
+              '<span>' + echapper(t.anarana) + ' <span style="color:var(--muted);">· ' + echapper(nomDe(t)) + ' · ' + dateFr(t.daty) + '</span></span>' +
+              etat +
             '</div>';
           }).join('')
-        : '<p class="empty-hint" style="padding:0.4rem 0;">Mbola tsy misy fanamarinam-ponenana.</p>';
+        : '<p class="empty-hint" style="padding:0.4rem 0;">Mbola tsy misy taratasy nomena.</p>';
     }
 
+    if (!window.Chart) return;
     const canvas = $('communChartTaratasy');
-    if (!canvas || !window.Chart) return;
-    const maintenant = new Date(auj + 'T00:00:00');
-    const douze = [];
-    for (let i = 11; i >= 0; i--) douze.push(new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1));
-    const cle = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
-    const parMois = function (liste) {
-      return douze.map(function (m) { const c = cle(m); return liste.filter(function (d) { return d.slice(0, 7) === c; }).length; });
-    };
-    if (graphiqueTaratasy) graphiqueTaratasy.destroy();
-    graphiqueTaratasy = new Chart(canvas.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: douze.map(function (m) { return m.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }); }),
-        datasets: [
-          { label: 'Fanamarinam-ponenana', data: parMois(fonenana), backgroundColor: COULEURS[2] || COULEURS[0], borderRadius: 4, maxBarThickness: 42 },
-          { label: 'Fifindra-monina', data: parMois(departs), backgroundColor: COULEURS[0], borderRadius: 4, maxBarThickness: 42 }
-        ]
-      },
-      options: {
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } } },
-        scales: {
-          x: { stacked: true, grid: { display: false } },
-          y: { stacked: true, grid: { color: '#1f2a30' }, beginAtZero: true, ticks: { precision: 0 } }
+    if (canvas) {
+      const maintenant = new Date(auj + 'T00:00:00');
+      const douze = [];
+      for (let i = 11; i >= 0; i--) douze.push(new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1));
+      const cle = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+      if (graphiqueTaratasy) graphiqueTaratasy.destroy();
+      graphiqueTaratasy = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: douze.map(function (m) { return m.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }); }),
+          datasets: SORTES.map(function (k) {
+            return {
+              label: NOMS[k],
+              data: douze.map(function (m) {
+                const c = cle(m);
+                return toutes.filter(function (x) { return x.k === k && x.d.slice(0, 7) === c; }).length;
+              }),
+              backgroundColor: couleurDe(k), borderRadius: 4, maxBarThickness: 42
+            };
+          })
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } } },
+          scales: {
+            x: { stacked: true, grid: { display: false } },
+            y: { stacked: true, grid: { color: '#1f2a30' }, beginAtZero: true, ticks: { precision: 0 } }
+          }
         }
-      }
+      });
+    }
+
+    const canvasSortes = $('communChartTarKarazana');
+    if (canvasSortes) {
+      const parSorte = SORTES.map(function (k) { return toutes.filter(function (x) { return x.k === k; }).length; });
+      const vide = !toutes.length;
+      if (graphiqueSortes) graphiqueSortes.destroy();
+      graphiqueSortes = new Chart(canvasSortes.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: vide ? ['Tsy misy'] : SORTES.map(function (k) { return NOMS[k]; }),
+          datasets: [{
+            data: vide ? [1] : parSorte,
+            backgroundColor: vide ? ['#2a343b'] : SORTES.map(couleurDe),
+            borderWidth: 0
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } }, tooltip: { enabled: !vide } }
+        }
+      });
+    }
+  }
+
+  // ---------- L'historique ----------
+  // Tous les papiers remis, du plus récent au plus ancien, dans l'onglet
+  // Historique — cherchés par le même champ que les versements. Un départ n'y
+  // paraît que par son numéro et sa date : l'archive reste fermée.
+  function afficherHistorique() {
+    const corps = $('histoTarListe');
+    if (!corps) return;
+    const q = (($('histoRecherche') || {}).value || '').trim().toLowerCase();
+    const lignes = taratasy.map(function (t) {
+      return { id: t.id, daty: String(t.daty || '').slice(0, 10), sorte: nomDe(t), olona: t.anarana || '', laharana: t.laharana || '', ouvert: true };
+    }).concat(numerosDepart.map(function (t) {
+      return { daty: String(t.daty || '').slice(0, 10), sorte: NOMS.fifindramonina, olona: '', laharana: t.laharana || '', ouvert: false };
+    })).filter(function (l) {
+      if (!q) return true;
+      return [l.sorte, l.olona, l.laharana, dateFr(l.daty)].some(function (x) { return String(x).toLowerCase().indexOf(q) >= 0; });
+    }).sort(function (a, b) { return a.daty < b.daty ? 1 : (a.daty > b.daty ? -1 : 0); });
+
+    corps.innerHTML = lignes.map(function (l) {
+      return '<tr>' +
+        '<td style="white-space:nowrap;">' + dateFr(l.daty) + '</td>' +
+        '<td>' + echapper(l.sorte) + '</td>' +
+        '<td>' + (l.ouvert ? echapper(l.olona) : '<span style="color:var(--muted);">🔒 Voahidy</span>') + '</td>' +
+        '<td style="font-family:var(--font-mono); white-space:nowrap;">' + echapper(l.laharana || '—') + '</td>' +
+        '<td>' + (l.ouvert ? '<button type="button" class="btn btn-sm" data-histo-tar-pdf="' + echapper(l.id) + '">PDF</button>' : '') + '</td>' +
+      '</tr>';
+    }).join('');
+    $('histoTarVide').style.display = lignes.length ? 'none' : '';
+    $('histoTarVide').textContent = (taratasy.length || numerosDepart.length)
+      ? 'Tsy misy mifanaraka amin\'ny fikarohana.'
+      : 'Mbola tsy misy taratasy nomena.';
+    const recap = $('histoTarRecap');
+    if (recap) recap.textContent = lignes.length ? lignes.length + ' taratasy' : '';
+  }
+  if ($('histoTarListe')) {
+    $('histoRecherche').addEventListener('input', afficherHistorique);
+    $('histoTarListe').addEventListener('click', function (e) {
+      const pdf = e.target.closest('[data-histo-tar-pdf]');
+      if (!pdf) return;
+      const t = taratasy.filter(function (x) { return x.id === pdf.dataset.histoTarPdf; })[0];
+      if (t) fabriquerPdf(t);
     });
   }
+  // Appelée à l'ouverture de l'onglet Historique (common.js, fokontany-app.js).
+  window.renderTaratasyHistorique = function () { return charger(); };
 
   // Appelée par common.js à l'ouverture du tableau de bord : les chiffres
   // s'y montrent sans qu'on ait ouvert l'onglet des taratasy.

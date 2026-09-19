@@ -4793,6 +4793,8 @@
       if(typeof renderAdidy === 'function') renderAdidy();
     } else if(ongletCommun === 'historique'){
       if(typeof renderHistorique === 'function') renderHistorique();
+      // Les papiers remis ont leur place dans l'historique aussi (taratasy.js).
+      if(typeof renderTaratasyHistorique === 'function') renderTaratasyHistorique();
     } else if(ongletCommun === 'taratasy'){
       if(typeof renderTaratasy === 'function') renderTaratasy();
     } else if(typeof renderPiecesIdentite === 'function'){
