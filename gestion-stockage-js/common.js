@@ -5034,22 +5034,6 @@
           '<button type="button" class="btn btn-primary btn-sm" data-sokafy style="width:auto;">🔓 Sokafy ny pejy</button>' +
           '<p data-statut style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>' +
         '</div>' +
-        // Le code d'un fokontany nouveau, demandé d'ici : la fonction
-        // « commun-code » (celle de « Omeo code »), inchangée — elle tire le
-        // code, pose l'accès et l'envoie par email avec le lien.
-        '<div class="panel">' +
-          '<h3>📩 Fangatahana code</h3>' +
-          '<p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin-bottom:0.9rem;">' +
-            'Alefaso amin\'ny mailaky ny fokontany vaovao ny code sy ny rohy.</p>' +
-          '<div class="form-grid">' +
-            '<div class="field"><label for="pvEmail">Email an\'ilay fokontany</label>' +
-              '<input type="email" id="pvEmail" data-fk-email placeholder="fokontany@exemple.com" autocomplete="off"></div>' +
-            '<div class="field"><label for="pvAnarana">Anarana (raha misy)</label>' +
-              '<input type="text" id="pvAnarana" data-fk-anarana placeholder="Fokontany …" autocomplete="off"></div>' +
-          '</div>' +
-          '<button type="button" class="btn btn-sm" data-alefa style="width:auto;">📩 Alefaso ny code</button>' +
-          '<p data-alefa-statut style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>' +
-        '</div>' +
         // Toutes les demandes, ici même : on valide d'un bouton, sans aller
         // chercher le code dans l'onglet Fangatahana.
         '<div class="panel">' +
@@ -5123,25 +5107,6 @@
       }, function(){ vide.style.display = ''; });
     }
     chargerLesDemandes();
-
-    page.querySelector('[data-alefa]').addEventListener('click', function(){
-      const st = page.querySelector('[data-alefa-statut]');
-      const dit = function(t, err){ st.textContent = t; st.style.color = err ? 'var(--red)' : 'var(--cyan)'; };
-      const email = String(page.querySelector('[data-fk-email]').value || '').trim().toLowerCase();
-      const anarana = String(page.querySelector('[data-fk-anarana]').value || '').trim();
-      if(!email || email.indexOf('@') < 0){ dit('Soraty ny email an\'ilay fokontany.', true); return; }
-      if(!sb || !sb.functions || !sb.functions.invoke){ dit('Tsy tafiditra ny serveur : havaozy ny pejy.', true); return; }
-      dit('Mandefa ny code…');
-      sb.functions.invoke('commun-code', { body: { email: email, anarana: anarana || null } }).then(function(res){
-        const data = (res && res.data) || {};
-        if(!data.code){ dit('Tsy nety : ' + ((res && res.error && res.error.message) || data.error || 'tsy fantatra'), true); return; }
-        dit(data.sent
-          ? 'Lasa tamin\'ny ' + email + ' ny mailaka. Code : ' + data.code
-          : 'Tsy lasa ny mailaka (' + (data.error || 'antony tsy fantatra') + '). Code : ' + data.code + ' — lazao azy mivantana.', !data.sent);
-        champ.value = data.code;
-        chargerLesDemandes();
-      }, function(err){ dit('Tsy tratra ny fonction : ' + ((err && err.message) || 'réseau'), true); });
-    });
 
     page.querySelector('[data-sokafy]').addEventListener('click', function(){
       const code = champ.value.trim().toUpperCase();
