@@ -483,6 +483,13 @@
     function ouvrirQuandPret(reste) {
       const ecran = document.getElementById('appScreen');
       if (ecran && getComputedStyle(ecran).display !== 'none' && typeof ouvrirDepuisLeMenu === 'function') {
+        // Dans Ny asako, le Fokontany est au propriétaire : les autres vont à
+        // son application (/fokontany/), qui trouve le code gardé ci-dessus
+        // — même site, même localStorage. Les anciens emails menaient ici.
+        if (!jeSuisLeProprietaire() && window.location.pathname.indexOf('/fokontany') !== 0) {
+          window.location.href = '/fokontany/';
+          return;
+        }
         ouvrirDepuisLeMenu('commun');
         return;
       }

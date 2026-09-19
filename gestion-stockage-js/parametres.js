@@ -19,6 +19,12 @@
     // l'entrée de menu « Espace admin » n'existe que pour le propriétaire
     const navAdmin = document.getElementById('navAdmin');
     if(navAdmin) navAdmin.style.display = isAdmin ? 'flex' : 'none';
+    // Administratif Fokontany et Administratif Commun : au propriétaire seul.
+    // Une classe sur la racine et non un style par élément : la recherche du
+    // menu et les icônes épinglées remettent les leurs, pas celle-ci
+    // (components.css). isOwnerEmail refuse aussi l'employé entré par son lien.
+    document.documentElement.classList.toggle('est-proprietaire',
+      !!(currentUser && currentUser.email && isOwnerEmail(currentUser.email)));
     document.getElementById('contactAdminPanel').style.display = isAdmin ? 'block' : 'none';
     document.getElementById('unlockRequestsPanel').style.display = isAdmin ? 'block' : 'none';
     document.getElementById('signupsPanel').style.display = isAdmin ? 'block' : 'none';

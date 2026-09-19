@@ -4868,6 +4868,11 @@
   }
 
   function showDashView(nom){
+    // Le Fokontany et l'Administratif Commun sont au propriétaire : un client
+    // qui y arriverait (vue rouverte au démarrage, lien) retombe sur l'Accueil,
+    // sans que rien n'ait été demandé au serveur.
+    if((nom === 'commun' || nom === 'communadmin') &&
+       !(currentUser && currentUser.email && isOwnerEmail(currentUser.email))) nom = 'accueil';
     const view = document.getElementById('dash-' + nom);
     if(!view) return false;
     document.querySelectorAll('.dash-tab').forEach(function(t){ t.classList.remove('active'); });
