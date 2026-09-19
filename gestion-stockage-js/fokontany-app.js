@@ -51,7 +51,13 @@ function choisirOngletCommun(nom) {
   });
   // La porte d'abord : sans alalana, rien ne se montre ni ne se demande.
   if (typeof renderPorteCommun === 'function') {
-    renderPorteCommun().then(function (ouverte) { if (ouverte) remplirOngletCommun(); });
+    renderPorteCommun().then(function (ouverte) {
+      if (!ouverte) return;
+      // Entré dans le Fokontany : il peut l'installer chez lui (le Commun
+      // reste au propriétaire, installé depuis Ny asako).
+      if (!APP_COMMUN && typeof window.__fkRendreInstallable === 'function') window.__fkRendreInstallable();
+      remplirOngletCommun();
+    });
     return;
   }
   remplirOngletCommun();
@@ -155,9 +161,10 @@ document.addEventListener('DOMContentLoaded', function () {
     choisirOngletCommun(ongletCommun);
   }
 
-  // ---------- Installation : le propriétaire seul ----------
-  // La page n'a pas de manifeste : pour tout autre compte, le navigateur n'a
-  // rien à installer. Le propriétaire, lui, le reçoit ici, avec les balises
+  // ---------- Installation : le propriétaire, et les accès confirmés ----------
+  // La page n'a pas de manifeste : pour qui n'est pas entré, le navigateur n'a
+  // rien à installer. Le propriétaire — et, dans le Fokontany, celui dont
+  // l'accès est confirmé, pour l'installer sur son ordinateur — le reçoit ici, avec les balises
   // d'iOS qui ne lit pas le manifeste. Il ne se retire pas à la déconnexion :
   // le navigateur l'a déjà lu, et seul un rechargement l'oublierait — d'où
   // le rechargement dans fermer().
@@ -171,10 +178,12 @@ document.addEventListener('DOMContentLoaded', function () {
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
   function montrerInstallation() {
-    var proprio = !!(currentUser && isOwnerEmail(currentUser.email)) && !dejaInstallee();
+    var proprio = installable && !!currentUser && !dejaInstallee();
     $('fkInstaller').style.display = (proprio && invitation) ? '' : 'none';
     $('fkInstallIos').style.display = (proprio && !invitation && surIOS()) ? '' : 'none';
   }
+  // Le propriétaire, et quiconque est entré dans le Fokontany (accès confirmé).
+  window.__fkRendreInstallable = function () { rendreInstallable(); };
   function rendreInstallable() {
     if (!installable) {
       installable = true;
@@ -196,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // l'invitation pour le bouton, qui seul peut la déclencher.
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
-    if (!(currentUser && isOwnerEmail(currentUser.email))) return;
+    if (!installable || !currentUser) return;
     invitation = e;
     montrerInstallation();
   });

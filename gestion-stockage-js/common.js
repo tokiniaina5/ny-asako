@@ -4923,10 +4923,14 @@
   // propriétaire connecté trouve « 📲 Installer ». Un nouvel onglet : dans
   // Ny asako installée, la page s'ouvrirait sinon dans l'application, où le
   // navigateur ne propose rien.
-  [['menuInstallFokontany', '/fokontany/'], ['menuInstallCommun', '/commun/']].forEach(function(p){
+  // Le Fokontany s'installe aussi chez le client dont l'accès est confirmé
+  // (.a-fokontany, posée par commun-alalana.js) ; le Commun, au propriétaire seul.
+  [['menuInstallFokontany', '/fokontany/', true], ['menuInstallCommun', '/commun/', false]].forEach(function(p){
     const el = document.getElementById(p[0]);
     if(el) el.addEventListener('click', function(){
-      if(!(currentUser && currentUser.email && isOwnerEmail(currentUser.email))) return;
+      const proprio = !!(currentUser && currentUser.email && isOwnerEmail(currentUser.email));
+      const client = p[2] && document.documentElement.classList.contains('a-fokontany');
+      if(!proprio && !client) return;
       window.open(p[1], '_blank');
     });
   });
