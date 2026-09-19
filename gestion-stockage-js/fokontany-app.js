@@ -51,7 +51,13 @@ function choisirOngletCommun(nom) {
   });
   // La porte d'abord : sans alalana, rien ne se montre ni ne se demande.
   if (typeof renderPorteCommun === 'function') {
-    renderPorteCommun().then(function (ouverte) { if (ouverte) remplirOngletCommun(); });
+    renderPorteCommun().then(function (ouverte) {
+      if (!ouverte) return;
+      // Validé par l'admin (✅ Hamafiso) : le fokontany peut installer
+      // l'application sur son ordinateur. Le Commun reste à l'admin.
+      if (!APP_COMMUN && typeof window.__fkRendreInstallable === 'function') window.__fkRendreInstallable();
+      remplirOngletCommun();
+    });
     return;
   }
   remplirOngletCommun();
@@ -159,9 +165,10 @@ document.addEventListener('DOMContentLoaded', function () {
     choisirOngletCommun(ongletCommun);
   }
 
-  // ---------- Installation : le propriétaire seul ----------
-  // La page n'a pas de manifeste : pour tout autre compte, le navigateur n'a
-  // rien à installer. Le propriétaire, lui, le reçoit ici, avec les balises
+  // ---------- Installation : l'admin, et le fokontany qu'il a validé ----------
+  // La page n'a pas de manifeste : pour qui n'est pas entré, le navigateur n'a
+  // rien à installer. L'admin — et, dans le Fokontany, celui dont il a validé
+  // l'accès (✅ Hamafiso) — le reçoit ici, avec les balises
   // d'iOS qui ne lit pas le manifeste. Il ne se retire pas à la déconnexion :
   // le navigateur l'a déjà lu, et seul un rechargement l'oublierait — d'où
   // le rechargement dans fermer().
@@ -175,13 +182,20 @@ document.addEventListener('DOMContentLoaded', function () {
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
   function montrerInstallation() {
-    var proprio = !!(currentUser && isOwnerEmail(currentUser.email)) && !dejaInstallee();
+    var proprio = installable && !!currentUser && !dejaInstallee();
     $('fkInstaller').style.display = (proprio && invitation) ? '' : 'none';
     $('fkInstallIos').style.display = (proprio && !invitation && surIOS()) ? '' : 'none';
   }
+  // Le propriétaire, et le fokontany dont l'admin a validé l'accès.
+  window.__fkRendreInstallable = function () { rendreInstallable(); };
   function rendreInstallable() {
     if (!installable) {
       installable = true;
+      // Le fokontany validé l'apprend : le bouton seul, en haut, passerait inaperçu.
+      if (currentUser && !isOwnerEmail(currentUser.email) && !dejaInstallee()) {
+        window.__ajouterNotificationAction('fangatahana',
+          'Nohamafisin\'ny admin ny fidiranao : afaka mametraka ny app Fokontany amin\'ity ordinateur ity ianao (📲 Installer, eo ambony).');
+      }
       var tete = document.head;
       function balise(tag, attributs) {
         var el = document.createElement(tag);
@@ -200,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // l'invitation pour le bouton, qui seul peut la déclencher.
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
-    if (!(currentUser && isOwnerEmail(currentUser.email))) return;
+    if (!installable || !currentUser) return;
     invitation = e;
     montrerInstallation();
   });
