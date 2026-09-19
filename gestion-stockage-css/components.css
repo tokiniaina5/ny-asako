@@ -18,9 +18,7 @@
      charge ce même fichier : sa racine porte .fokontany, la règle l'épargne. */
   html:not(.est-proprietaire):not(.fokontany) #menuCommun,
   html:not(.est-proprietaire):not(.fokontany) #menuCommunAdmin,
-  /* Télécharger Fokontany : aussi au client dont l'accès est confirmé
-     (.a-fokontany, commun-alalana.js), pour l'installer chez lui. */
-  html:not(.est-proprietaire):not(.a-fokontany):not(.fokontany) #menuInstallFokontany,
+  html:not(.est-proprietaire):not(.fokontany) #menuInstallFokontany,
   html:not(.est-proprietaire):not(.fokontany) #menuInstallCommun,
   html:not(.est-proprietaire):not(.fokontany) [data-epingle="id:menuCommun"],
   html:not(.est-proprietaire):not(.fokontany) [data-epingle="id:menuCommunAdmin"],

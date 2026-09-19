@@ -719,29 +719,6 @@
     }
   } catch (e) {}
 
-  // ---------- Un accès confirmé se voit dans Ny asako ----------
-  // Le client dont l'accès est confirmé peut installer l'application du
-  // Fokontany sur son propre ordinateur : l'entrée « 📲 Télécharger
-  // Fokontany » se montre alors dans son menu (components.css), grâce à la
-  // classe .a-fokontany. Sa ligne lui est lisible (règle « alalana lecture »).
-  function majAccesClient() {
-    const racine = document.documentElement;
-    if (jeSuisLeProprietaire()) { racine.classList.remove('a-fokontany'); return; }
-    identite().then(function (moi) {
-      if (!moi.ok) { racine.classList.remove('a-fokontany'); return; }
-      maLigne(moi.email).then(function (l) {
-        racine.classList.toggle('a-fokontany', !!(l && l.active && l.voamarina));
-      });
-    });
-  }
-  setTimeout(majAccesClient, 3000);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) majAccesClient(); });
-  try {
-    if (window.__sb && window.__sb.auth && window.__sb.auth.onAuthStateChange) {
-      window.__sb.auth.onAuthStateChange(function () { setTimeout(majAccesClient, 500); });
-    }
-  } catch (e) {}
-
   // Appelées par common.js.
   window.renderPorteCommun = verifier;
   window.renderFangatahana = function () {
