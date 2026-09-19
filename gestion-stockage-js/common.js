@@ -4924,14 +4924,24 @@
   // onglet suffit. Mais depuis Ny asako INSTALLÉE, la page s'ouvrait dans
   // une fenêtre de Ny asako (même site, son icône « N », titre « Ny asako -
   // Fokontany ») — où le navigateur ne propose jamais d'installer une autre
-  // application. On l'ouvre quand même, marquée « ?installer=1 » : la page y
-  // montre le chemin — le menu ⋮ de la fenêtre, « Ouvrir dans Chrome », puis
-  // « 📲 Installer » (fokontany-app.js). Copier-coller une adresse était de trop.
+  // application. L'adresse doit alors être ouverte dans Chrome : on la copie
+  // et on le dit.
   [['menuInstallFokontany', '/fokontany/'], ['menuInstallCommun', '/commun/']].forEach(function(p){
     const el = document.getElementById(p[0]);
     if(el) el.addEventListener('click', function(){
       if(!(currentUser && currentUser.email && isOwnerEmail(currentUser.email))) return;
-      window.open(p[1] + '?installer=1', '_blank');
+      let installee = false;
+      try { installee = !window.matchMedia('(display-mode: browser)').matches || window.navigator.standalone === true; } catch(e){}
+      if(!installee){ window.open(p[1], '_blank'); return; }
+      const adresse = location.origin + p[1];
+      const dire = function(copiee){
+        alert('Tsy azo apetraka avy ato anaty app Ny asako ity app ity.\n\n' +
+          'Sokafy ao amin\'ny Chrome (na Edge) ity adiresy ity' + (copiee ? ' — efa voadika, apetaho fotsiny' : '') + ' :\n' +
+          adresse + '\n\nMidira amin\'ny kaontinao, dia tsindrio « 📲 Installer ».');
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(adresse).then(function(){ dire(true); }, function(){ dire(false); });
+      } else dire(false);
     });
   });
   document.querySelectorAll('#dash-commun [data-commun]').forEach(function(tab){
