@@ -305,11 +305,11 @@
   // dernier geste reste le sien : « Envoyer ».
   function mailDuLien(personne, jeton) {
     const lien = lienDe(jeton);
-    const sujet = encodeURIComponent('Ny rohinao — Ny asako');
+    const sujet = encodeURIComponent('Confirmer ny fidiranao — Ny asako');
     const corps = encodeURIComponent(
       'Salama ' + personne.nom + ',\n\n' +
-      'Ity ny rohy hidiranao amin\'ny asako. Tsy mila tenimiafina : ampy ny manokatra azy.\n\n' +
-      lien + '\n\n' +
+      'Tsindrio ity rohy ity mba hanamafisana (confirmer) ny fidiranao amin\'ny Ny asako. Tsy mila tenimiafina.\n\n' +
+      '✅ Confirmer : ' + lien + '\n\n' +
       'Tehirizo ho anao ihany io rohy io : izy irery no manokatra ny pejinao.\n\n' +
       'Misaotra.'
     );
@@ -341,9 +341,11 @@
       if (!jeton) return;
       if (typeof shareContent !== 'function') { montrerLeLien(personne, jeton); return; }
       shareContent({
-        title: 'Ny rohinao — Ny asako',
-        text: 'Salama ' + personne.nom + ', ity ny rohy hidiranao amin\'ny asako. ' +
-          'Tsy mila tenimiafina — koa aza azarana amin\'ny olon-kafa.',
+        title: 'Confirmer ny fidiranao — Ny asako',
+        // Le message demande de confirmer : le lien vient juste après
+        // « Confirmer », là où WhatsApp ou le SMS l'ajoutent.
+        text: 'Salama ' + personne.nom + ', tsindrio ity rohy ity mba hanamafisana (confirmer) ny fidiranao amin\'ny Ny asako. ' +
+          'Tsy mila tenimiafina — koa aza azarana amin\'ny olon-kafa.\n\n✅ Confirmer :',
         url: lienDe(jeton)
       });
     });
