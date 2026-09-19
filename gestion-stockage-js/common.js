@@ -5034,6 +5034,16 @@
           '<button type="button" class="btn btn-primary btn-sm" data-sokafy style="width:auto;">🔓 Sokafy ny pejy</button>' +
           '<p data-statut style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>' +
         '</div>' +
+        // Toutes les demandes, ici même : on valide d'un bouton, sans aller
+        // chercher le code dans l'onglet Fangatahana.
+        '<div class="panel">' +
+          '<h3>🛡️ Fangatahana rehetra</h3>' +
+          '<div class="table-scroll"><table>' +
+            '<thead><tr><th>Daty</th><th>Olona</th><th>Hafatra</th><th>Code</th><th>Toe-javatra</th><th></th></tr></thead>' +
+            '<tbody data-liste></tbody>' +
+          '</table></div>' +
+          '<p class="empty-hint" data-vide style="display:none;">Mbola tsy misy fangatahana.</p>' +
+        '</div>' +
       '</div>';
     document.body.appendChild(page);
     page.querySelector('[data-nom]').textContent = u.name || '';
@@ -5045,6 +5055,58 @@
     page.querySelector('[data-hidio]').addEventListener('click', fermer);
     champ.focus();
     champ.addEventListener('keydown', function(e){ if(e.key === 'Enter') page.querySelector('[data-sokafy]').click(); });
+
+    // Les demandes (commun_fangatahana) et leur code (commun_alalana), réunies
+    // par l'email. L'admin lit les deux tables en entier.
+    const echap = function(t){ const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; };
+    function chargerLesDemandes(){
+      const liste = page.querySelector('[data-liste]');
+      const vide = page.querySelector('[data-vide]');
+      if(!sb){ vide.style.display = ''; return; }
+      Promise.all([
+        sb.from('commun_fangatahana').select('*').order('created_at', { ascending: false }),
+        sb.from('commun_alalana').select('*')
+      ]).then(function(r){
+        const demandes = (r[0] && !r[0].error && r[0].data) || [];
+        const acces = (r[1] && !r[1].error && r[1].data) || [];
+        const cle = function(e){ return String(e || '').trim().toLowerCase(); };
+        // Un accès sans demande (code donné à la main) compte aussi.
+        const lignes = demandes.map(function(f){
+          return { f: f, a: acces.filter(function(a){ return cle(a.email) === cle(f.email); })[0] || null };
+        });
+        acces.forEach(function(a){
+          if(!demandes.some(function(f){ return cle(f.email) === cle(a.email); })) lignes.push({ f: null, a: a });
+        });
+        liste.innerHTML = '';
+        lignes.forEach(function(l){
+          const f = l.f || {}, a = l.a;
+          const email = f.email || (a && a.email) || '';
+          const nom = f.anarana || (a && a.anarana) || '—';
+          const etat = !a ? 'Tsy mbola nomena code'
+            : (!a.active ? 'Nesorina' : (a.voamarina ? 'Misokatra' : (f.statut === 'lavina' ? 'Nolavina' : 'Miandry')));
+          const tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td style="white-space:nowrap;">' + (f.created_at ? new Date(f.created_at).toLocaleDateString('fr-FR') : '—') + '</td>' +
+            '<td>' + echap(nom) + '<div style="color:var(--muted); font-size:0.75rem;">' + echap(email) + '</div></td>' +
+            '<td style="color:var(--muted);">' + echap(f.hafatra || '—') + '</td>' +
+            '<td style="font-family:var(--font-mono); letter-spacing:0.1em; white-space:nowrap;">' + echap(a ? a.code : '—') + '</td>' +
+            '<td style="white-space:nowrap;">' + echap(etat) + '</td>' +
+            '<td></td>';
+          if(a && a.active){
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn btn-primary btn-sm';
+            b.style.width = 'auto';
+            b.textContent = a.voamarina ? '📲 Rohy' : '🔓 Sokafy';
+            b.addEventListener('click', function(){ champ.value = a.code; page.querySelector('[data-sokafy]').click(); });
+            tr.lastChild.appendChild(b);
+          }
+          liste.appendChild(tr);
+        });
+        vide.style.display = lignes.length ? 'none' : '';
+      }, function(){ vide.style.display = ''; });
+    }
+    chargerLesDemandes();
 
     page.querySelector('[data-sokafy]').addEventListener('click', function(){
       const code = champ.value.trim().toUpperCase();
