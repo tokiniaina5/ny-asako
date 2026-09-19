@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ---------- Connexion ----------
   // Le même compte que Ny asako : même base, mêmes identifiants. Créer un
-  // compte ou retrouver un mot de passe se fait là-bas, où tout est prévu.
+  // compte ou retrouver un mot de passe se fait aussi ici (plus bas).
   function profilDe(user) {
     var meta = (user && user.user_metadata) || {};
     var email = (user && user.email) || '';
@@ -259,6 +259,128 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  // ---------- Kaonty vaovao, mot de passe adino ----------
+  // Comme dans Ny asako (common.js), mais on entre ensuite ici, dans le
+  // Fokontany : la personne venue pour lui n'a pas à passer par le stock.
+  function erreurAuth(e) {
+    var brut = String((e && (e.message || e.error_description)) || '').toLowerCase();
+    if (brut.indexOf('invalid login credentials') >= 0) return 'Diso ny email na ny mot de passe.';
+    if (brut.indexOf('already') >= 0) return 'Efa manana kaonty io email io : midira, na ampiasao ny « Adino ny mot de passe ».';
+    if (brut.indexOf('email not confirmed') >= 0) return 'Mbola tsy voamarina ny email : sokafy ny mailaka nalefa taminao.';
+    if (brut.indexOf('signup') >= 0 && brut.indexOf('disabled') >= 0) return 'Tsy azo atao ny mamorona kaonty amin\'izao fotoana izao.';
+    if (brut.indexOf('rate limit') >= 0 || brut.indexOf('too many') >= 0) return 'Be loatra ny fangatahana : andraso kely dia avereno.';
+    if (brut.indexOf('password') >= 0 && brut.indexOf('6') >= 0) return 'Tokony ho 6 litera farafahakeliny ny mot de passe.';
+    return 'Tsy nety : ' + ((e && e.message) || 'antony tsy fantatra');
+  }
+  function tsindry(id, idMiafina) {
+    var box = $(id);
+    var misokatra = box.style.display === 'none';
+    box.style.display = misokatra ? '' : 'none';
+    $(idMiafina).style.display = 'none';
+  }
+  $('fkVaovaoBtn').addEventListener('click', function () { tsindry('fkVaovaoForm', 'fkAdinoBox'); });
+  $('fkAdinoBtn').addEventListener('click', function () {
+    tsindry('fkAdinoBox', 'fkVaovaoForm');
+    if (!$('fkAdinoEmail').value) $('fkAdinoEmail').value = $('fkLoginEmail').value;
+  });
+
+  $('fkVaovaoForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var st = $('fkVaovaoStatus');
+    if (!auth) { st.textContent = 'Tsy tafiditra ny Supabase : jereo ny connexion internet.'; return; }
+    var anarana = $('fkVaovaoAnarana').value.trim();
+    var email = normEmail($('fkVaovaoEmail').value);
+    var finday = $('fkVaovaoFinday').value.trim();
+    var mdp = $('fkVaovaoMdp').value;
+    if (!anarana || !email) { st.textContent = 'Soraty ny anarana sy ny email.'; return; }
+    if (mdp.length < 6) { st.textContent = 'Tokony ho 6 litera farafahakeliny ny mot de passe.'; return; }
+    $('fkVaovaoValider').disabled = true;
+    st.textContent = 'Mamorona ny kaonty…';
+    auth.signUp({ email: email, password: mdp, options: { data: { name: anarana, phone: finday } } }).then(function (res) {
+      $('fkVaovaoValider').disabled = false;
+      if (res && res.error) {
+        // L'email a peut-être déjà un compte : on tente d'entrer avec, comme Ny asako.
+        auth.signInWithPassword({ email: email, password: mdp }).then(function (r2) {
+          if (r2 && r2.error) { st.textContent = erreurAuth(res.error); return; }
+          ouvrir(r2.data.user);
+        }, function () { st.textContent = 'Tsy tratra ny serveur : jereo ny réseau.'; });
+        return;
+      }
+      // La même trace qu'une inscription dans Ny asako : le propriétaire la voit.
+      try {
+        window.__sb.from('client_signups').insert({ name: anarana, email: email, phone: finday }).then(function () {}, function () {});
+      } catch (err) {}
+      if (res.data && res.data.session) { ouvrir(res.data.user); return; }
+      st.textContent = 'Vita ny kaonty, fa mila hamafisina amin\'ny mailaka : sokafy ny mailaka nalefa tamin\'ny ' +
+        email + ', tsindrio ny rohy, dia midira eto.';
+      $('fkLoginEmail').value = email;
+    }, function () {
+      $('fkVaovaoValider').disabled = false;
+      st.textContent = 'Tsy tratra ny serveur : jereo ny réseau.';
+    });
+  });
+
+  // Le code reçu vaut une connexion le temps de changer le mot de passe :
+  // verifyOtp ouvre la session, updateUser pose le nouveau mot de passe.
+  $('fkAdinoAlefa').addEventListener('click', function () {
+    var st = $('fkAdinoStatus');
+    var email = normEmail($('fkAdinoEmail').value);
+    if (!email) { st.textContent = 'Soraty aloha ny email.'; return; }
+    if (!auth) { st.textContent = 'Tsy tafiditra ny Supabase : jereo ny connexion internet.'; return; }
+    st.textContent = 'Mandefa ny code…';
+    auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname }).then(function (res) {
+      if (res && res.error) { st.textContent = erreurAuth(res.error); return; }
+      st.textContent = 'Nalefa tamin\'ny ' + email + ' ny code. Adikao eto ambany ilay ao amin\'ny mailaka farany ' +
+        '(adiny iray no faharetany). Jereo koa ny « Spam ».';
+      $('fkAdinoCodeBox').style.display = '';
+      $('fkAdinoCode').focus();
+    }, function () { st.textContent = 'Tsy tratra ny serveur : jereo ny réseau.'; });
+  });
+  $('fkAdinoTehirizo').addEventListener('click', function () {
+    var st = $('fkAdinoCodeStatus');
+    var email = normEmail($('fkAdinoEmail').value);
+    var code = $('fkAdinoCode').value.replace(/\s+/g, '');
+    var mdp = $('fkAdinoMdp').value;
+    if (!/^\d{6,10}$/.test(code)) { st.textContent = 'Adikao ilay code (isa) voaray tamin\'ny mailaka.'; return; }
+    if (mdp.length < 6) { st.textContent = 'Tokony ho 6 litera farafahakeliny ny mot de passe vaovao.'; return; }
+    st.textContent = 'Manamarina ny code…';
+    auth.verifyOtp({ email: email, token: code, type: 'recovery' }).then(function (res) {
+      if (res && res.error) {
+        st.textContent = /expired|invalid/i.test(res.error.message || '') || res.error.code === 'otp_expired'
+          ? 'Diso, lany daty na efa nampiasaina ilay code. Jereo ny mailaka farany, na mangataha vaovao.'
+          : erreurAuth(res.error);
+        return;
+      }
+      st.textContent = 'Mitahiry…';
+      auth.updateUser({ password: mdp }).then(function (up) {
+        if (up && up.error) { st.textContent = erreurAuth(up.error); return; }
+        var user = (up && up.data && up.data.user) || (res.data && res.data.user);
+        if (user) ouvrir(user);
+      }, function () { st.textContent = 'Tsy tratra ny serveur : jereo ny réseau.'; });
+    }, function () { st.textContent = 'Tsy tratra ny serveur : jereo ny réseau.'; });
+  });
+
+  // Revenu par le lien de l'email plutôt que par le code : la session est
+  // ouverte pour changer le mot de passe, on le demande avant d'entrer.
+  var retourRecuperation = !!window.__passwordRecovery || /type=recovery/.test(String(window.__authLinkHash || ''));
+  if (retourRecuperation) {
+    $('fkRecoveryBox').style.display = '';
+    $('fkVaovaoBtn').style.display = 'none';
+    $('fkAdinoBtn').style.display = 'none';
+  }
+  $('fkRecoveryTehirizo').addEventListener('click', function () {
+    var st = $('fkRecoveryStatus');
+    var mdp = $('fkRecoveryMdp').value;
+    if (mdp.length < 6) { st.textContent = 'Tokony ho 6 litera farafahakeliny ny mot de passe vaovao.'; return; }
+    st.textContent = 'Mitahiry…';
+    auth.updateUser({ password: mdp }).then(function (up) {
+      if (up && up.error) { st.textContent = erreurAuth(up.error); return; }
+      retourRecuperation = false;
+      try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
+      if (up.data && up.data.user) ouvrir(up.data.user);
+    }, function () { st.textContent = 'Tsy tratra ny serveur : jereo ny réseau.'; });
+  });
+
   $('fkSortir').addEventListener('click', function () {
     // Attendre la fin : fermer() peut recharger la page, et un rechargement
     // pendant la déconnexion garderait la session.
@@ -275,11 +397,19 @@ document.addEventListener('DOMContentLoaded', function () {
   if (auth) {
     auth.getSession().then(function (res) {
       var session = res && res.data && res.data.session;
-      if (session && session.user) ouvrir(session.user);
+      // Retour de récupération : le nouveau mot de passe d'abord.
+      if (session && session.user && !retourRecuperation) ouvrir(session.user);
     }, function () {});
     // Une déconnexion faite dans Ny asako, dans un autre onglet, vaut ici aussi.
     auth.onAuthStateChange(function (event) {
       if (event === 'SIGNED_OUT' && currentUser) fermer();
+      // L'événement peut arriver après le chargement : la même boîte.
+      if (event === 'PASSWORD_RECOVERY' && !currentUser) {
+        retourRecuperation = true;
+        $('fkRecoveryBox').style.display = '';
+        $('fkVaovaoBtn').style.display = 'none';
+        $('fkAdinoBtn').style.display = 'none';
+      }
     });
   }
 

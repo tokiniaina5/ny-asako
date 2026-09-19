@@ -143,9 +143,65 @@
       <p id="fkLoginStatus" style="font-size:0.75rem; color:var(--muted); margin:-0.4rem 0 0.8rem; min-height:1.1em;"></p>
       <button type="submit" class="btn btn-primary" id="fkLoginBtn">Hiditra</button>
     </form>
-    <!-- Créer un compte, retrouver un mot de passe : Ny asako sait le faire,
-         on n'en tient pas une seconde copie ici. -->
-    <a class="btn btn-sm" href="/" style="display:block; text-align:center; width:100%; margin-top:0.7rem; text-decoration:none;">Tsy manana kaonty / adino ny mot de passe → Ny asako</a>
+    <!-- Créer un compte et retrouver un mot de passe, ici même, comme dans
+         Ny asako (même base, mêmes comptes) : on entre ensuite directement
+         dans le Fokontany, sans passer par le stock (fokontany-app.js). -->
+    <button type="button" class="btn btn-sm" id="fkVaovaoBtn" style="width:100%; margin-top:0.7rem;">📝 Tsy manana kaonty — hamorona kaonty</button>
+    <button type="button" class="btn btn-sm" id="fkAdinoBtn" style="width:100%; margin-top:0.5rem;">🔑 Adino ny mot de passe</button>
+
+    <!-- Kaonty vaovao -->
+    <form id="fkVaovaoForm" style="display:none; margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.9rem;">
+      <div class="field">
+        <label for="fkVaovaoAnarana">Anarana feno</label>
+        <input id="fkVaovaoAnarana" type="text" required placeholder="Nom et prénoms" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="fkVaovaoEmail">Email</label>
+        <input id="fkVaovaoEmail" type="email" required placeholder="vous@exemple.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="fkVaovaoFinday">Laharana finday</label>
+        <input id="fkVaovaoFinday" type="tel" placeholder="034 00 000 00" autocomplete="tel">
+      </div>
+      <div class="field">
+        <label for="fkVaovaoMdp">Mot de passe</label>
+        <input id="fkVaovaoMdp" type="password" required minlength="6" placeholder="6 litera farafahakeliny" autocomplete="new-password">
+      </div>
+      <p id="fkVaovaoStatus" style="font-size:0.75rem; color:var(--amber); margin:-0.2rem 0 0.8rem; line-height:1.5; min-height:1.1em;"></p>
+      <button type="submit" class="btn btn-primary btn-sm" id="fkVaovaoValider" style="width:100%;">Hamorona ny kaonty sy hiditra</button>
+    </form>
+
+    <!-- Mot de passe oublié : un code par email, puis le nouveau mot de passe. -->
+    <div id="fkAdinoBox" style="display:none; margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.9rem;">
+      <div class="field">
+        <label for="fkAdinoEmail">Email</label>
+        <input id="fkAdinoEmail" type="email" placeholder="vous@exemple.com" autocomplete="email">
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" id="fkAdinoAlefa" style="width:100%;">✉️ Handray code amin'ny mailaka</button>
+      <p id="fkAdinoStatus" style="font-size:0.75rem; color:var(--muted); margin-top:0.7rem; line-height:1.5; min-height:1.1em;"></p>
+      <div id="fkAdinoCodeBox" style="display:none; margin-top:0.6rem;">
+        <div class="field">
+          <label for="fkAdinoCode">Code voaray tamin'ny mailaka</label>
+          <input id="fkAdinoCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" style="font-family:var(--font-mono); letter-spacing:0.3em;">
+        </div>
+        <div class="field">
+          <label for="fkAdinoMdp">Mot de passe vaovao</label>
+          <input id="fkAdinoMdp" type="password" minlength="6" placeholder="6 litera farafahakeliny" autocomplete="new-password">
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="fkAdinoTehirizo" style="width:100%;">Hamarino ny code ary hiditra</button>
+        <p id="fkAdinoCodeStatus" style="font-size:0.75rem; color:var(--amber); margin-top:0.7rem; line-height:1.5; min-height:1.1em;"></p>
+      </div>
+    </div>
+
+    <!-- Retour par le lien de l'email (et non le code) : le nouveau mot de passe. -->
+    <div id="fkRecoveryBox" style="display:none; margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.9rem;">
+      <div class="field">
+        <label for="fkRecoveryMdp">Mot de passe vaovao</label>
+        <input id="fkRecoveryMdp" type="password" minlength="6" placeholder="6 litera farafahakeliny" autocomplete="new-password">
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" id="fkRecoveryTehirizo" style="width:100%;">Tehirizo ary hiditra</button>
+      <p id="fkRecoveryStatus" style="font-size:0.75rem; color:var(--amber); margin-top:0.7rem; line-height:1.5; min-height:1.1em;"></p>
+    </div>
   </div>
 </div>
 
@@ -665,7 +721,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="/gestion-stockage-js/fokontany-app.js?v=bed6be6d"></script>
+<script src="/gestion-stockage-js/fokontany-app.js?v=71cfaafc"></script>
 <script src="/gestion-stockage-js/pieces-identite.js?v=150aefad"></script>
 <script src="/gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
 <script src="/gestion-stockage-js/commun-alalana.js?v=25027912"></script>
