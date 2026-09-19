@@ -101,6 +101,10 @@ document.addEventListener('DOMContentLoaded', function () {
   if (APP_COMMUN) {
     $('fkNomApp').textContent = 'Administratif Commun';
     $('fkMarque').innerHTML = '🏛️ Administratif <span>Commun</span>';
+    // Son icône à lui, le « C » : celle du Fokontany est posée dans la page.
+    document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]').forEach(function (l) {
+      l.setAttribute('href', '/commun/icone-192.png');
+    });
     // Regarder sans toucher, comme dans Ny asako (components.css).
     $('communCorps').classList.add('lecture-seule');
   }

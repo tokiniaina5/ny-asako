@@ -9,7 +9,7 @@
 // Le nom porte l'empreinte du dernier envoi : outils/versionner.mjs le réécrit.
 // Chaque mise en ligne repart donc d'un cache neuf, et l'ancien est effacé —
 // sans quoi les fichiers de toutes les versions passées s'y empileraient.
-const CACHE = 'nyasako-9af03aa2';
+const CACHE = 'nyasako-5c482b74';
 
 // Fichiers demandés avant toute chose, pour que la première ouverture hors
 // réseau trouve déjà de quoi s'afficher.
@@ -21,9 +21,11 @@ const SOCLE = [
   // L'Administratif Fokontany, installable à part, passe par ce même worker.
   '/fokontany/',
   '/fokontany/manifest.webmanifest',
+  '/fokontany/icone-192.png',
   // L'Administratif Commun aussi : la même page, sous son adresse.
   '/commun/',
   '/commun/manifest.webmanifest',
+  '/commun/icone-192.png',
   // Les bibliothèques des pages (estUneBibliotheque, plus bas) : sans elles,
   // une page ouverte hors réseau n'a ni Supabase, ni graphiques, ni PDF.
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
