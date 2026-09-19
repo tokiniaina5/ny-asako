@@ -4975,16 +4975,103 @@
   // Fokontany ») — où le navigateur ne propose jamais d'installer une autre
   // application. L'adresse doit alors être ouverte dans Chrome : on la copie
   // et on le dit.
-  [['menuInstallFokontany', '/fokontany/'], ['menuInstallCommun', '/commun/']].forEach(function(p){
+  //
+  // Le Fokontany s'installe pour un fokontany précis : sa validation vient
+  // d'abord (validerAvantInstall), le lien ensuite. Le Commun est à l'admin
+  // seul : pas de validation, le lien tout de suite.
+  function versLInstallation(chemin){
+    let installee = false;
+    try { installee = !window.matchMedia('(display-mode: browser)').matches || window.navigator.standalone === true; } catch(e){}
+    if(!installee){ window.open(chemin, '_blank'); return; }
+    montrerAdresseAInstaller(location.origin + chemin);
+  }
+  [['menuInstallFokontany', '/fokontany/', true], ['menuInstallCommun', '/commun/', false]].forEach(function(p){
     const el = document.getElementById(p[0]);
     if(el) el.addEventListener('click', function(){
       if(!(currentUser && currentUser.email && isOwnerEmail(currentUser.email))) return;
-      let installee = false;
-      try { installee = !window.matchMedia('(display-mode: browser)').matches || window.navigator.standalone === true; } catch(e){}
-      if(!installee){ window.open(p[1], '_blank'); return; }
-      montrerAdresseAInstaller(location.origin + p[1]);
+      if(p[2]) validerAvantInstall(function(){ versLInstallation(p[1]); });
+      else versLInstallation(p[1]);
     });
   });
+
+  // La validation avant l'installation : le code du fokontany nouveau (celui
+  // de sa demande, visible dans « Fangatahana »), puis ✅ Hamafiso. C'est la
+  // même écriture que le bouton de l'onglet : l'accès confirmé, la demande
+  // acceptée. Les demandes en attente sont proposées, pour ne rien recopier.
+  function validerAvantInstall(ensuite){
+    const sb = window.__sb;
+    const ancien = document.getElementById('fenetreValidationInstall');
+    if(ancien) ancien.remove();
+    const fond = document.createElement('div');
+    fond.id = 'fenetreValidationInstall';
+    fond.setAttribute('role', 'dialog');
+    fond.style.cssText = 'position:fixed; inset:0; z-index:9500; background:rgba(4,8,10,0.6); display:flex; ' +
+      'align-items:center; justify-content:center; padding:16px;';
+    fond.innerHTML =
+      '<div style="width:min(440px, 100%); background:var(--panel); color:var(--text); border:1px solid var(--line); ' +
+        'border-radius:14px; padding:1.1rem 1.1rem 1rem; box-shadow:0 12px 40px rgba(0,0,0,0.45); font-size:0.88rem; line-height:1.55;">' +
+        '<p style="margin:0 0 0.4rem; font-weight:600;">🔐 Fanamarinana aloha</p>' +
+        '<p style="margin:0 0 0.7rem; color:var(--muted); font-size:0.82rem;">Sorato ny code an\'ilay fokontany vaovao ' +
+          '(ilay ao amin\'ny « 🛡️ Fangatahana »), dia tsindrio ✅ Hamafiso. Rehefa voamarina vao miseho ny rohy fametrahana.</p>' +
+        '<div data-miandry style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.6rem;"></div>' +
+        '<input type="text" data-code maxlength="12" placeholder="LITERA 8" autocomplete="off" style="width:100%; box-sizing:border-box; ' +
+          'padding:0.6rem 0.7rem; border-radius:8px; border:1px solid var(--cyan); background:var(--bg); color:var(--text); ' +
+          'font-family:var(--font-mono); letter-spacing:0.2em; text-transform:uppercase;">' +
+        '<div style="display:flex; gap:0.5rem; margin-top:0.6rem;">' +
+          '<button type="button" class="btn btn-primary btn-sm" data-hamafiso style="flex:1;">✅ Hamafiso</button>' +
+          '<button type="button" class="btn btn-sm" data-hidio style="width:auto;">Hanafoana</button>' +
+        '</div>' +
+        '<p data-statut style="margin:0.5rem 0 0; font-size:0.78rem; min-height:1.1em;"></p>' +
+      '</div>';
+    document.body.appendChild(fond);
+    const champ = fond.querySelector('[data-code]');
+    const statut = fond.querySelector('[data-statut]');
+    const miandry = fond.querySelector('[data-miandry]');
+    const dire = function(texte, erreur){ statut.textContent = texte; statut.style.color = erreur ? 'var(--red)' : 'var(--cyan)'; };
+    const fermer = function(){ fond.remove(); };
+    fond.querySelector('[data-hidio]').addEventListener('click', fermer);
+    fond.addEventListener('click', function(e){ if(e.target === fond) fermer(); });
+    champ.focus();
+    if(!sb){ dire('Tsy tafiditra ny serveur : havaozy ny pejy.', true); return; }
+
+    // Les demandes qui attendent : un bouton chacune, qui remplit le code.
+    sb.from('commun_alalana').select('id,email,anarana,code').eq('active', true).eq('voamarina', false)
+      .then(function(res){
+        (res && !res.error ? (res.data || []) : []).forEach(function(a){
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'btn btn-sm';
+          b.style.width = 'auto';
+          b.textContent = (a.anarana || a.email) + ' · ' + a.code;
+          b.addEventListener('click', function(){ champ.value = a.code; champ.focus(); });
+          miandry.appendChild(b);
+        });
+      }, function(){});
+
+    fond.querySelector('[data-hamafiso]').addEventListener('click', function(){
+      const code = champ.value.trim().toUpperCase();
+      if(!code){ dire('Soraty ny code.', true); return; }
+      dire('Fanamarinana…');
+      sb.from('commun_alalana').select('id,email,anarana,active,voamarina').eq('code', code).then(function(res){
+        const a = res && !res.error && (res.data || [])[0];
+        if(!a){ dire('Tsy hita io code io. Jereo ao amin\'ny « 🛡️ Fangatahana ».', true); return; }
+        const nom = a.anarana ? a.anarana + ' (' + a.email + ')' : a.email;
+        const suite = function(){
+          dire('✓ Voamarina : ' + nom + '.');
+          setTimeout(function(){ fermer(); ensuite(); }, 700);
+        };
+        if(a.active && a.voamarina){ suite(); return; }
+        const maintenant = new Date().toISOString();
+        sb.from('commun_alalana').update({ voamarina: true, active: true, updated_at: maintenant }).eq('id', a.id).select('id')
+          .then(function(up){
+            if(up.error || !up.data || !up.data.length){ dire('Tsy voamarina : mivoaha dia midira indray.', true); return; }
+            sb.from('commun_fangatahana').update({ statut: 'ekena', updated_at: maintenant })
+              .ilike('email', String(a.email).trim().toLowerCase()).then(function(){}, function(){});
+            suite();
+          }, function(){ dire('Tsy tratra ny serveur : jereo ny réseau.', true); });
+      }, function(){ dire('Tsy tratra ny serveur : jereo ny réseau.', true); });
+    });
+  }
   document.querySelectorAll('#dash-commun [data-commun]').forEach(function(tab){
     tab.addEventListener('click', function(){ choisirOngletCommun(tab.dataset.commun); });
   });
