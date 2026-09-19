@@ -109,6 +109,29 @@ document.addEventListener('DOMContentLoaded', function () {
     $('communCorps').classList.add('lecture-seule');
   }
 
+  // ---------- Venu pour installer (?installer=1, depuis Ny asako) ----------
+  // Dans une fenêtre de l'application Ny asako, le navigateur ne propose pas
+  // d'installer une autre application : il faut d'abord passer dans Chrome,
+  // par le menu ⋮ de la fenêtre. Dans un onglet, se connecter suffit.
+  (function () {
+    var params;
+    try { params = new URLSearchParams(window.location.search); } catch (e) { return; }
+    if (params.get('installer') !== '1') return;
+    params.delete('installer');
+    var reste = params.toString();
+    try { history.replaceState(null, '', window.location.pathname + (reste ? '?' + reste : '')); } catch (e) {}
+    var fenetreApp = false;
+    try { fenetreApp = !window.matchMedia('(display-mode: browser)').matches || window.navigator.standalone === true; } catch (e) {}
+    var nom = APP_COMMUN ? 'Commun' : 'Fokontany';
+    var guide = $('fkGuideInstall');
+    guide.innerHTML = fenetreApp
+      ? '📲 <strong>Hametrahana ny app ' + nom + ' :</strong> tsindrio ny <strong>⋮</strong> eo ambony havanana amin\'ity varavarankely ity → ' +
+        '<strong>« Ouvrir dans Chrome »</strong> (na « Ouvrir dans Edge »). Ao amin\'ny Chrome, midira dia tsindrio <strong>📲 Installer</strong>.'
+      : '📲 <strong>Hametrahana ny app ' + nom + ' :</strong> midira amin\'ny kaontinao admin, dia tsindrio <strong>📲 Installer</strong> eo ambony ' +
+        '(na ilay icône fametrahana eo amin\'ny barre d\'adresse).';
+    guide.style.display = '';
+  })();
+
   // ---------- Sans réseau ----------
   // Comme dans Ny asako : la page s'ouvre, mais les listes restent vides sans
   // qu'on sache pourquoi. La bande le dit.
@@ -224,6 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
   window.addEventListener('appinstalled', function () {
     invitation = null;
     montrerInstallation();
+    $('fkGuideInstall').style.display = 'none';
   });
   $('fkInstaller').addEventListener('click', function () {
     if (!invitation) return;
