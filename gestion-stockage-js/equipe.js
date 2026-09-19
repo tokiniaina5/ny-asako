@@ -239,8 +239,13 @@
     direReentrer(id);
   }
 
+  // « /confirmation » comme le lien d'invitation (inviter.js) : le mot se lit
+  // dans l'adresse. Seulement sur Netlify, qui sert cette adresse
+  // (_redirects). Les liens déjà envoyés, sans ce mot, s'ouvrent toujours.
   function lienDe(jeton) {
-    return base() + '?mpiasa=' + jeton;
+    const b = base();
+    const chemin = /^https:\/\/ny-asako\.netlify\.app\/$/i.test(b) ? 'confirmation' : '';
+    return b + chemin + '?mpiasa=' + jeton;
   }
 
   // Poser le jeton, séparé de ce qu'on en fait ensuite. Deux boutons mènent
