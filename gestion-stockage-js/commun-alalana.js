@@ -584,6 +584,13 @@
           : Promise.resolve();
         return Promise.resolve(suite).then(function () {
           dire('admMessage', 'Nohamafisina : misokatra aminy izao ny pejy.');
+          // Venu de « 📲 Télécharger Fokontany » (common.js) : la validation
+          // faite, l'installation suit — une fois.
+          if (typeof window.__installApresValidation === 'function') {
+            const suite = window.__installApresValidation;
+            window.__installApresValidation = null;
+            setTimeout(suite, 600);
+          }
           fermerAnnonce(id);
           if (jeSuisLeProprietaire()) chargerAdmin();
           return true;
