@@ -27,7 +27,14 @@ var APP_COMMUN = document.documentElement.classList.contains('app-commun');
 
 // ---------- Les onglets (les mêmes que dans common.js) ----------
 var ongletCommun = 'tableau';
+// L'Administratif Commun est au propriétaire seul, comme dans Ny asako.
+function communInterdit() {
+  return APP_COMMUN && !(currentUser && isOwnerEmail(currentUser.email));
+}
+
 function choisirOngletCommun(nom) {
+  // Rien ne se montre ni ne se demande au serveur pour un autre compte.
+  if (communInterdit()) return;
   if (APP_COMMUN) nom = 'tableau';
   var PANNEAUX = {
     tableau: 'communCorps', pieces: 'communPieces',
@@ -128,6 +135,9 @@ document.addEventListener('DOMContentLoaded', function () {
     $('fkEmail').textContent = currentUser.email;
     $('loginScreen').style.display = 'none';
     $('appScreen').style.display = 'block';
+    var interdit = communInterdit();
+    $('fkReserve').style.display = interdit ? '' : 'none';
+    $('dash-commun').style.display = interdit ? 'none' : '';
     choisirOngletCommun(ongletCommun);
   }
 
