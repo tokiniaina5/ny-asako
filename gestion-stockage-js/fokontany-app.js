@@ -204,14 +204,32 @@ document.addEventListener('DOMContentLoaded', function () {
     invitation = e;
     montrerInstallation();
   });
+  // L'admin installe l'application pour un fokontany nouveau, sur son
+  // ordinateur : elle doit s'ouvrir sur l'écran de connexion, pour le compte
+  // de ce fokontany, et non sur celui de l'admin. Le navigateur et
+  // l'application partagent la session : on la referme donc ici — sur cet
+  // appareil seulement (scope local), l'admin reste connecté ailleurs. Une
+  // marque dans le stockage commun prévient l'application, qui peut s'ouvrir
+  // avant que la déconnexion ne soit finie.
+  var CLE_NOUVEAU = 'stockmanager_fokontany_nouveau';
+  function installeePourUnFokontany() {
+    try { localStorage.setItem(CLE_NOUVEAU, '1'); } catch (e) {}
+    if (!auth) return;
+    auth.signOut({ scope: 'local' }).then(fermer, fermer);
+  }
   window.addEventListener('appinstalled', function () {
     invitation = null;
     montrerInstallation();
+    installeePourUnFokontany();
   });
   $('fkInstaller').addEventListener('click', function () {
     if (!invitation) return;
     invitation.prompt();
-    invitation.userChoice.then(function () { invitation = null; montrerInstallation(); }, function () {});
+    invitation.userChoice.then(function (choix) {
+      invitation = null;
+      montrerInstallation();
+      if (choix && choix.outcome === 'accepted') installeePourUnFokontany();
+    }, function () {});
   });
 
   function fermer() {
@@ -390,7 +408,15 @@ document.addEventListener('DOMContentLoaded', function () {
   // Une session déjà ouverte — ici ou dans Ny asako, même site, même
   // navigateur — rouvre l'application sans redemander le mot de passe.
   if (auth) {
-    auth.getSession().then(function (res) {
+    // Première ouverture de l'application que l'admin vient d'installer :
+    // l'écran de connexion, pour le fokontany nouveau (installeePourUnFokontany).
+    var nouveau = false;
+    try { nouveau = dejaInstallee() && localStorage.getItem(CLE_NOUVEAU) === '1'; } catch (e) {}
+    if (nouveau) {
+      try { localStorage.removeItem(CLE_NOUVEAU); } catch (e) {}
+      auth.signOut({ scope: 'local' }).then(function () {}, function () {});
+      $('fkLoginStatus').textContent = 'Tafapetraka ny Fokontany. Midira amin\'ny kaontin\'ny fokontany.';
+    } else auth.getSession().then(function (res) {
       var session = res && res.data && res.data.session;
       // Retour de récupération : le nouveau mot de passe d'abord.
       if (session && session.user && !retourRecuperation) ouvrir(session.user);
