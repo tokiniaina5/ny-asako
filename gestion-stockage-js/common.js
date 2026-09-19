@@ -5021,13 +5021,23 @@
       '<div style="max-width:1200px; margin:0 auto; padding:1.2rem 16px 3rem;">' +
         '<div class="panel">' +
           '<h3>🔐 Mila alalana ity pejy ity</h3>' +
+          // Le texte, la demande et leurs mots : ceux de la porte du Fokontany
+          // (index.html, #communPorte), tels quels.
           '<p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin-bottom:0.9rem;">' +
-            'Sorato eto ny <strong style="color:var(--text);">code</strong> an\'ilay fokontany vaovao — ilay hita ao amin\'ny ' +
-            '« 🛡️ Fangatahana » — dia tsindrio « 🔓 Sokafy ny pejy ». Voamarina ny fidirany, ary miseho avy eo ny rohy ' +
-            'hametrahana ny app Fokontany amin\'ny ordinateur-ny.' +
+            'Angataho amin\'ny tompon\'ny site ny fanokafana. Halefany amin\'ny mailakao ny ' +
+            '<strong style="color:var(--text);">code</strong> sy ny rohy. Rehefa voasoratra ilay code ' +
+            'dia mahazo fampahafantarana izy, ary misokatra ny pejy rehefa nohamafisiny. ' +
+            'Indray mandeha ihany no ilana ny code : aorian\'izay dia ny fidiranao amin\'ny kaontinao ' +
+            'no manokatra azy, na eo amin\'ny appareil hafa aza.' +
           '</p>' +
           '<div class="field">' +
-            '<label for="pvCode">Code an\'ilay fokontany vaovao</label>' +
+            '<label for="pvHafatra">Hafatra (raha misy)</label>' +
+            '<input type="text" id="pvHafatra" data-hafatra placeholder="Ohatra : mpiara-miasa ao amin\'ny fokontany" autocomplete="off">' +
+          '</div>' +
+          '<button type="button" class="btn btn-sm" data-mangataka style="width:auto;">📩 Mangataka fanokafana</button>' +
+          '<p data-mangataka-statut style="font-size:0.76rem; color:var(--muted); margin:0.7rem 0 0.9rem; min-height:1.1em;"></p>' +
+          '<div class="field">' +
+            '<label for="pvCode">Code nomen\'ny tompon\'ny site</label>' +
             '<input type="text" id="pvCode" data-code placeholder="Litera 8" autocomplete="off" maxlength="12" ' +
               'style="font-family:var(--font-mono); letter-spacing:0.2em; text-transform:uppercase;">' +
           '</div>' +
@@ -5107,6 +5117,46 @@
       }, function(){ vide.style.display = ''; });
     }
     chargerLesDemandes();
+
+    // « 📩 Mangataka fanokafana » : le même chemin que la porte
+    // (commun-alalana.js) — la fonction commun-angataka pose la demande, tire
+    // le code et prévient par email ; à défaut, la demande s'écrit dans la table.
+    const statutDemande = page.querySelector('[data-mangataka-statut]');
+    const monEmailDemande = String(u.email || '').trim().toLowerCase();
+    function montrerStatutDemande(){
+      if(!sb || !monEmailDemande) return;
+      sb.from('commun_fangatahana').select('statut').ilike('email', monEmailDemande).then(function(res){
+        const f = res && !res.error && (res.data || [])[0];
+        statutDemande.textContent = !f ? 'Mbola tsy nangataka ianao.'
+          : (f.statut === 'ekena' ? 'Ny fangatahanao dia neken\'ny tompon\'ny site. Angataho aminy ny code.'
+            : (f.statut === 'lavina' ? 'Nolavina ny fangatahanao.' : 'Nalefa ny fangatahanao, miandry valiny.'));
+      }, function(){});
+    }
+    montrerStatutDemande();
+    page.querySelector('[data-mangataka]').addEventListener('click', function(){
+      const hafatra = String(page.querySelector('[data-hafatra]').value || '').trim() || null;
+      const anarana = String(u.name || '').trim() || null;
+      if(!sb){ dire('Tsy tafiditra ny serveur : havaozy ny pejy.', true); return; }
+      dire('Mandefa ny fangatahana…');
+      const apres = function(){ montrerStatutDemande(); chargerLesDemandes(); };
+      const ecrire = function(){
+        sb.from('commun_fangatahana').insert({ email: monEmailDemande, anarana: anarana, hafatra: hafatra }).then(function(res){
+          if(res && res.error){
+            dire(res.error.code === '23505' ? 'Efa nalefa ny fangatahanao : miandry ny valin\'ny tompon\'ny site.' : 'Tsy nety : ' + res.error.message, res.error.code !== '23505');
+          } else dire('Nalefa ny fangatahanao. Ny tompon\'ny site no hanome anao code.');
+          apres();
+        }, function(){ dire('Tsy tratra ny serveur : jereo ny réseau.', true); });
+      };
+      if(!sb.functions || !sb.functions.invoke){ ecrire(); return; }
+      sb.functions.invoke('commun-angataka', { body: { hafatra: hafatra, anarana: anarana } }).then(function(res){
+        const data = (res && res.data) || {};
+        if(res && res.error && !data.ok){ ecrire(); return; }
+        dire(data.sent
+          ? 'Nalefa ny fangatahanao sy ny code, ary nampandrenesina ny tompon\'ny site. Misokatra ny pejy rehefa nohamafisiny.'
+          : 'Voatahiry ny fangatahanao sy ny code. Tsy lasa ny mailaka, fa ho hitany ao amin\'ny pejiny ihany izy.');
+        apres();
+      }, ecrire);
+    });
 
     page.querySelector('[data-sokafy]').addEventListener('click', function(){
       const code = champ.value.trim().toUpperCase();
