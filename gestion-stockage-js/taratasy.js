@@ -430,6 +430,7 @@
     });
     $('communKpiFonenana').textContent = personnes.size.toLocaleString('fr-FR');
     $('communKpiFonenanaKery').textContent = manankery.toLocaleString('fr-FR');
+    dessinerLesTaratasy(auj);
 
     // head : le serveur ne renvoie que le compte, aucune ligne.
     return client.from('taratasy').select('id', { count: 'exact', head: true })
@@ -438,6 +439,67 @@
         const n = (res && typeof res.count === 'number') ? res.count : 0;
         $('communKpiFifindra').textContent = n.toLocaleString('fr-FR');
       }, function () {});
+  }
+
+  // Les papiers remis par mois, les deux sortes ensemble. Des départs, on n'a
+  // que la date (numerosDepart) : c'est assez pour compter, rien de plus.
+  const COULEURS = (typeof chartColors !== 'undefined') ? chartColors : ['#4fd8e0', '#f2a33c', '#8b93ff'];
+  let graphiqueTaratasy = null;
+  function dessinerLesTaratasy(auj) {
+    const mois = auj.slice(0, 7);
+    const taona = auj.slice(0, 4);
+    const dates = function (liste) { return liste.map(function (t) { return String(t.daty || '').slice(0, 10); }); };
+    const fonenana = dates(taratasy);
+    const departs = dates(numerosDepart);
+    const toutes = fonenana.concat(departs);
+    const poser = function (id, n) { const el = $(id); if (el) el.textContent = n.toLocaleString('fr-FR'); };
+    poser('communKpiTarVolana', toutes.filter(function (d) { return d.slice(0, 7) === mois; }).length);
+    poser('communKpiTarTaona', toutes.filter(function (d) { return d.slice(0, 4) === taona; }).length);
+
+    const liste = $('communListeTaratasy');
+    if (liste) {
+      const derniers = taratasy.slice(0, 5);   // déjà du plus récent au plus ancien
+      liste.innerHTML = derniers.length
+        ? derniers.map(function (t) {
+            const fin = finDeValidite(t);
+            const valable = fin && fin >= auj;
+            return '<div class="list-row">' +
+              '<span>' + echapper(t.anarana) + ' <span style="color:var(--muted);">· ' + dateFr(t.daty) + '</span></span>' +
+              '<span style="white-space:nowrap; color:' + (valable ? 'var(--cyan)' : 'var(--muted)') + ';">' +
+                (valable ? 'Manan-kery hatramin\'ny ' + dateFr(fin) : 'Lany daty') + '</span>' +
+            '</div>';
+          }).join('')
+        : '<p class="empty-hint" style="padding:0.4rem 0;">Mbola tsy misy fanamarinam-ponenana.</p>';
+    }
+
+    const canvas = $('communChartTaratasy');
+    if (!canvas || !window.Chart) return;
+    const maintenant = new Date(auj + 'T00:00:00');
+    const douze = [];
+    for (let i = 11; i >= 0; i--) douze.push(new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1));
+    const cle = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+    const parMois = function (liste) {
+      return douze.map(function (m) { const c = cle(m); return liste.filter(function (d) { return d.slice(0, 7) === c; }).length; });
+    };
+    if (graphiqueTaratasy) graphiqueTaratasy.destroy();
+    graphiqueTaratasy = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: douze.map(function (m) { return m.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }); }),
+        datasets: [
+          { label: 'Fanamarinam-ponenana', data: parMois(fonenana), backgroundColor: COULEURS[2] || COULEURS[0], borderRadius: 4, maxBarThickness: 42 },
+          { label: 'Fifindra-monina', data: parMois(departs), backgroundColor: COULEURS[0], borderRadius: 4, maxBarThickness: 42 }
+        ]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } } },
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, grid: { color: '#1f2a30' }, beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
   }
 
   // Appelée par common.js à l'ouverture du tableau de bord : les chiffres

@@ -685,6 +685,22 @@
   .list-panel h4{ font-family:var(--font-mono); font-size:0.7rem; color:var(--cyan); margin-bottom:0.8rem; font-weight:500; }
   .list-row{ display:flex; justify-content:space-between; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px dashed var(--line); font-size:0.85rem; }
   .list-row:last-child{ border-bottom:none; }
+
+  /* Le tableau de bord du Fokontany : une part par sujet — CIN, adidy,
+     taratasy — chacune dans son cadre, avec sa couleur sur le bord gauche,
+     pour qu'on ne lise pas les chiffres de l'une comme ceux de l'autre. */
+  .fk-bloc{
+    border:1px solid var(--line); border-left:4px solid var(--cyan); border-radius:14px;
+    padding:1.1rem 1.1rem 0.2rem; margin-bottom:1.4rem; background:var(--panel-2);
+  }
+  .fk-bloc-adidy{ border-left-color: var(--amber); }
+  .fk-bloc-taratasy{ border-left-color: #8b93ff; }
+  .fk-bloc-titre{ font-family:var(--font-display); font-size:1.05rem; margin:0 0 0.9rem; }
+  .fk-bloc .list-panel{ margin-bottom:1rem; }
+  @media (max-width: 600px){
+    .fk-bloc{ padding:0.9rem 0.8rem 0.1rem; }
+    .fk-bloc .kpi-row{ grid-template-columns:repeat(2, minmax(0,1fr)); gap:0.6rem; }
+  }
   .list-row .val{ font-family:var(--font-mono); color:var(--cyan); white-space:nowrap; }
   .badge-warn{ font-size:0.66rem; padding:0.2rem 0.55rem; border-radius:999px; border:1px solid var(--amber); color:var(--amber); white-space:nowrap; }
   .badge-danger{ font-size:0.66rem; padding:0.2rem 0.55rem; border-radius:999px; border:1px solid var(--red); color:var(--red); white-space:nowrap; }

@@ -334,6 +334,7 @@
 
   const COULEURS = (typeof chartColors !== 'undefined') ? chartColors : ['#4fd8e0', '#f2a33c'];
   let graphiqueVola = null;
+  let graphiqueAdidy = null;
 
   function afficherTotaux() {
     const maintenant = new Date();
@@ -358,6 +359,65 @@
     poser('communKpiVolaVolana', duMois);
     poser('communKpiVolaTaona', deLAnnee);
     poser('communKpiVolaTotal', total);
+
+    // Qui a payé ce mois-ci : une personne qui verse deux adidy compte une fois.
+    const ceMois = tous.filter(function (v) { return moisDe(v.daty) === volana; });
+    const compter = function (id, n) { const el = $(id); if (el) el.textContent = Number(n).toLocaleString('fr-FR'); };
+    compter('communKpiMpandoa', new Set(ceMois.map(function (v) { return v.olona || cleOlona(v.anarana); })).size);
+    compter('communKpiFandoavana', ceMois.length);
+    compter('communKpiAdidyIsa', adidy.length);
+
+    // Les cinq derniers versements, du plus récent au plus ancien.
+    const derniers = $('communListeFandoavana');
+    if (derniers) {
+      const liste = tous.slice().sort(function (a, b) {
+        const da = String(a.daty || '') + String(a.created_at || '');
+        const db = String(b.daty || '') + String(b.created_at || '');
+        return db < da ? -1 : (db > da ? 1 : 0);
+      }).slice(0, 5);
+      derniers.innerHTML = liste.length
+        ? liste.map(function (v) {
+            return '<div class="list-row">' +
+              '<span>' + echapper(v.anarana) + ' <span style="color:var(--muted);">· ' + echapper(nomAdidy(v.adidy_id)) +
+                ' · ' + echapper(periodeLisible(v.vanim_potoana)) + '</span></span>' +
+              '<span style="white-space:nowrap; font-family:var(--font-mono);">' + (v.vola == null ? '—' : ariary(v.vola)) + '</span>' +
+            '</div>';
+          }).join('')
+        : '<p class="empty-hint" style="padding:0.4rem 0;">Mbola tsy misy fandoavana.</p>';
+    }
+
+    // L'argent de l'année, adidy par adidy.
+    const canvasAdidy = $('communChartAdidy');
+    if (canvasAdidy && window.Chart) {
+      const parAdidy = {};
+      tous.forEach(function (v) {
+        if (String(v.daty || '').slice(0, 4) !== taona) return;
+        const nom = nomAdidy(v.adidy_id);
+        parAdidy[nom] = (parAdidy[nom] || 0) + Number(v.vola || 0);
+      });
+      const noms = Object.keys(parAdidy);
+      const vide = !noms.length;
+      if (graphiqueAdidy) graphiqueAdidy.destroy();
+      graphiqueAdidy = new Chart(canvasAdidy.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: vide ? ['Tsy misy'] : noms,
+          datasets: [{
+            data: vide ? [1] : noms.map(function (n) { return parAdidy[n]; }),
+            backgroundColor: vide ? ['#2a343b'] : noms.map(function (n, i) { return COULEURS[(i + 1) % COULEURS.length]; }),
+            borderWidth: 0
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } },
+            tooltip: { enabled: !vide, callbacks: { label: function (c) { return c.label + ' : ' + ariary(c.parsed); } } }
+          }
+        }
+      });
+    }
 
     const canvas = $('communChartVola');
     if (!canvas || !window.Chart) return;
@@ -387,8 +447,9 @@
 
   // Appelée par common.js à l'ouverture du tableau de bord : il montre
   // l'argent entré, que l'onglet Adidy ait été ouvert ou non.
+  // Les cotisations aussi : leurs noms étiquettent le graphique et la liste.
   window.renderVolaVoaangona = function () {
-    return chargerTous().then(afficherTotaux);
+    return Promise.all([chargerAdidy(), chargerTous()]).then(afficherTotaux);
   };
 
   // ---------- L'historique ----------

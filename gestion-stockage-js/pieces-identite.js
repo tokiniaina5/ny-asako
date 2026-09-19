@@ -270,6 +270,9 @@
     $('communKpiMois').textContent = nombre(ceMois.size);
     $('communKpiExpires').textContent = nombre(expires.length);
     $('communKpiBientot').textContent = nombre(bientot.length);
+    const taonaCourante = auj.slice(0, 4);
+    const cetteAnnee = new Set(pieces.filter(function (p) { return moisDe(p.created_at).slice(0, 4) === taonaCourante; }).map(cleOlona));
+    if ($('communKpiTaona')) $('communKpiTaona').textContent = nombre(cetteAnnee.size);
 
     // Les douze derniers mois, le courant compris, même vides : un mois sans
     // inscription est une information, pas un trou à refermer.
