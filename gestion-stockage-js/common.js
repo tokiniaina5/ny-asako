@@ -4977,7 +4977,7 @@
   // et on le dit.
   //
   // Le Fokontany s'installe pour un fokontany précis : sa validation vient
-  // d'abord (validerAvantInstall, dans l'onglet Fangatahana), le lien ensuite. Le Commun est à l'admin
+  // d'abord (validerAvantInstall, une page comme la porte), le lien ensuite. Le Commun est à l'admin
   // seul : pas de validation, le lien tout de suite.
   function versLInstallation(chemin){
     let installee = false;
@@ -4994,21 +4994,82 @@
     });
   });
 
-  // La validation avant l'installation, dans le site entier et non une petite
-  // fenêtre : l'Administratif Fokontany s'ouvre sur « 🛡️ Fangatahana », où
-  // l'admin presse ✅ Hamafiso comme d'habitude. La validation faite
-  // (commun-alalana.js appelle __installApresValidation), le lien vient.
+  // La validation avant l'installation : une page entière, à l'image de la
+  // porte du Fokontany (« 🔐 Mila alalana ity pejy ity »). L'admin y écrit le
+  // code du fokontany nouveau (celui de sa demande, visible dans
+  // « 🛡️ Fangatahana ») et presse « 🔓 Sokafy ny pejy » : l'accès est
+  // confirmé et la demande acceptée, comme par ✅ Hamafiso. Le lien suit.
   function validerAvantInstall(ensuite){
-    window.__installApresValidation = ensuite;
-    ouvrirDepuisLeMenu('commun');
-    choisirOngletCommun('fangatahana');
-    setTimeout(function(){
-      const m = document.getElementById('admMessage');
-      if(m){
-        m.textContent = '📲 Fametrahana ny Fokontany : hamafiso aloha ilay fokontany vaovao (✅ Hamafiso) — avy eo vao miseho ny rohy fametrahana.';
-        m.style.color = 'var(--cyan)';
-      }
-    }, 600);
+    const sb = window.__sb;
+    const ancien = document.getElementById('pageValidationInstall');
+    if(ancien) ancien.remove();
+    const u = currentUser || {};
+    const page = document.createElement('div');
+    page.id = 'pageValidationInstall';
+    page.setAttribute('role', 'dialog');
+    page.style.cssText = 'position:fixed; inset:0; z-index:9500; background:var(--bg); color:var(--text); overflow-y:auto;';
+    page.innerHTML =
+      '<div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; ' +
+        'padding:0.9rem 1rem; border-bottom:1px solid var(--line); background:var(--panel); position:sticky; top:0;">' +
+        '<div class="brand">🗂️ Administratif <span>Fokontany</span></div>' +
+        '<div style="display:flex; align-items:center; gap:0.8rem;">' +
+          '<div style="font-size:0.76rem; color:var(--muted); text-align:right; line-height:1.4;">' +
+            '<strong data-nom style="color:var(--text); display:block; font-size:0.84rem;"></strong><span data-email></span></div>' +
+          '<button type="button" class="btn btn-sm" data-hidio style="width:auto;">Hanafoana</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="max-width:1200px; margin:0 auto; padding:1.2rem 16px 3rem;">' +
+        '<div class="panel">' +
+          '<h3>🔐 Mila alalana ity pejy ity</h3>' +
+          '<p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin-bottom:0.9rem;">' +
+            'Sorato eto ny <strong style="color:var(--text);">code</strong> an\'ilay fokontany vaovao — ilay hita ao amin\'ny ' +
+            '« 🛡️ Fangatahana » — dia tsindrio « 🔓 Sokafy ny pejy ». Voamarina ny fidirany, ary miseho avy eo ny rohy ' +
+            'hametrahana ny app Fokontany amin\'ny ordinateur-ny.' +
+          '</p>' +
+          '<div class="field">' +
+            '<label for="pvCode">Code an\'ilay fokontany vaovao</label>' +
+            '<input type="text" id="pvCode" data-code placeholder="Litera 8" autocomplete="off" maxlength="12" ' +
+              'style="font-family:var(--font-mono); letter-spacing:0.2em; text-transform:uppercase;">' +
+          '</div>' +
+          '<button type="button" class="btn btn-primary btn-sm" data-sokafy style="width:auto;">🔓 Sokafy ny pejy</button>' +
+          '<p data-statut style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(page);
+    page.querySelector('[data-nom]').textContent = u.name || '';
+    page.querySelector('[data-email]').textContent = u.email || '';
+    const champ = page.querySelector('[data-code]');
+    const statut = page.querySelector('[data-statut]');
+    const dire = function(texte, erreur){ statut.textContent = texte; statut.style.color = erreur ? 'var(--red)' : 'var(--cyan)'; };
+    const fermer = function(){ page.remove(); };
+    page.querySelector('[data-hidio]').addEventListener('click', fermer);
+    champ.focus();
+    champ.addEventListener('keydown', function(e){ if(e.key === 'Enter') page.querySelector('[data-sokafy]').click(); });
+
+    page.querySelector('[data-sokafy]').addEventListener('click', function(){
+      const code = champ.value.trim().toUpperCase();
+      if(!code){ dire('Soraty ny code an\'ilay fokontany vaovao.', true); return; }
+      if(!sb){ dire('Tsy tafiditra ny serveur : havaozy ny pejy.', true); return; }
+      dire('Fanamarinana…');
+      sb.from('commun_alalana').select('id,email,anarana,active,voamarina').eq('code', code).then(function(res){
+        const a = res && !res.error && (res.data || [])[0];
+        if(!a){ dire('Tsy mety ny code : jereo ao amin\'ny « 🛡️ Fangatahana ».', true); return; }
+        const nom = a.anarana ? a.anarana + ' (' + a.email + ')' : a.email;
+        const suite = function(){
+          dire('✓ Voamarina : ' + nom + '.');
+          setTimeout(function(){ fermer(); ensuite(); }, 700);
+        };
+        if(a.active && a.voamarina){ suite(); return; }
+        const maintenant = new Date().toISOString();
+        sb.from('commun_alalana').update({ voamarina: true, active: true, updated_at: maintenant }).eq('id', a.id).select('id')
+          .then(function(up){
+            if(up.error || !up.data || !up.data.length){ dire('Tsy voamarina : mivoaha dia midira indray.', true); return; }
+            sb.from('commun_fangatahana').update({ statut: 'ekena', updated_at: maintenant })
+              .ilike('email', String(a.email).trim().toLowerCase()).then(function(){}, function(){});
+            suite();
+          }, function(){ dire('Tsy tratra ny serveur : jereo ny réseau.', true); });
+      }, function(){ dire('Tsy tratra ny serveur : jereo ny réseau.', true); });
+    });
   }
   document.querySelectorAll('#dash-commun [data-commun]').forEach(function(tab){
     tab.addEventListener('click', function(){ choisirOngletCommun(tab.dataset.commun); });
