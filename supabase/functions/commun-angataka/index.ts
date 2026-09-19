@@ -143,7 +143,10 @@ async function traiter(req: Request): Promise<Response> {
     .select("id,code,active,voamarina").ilike("email", email).limit(1);
   const dejaAcces = (acces ?? [])[0];
   let code = "";
-  if (dejaAcces && dejaAcces.active && dejaAcces.voamarina) {
+  // Un code déjà tiré et toujours actif se garde, confirmé ou non : redemander
+  // en tirait un nouveau, et celui que le propriétaire avait déjà transmis ne
+  // correspondait plus — la personne tapait un code juste, refusé.
+  if (dejaAcces && dejaAcces.active && dejaAcces.code) {
     code = dejaAcces.code;
   } else {
     code = nouveauCode();

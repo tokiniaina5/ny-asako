@@ -264,7 +264,8 @@
         return;
       }
       if (String(ligne.code).trim().toUpperCase() !== tape) {
-        dire('porteMessage', 'Tsy mety ny code.', true);
+        dire('porteMessage', 'Tsy mety ny code. Raha nangataka imbetsaka ianao dia mety niova ilay code : ' +
+          'angataho amin\'ny tompon\'ny site ny code farany hitany ao amin\'ny « Fangatahana ».', true);
         return;
       }
       garderLeCode(tape);
@@ -503,23 +504,42 @@
   // liens le déclencherait. Il ouvre l'onglet des demandes et pose la
   // question ; c'est le compte connecté du propriétaire qui écrit.
   (function () {
+    // La validation en attente se garde pour l'onglet : le propriétaire doit
+    // souvent se connecter d'abord, et la page de connexion peut recharger.
+    // On renonçait au bout de 25 secondes — le temps de taper un mot de passe
+    // suffisait à perdre la validation, sans que rien ne le dise.
+    const CLE_VALIDER = 'stockmanager_commun_valider';
+    let email = '';
+    let code = '';
     let params;
-    try { params = new URLSearchParams(window.location.search); } catch (e) { return; }
-    const email = String(params.get('commun_valider') || '').trim().toLowerCase();
-    const code = String(params.get('c') || '').trim().toUpperCase();
+    try { params = new URLSearchParams(window.location.search); } catch (e) { params = null; }
+    if (params && params.get('commun_valider')) {
+      email = String(params.get('commun_valider') || '').trim().toLowerCase();
+      code = String(params.get('c') || '').trim().toUpperCase();
+      params.delete('commun_valider');
+      params.delete('c');
+      const reste = params.toString();
+      try { history.replaceState(null, '', window.location.pathname + (reste ? '?' + reste : '')); } catch (e) {}
+      try { sessionStorage.setItem(CLE_VALIDER, JSON.stringify({ email: email, code: code })); } catch (e) {}
+    } else {
+      try {
+        const garde = JSON.parse(sessionStorage.getItem(CLE_VALIDER) || 'null');
+        if (garde && garde.email) { email = garde.email; code = garde.code || ''; }
+      } catch (e) {}
+    }
     if (!email) return;
-    params.delete('commun_valider');
-    params.delete('c');
-    const reste = params.toString();
-    try { history.replaceState(null, '', window.location.pathname + (reste ? '?' + reste : '')); } catch (e) {}
+    function oublier() { try { sessionStorage.removeItem(CLE_VALIDER); } catch (e) {} }
 
-    function essayer(n) {
+    function essayer() {
       const ecran = document.getElementById('appScreen');
       const pret = ecran && getComputedStyle(ecran).display !== 'none' && monEmail() && typeof ouvrirDepuisLeMenu === 'function';
       if (!pret) {
-        if (n > 0) setTimeout(function () { essayer(n - 1); }, 1000);
+        // Tant que l'onglet est ouvert : l'écran de connexion attend le mot
+        // de passe, et la validation l'attend avec lui.
+        setTimeout(essayer, 1500);
         return;
       }
+      oublier();
       if (!jeSuisLeProprietaire()) {
         alert('Ity rohy ity dia an\'ny tompon\'ny site ihany : midira amin\'ny kaontiny vao manamarina.');
         return;
@@ -540,7 +560,7 @@
         }
       });
     }
-    setTimeout(function () { essayer(25); }, 800);
+    setTimeout(essayer, 800);
   })();
 
   // Valider : l'accès confirmé, et la demande marquée acceptée.
@@ -549,9 +569,16 @@
     const client = sb();
     if (!client) return Promise.resolve(false);
     const maintenant = new Date().toISOString();
-    return client.from('commun_alalana').update({ voamarina: true, active: true, updated_at: maintenant }).eq('id', id)
+    // select : la base rend les lignes changées. Aucune, c'est que rien n'a
+    // été écrit — mauvaise session, ligne disparue — et le dire « nohamafisina »
+    // aurait laissé la personne devant une porte fermée.
+    return client.from('commun_alalana').update({ voamarina: true, active: true, updated_at: maintenant }).eq('id', id).select('id')
       .then(function (res) {
         if (res.error) { dire('admMessage', expliquer(res), true); return false; }
+        if (!res.data || !res.data.length) {
+          dire('admMessage', 'Tsy voamarina : tsy hita na tsy azo ovaina ilay alalana. Mivoaha dia midira indray amin\'ny kaonty tompony.', true);
+          return false;
+        }
         const suite = email
           ? client.from('commun_fangatahana').update({ statut: 'ekena', updated_at: maintenant }).ilike('email', email)
           : Promise.resolve();
