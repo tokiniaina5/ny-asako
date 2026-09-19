@@ -309,7 +309,7 @@
     const corps = encodeURIComponent(
       'Salama ' + personne.nom + ',\n\n' +
       'Tsindrio ity rohy ity mba hanamafisana (confirmer) ny fidiranao amin\'ny Ny asako. Tsy mila tenimiafina.\n\n' +
-      '✅ Confirmer : ' + lien + '\n\n' +
+      'Confirmer : ' + lien + '\n\n' +
       'Tehirizo ho anao ihany io rohy io : izy irery no manokatra ny pejinao.\n\n' +
       'Misaotra.'
     );
@@ -345,7 +345,7 @@
         // Le message demande de confirmer : le lien vient juste après
         // « Confirmer », là où WhatsApp ou le SMS l'ajoutent.
         text: 'Salama ' + personne.nom + ', tsindrio ity rohy ity mba hanamafisana (confirmer) ny fidiranao amin\'ny Ny asako. ' +
-          'Tsy mila tenimiafina — koa aza azarana amin\'ny olon-kafa.\n\n✅ Confirmer :',
+          'Tsy mila tenimiafina — koa aza azarana amin\'ny olon-kafa.\n\nConfirmer :',
         url: lienDe(jeton)
       });
     });

@@ -46,7 +46,12 @@
 
   function setupInviteLink(){
     const sub = ensureInstallDate();
-    const link = publicBaseUrl() + '?invite=1&ref=' + encodeURIComponent(sub.id);
+    // « /confirmation » : le mot se lit dans le lien lui-même. Seulement sur
+    // Netlify, qui sait servir cette adresse (_redirects) ; une adresse
+    // publique réglée ailleurs garde la racine.
+    const base = publicBaseUrl();
+    const chemin = /^https:\/\/ny-asako\.netlify\.app\/$/i.test(base) ? 'confirmation' : '';
+    const link = base + chemin + '?invite=1&ref=' + encodeURIComponent(sub.id);
     document.getElementById('inviteLink').value = link;
     renderLocalLinkWarning(link);
     refreshReferralProgress();
@@ -109,7 +114,7 @@
     const email = document.getElementById('inviteEmail').value.trim();
     const link = document.getElementById('inviteLink').value;
     const subject = encodeURIComponent('Confirmer ton invitation — Ny asako');
-    const body = encodeURIComponent('Salut,\n\nJe t\'invite à rejoindre Ny asako. Clique sur le lien pour confirmer ton inscription.\n\n✅ Confirmer : ' + link + '\n\nÀ bientôt !');
+    const body = encodeURIComponent('Salut,\n\nJe t\'invite à rejoindre Ny asako. Clique sur le lien de confirmation pour confirmer ton inscription.\n\nConfirmation : ' + link + '\n\nÀ bientôt !');
     window.location.href = 'mailto:' + email + '?subject=' + subject + '&body=' + body;
   });
 
@@ -117,7 +122,8 @@
   // Comme le lien de l'employé (equipe.js) : on demande de confirmer, et le
   // lien vient juste après « Confirmer ».
   function inviteMessage(link){
-    return 'Salut ! Je t\'invite à rejoindre Ny asako. Clique sur le lien pour confirmer ton inscription.\n\n✅ Confirmer : ' + link;
+    // Sans émoji : le ✅ arrivait en « � » dans WhatsApp.
+    return 'Salut ! Je t\'invite à rejoindre Ny asako. Clique sur le lien de confirmation pour confirmer ton inscription.\n\nConfirmation : ' + link;
   }
   function copyToClipboardSilently(text){
     if(navigator.clipboard && navigator.clipboard.writeText){

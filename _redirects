@@ -27,3 +27,10 @@
 /LISEZ-MOI-SUPABASE.txt  /index.html  404!
 /README.md               /index.html  404!
 /_config.yml             /index.html  404!
+
+# Le lien d'invitation se lit « …/confirmation?invite=1&ref=… » : le mot
+# « confirmation » dans l'adresse elle-même, puisqu'un message WhatsApp ne
+# cache pas un lien derrière un mot. C'est la même page ; index.html remet
+# l'adresse sur « / » dès l'ouverture (paramètres gardés).
+/confirmation            /index.html  200
+/confirmation/           /index.html  200
