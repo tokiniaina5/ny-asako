@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const ownerEmail = (Deno.env.get("OWNER_EMAIL") ?? "").trim().toLowerCase();
-  const appUrl = (Deno.env.get("APP_URL") ?? "https://ny-asako.netlify.app/").replace(/\/+$/, "/");
+  const appUrl = (Deno.env.get("APP_URL") ?? "https://ny-asako.netlify.app/").replace(/\/*$/, "/");
 
   if (!supabaseUrl || !serviceKey || !ownerEmail) {
     return json({ error: "configuration incomplète (SUPABASE_SERVICE_ROLE_KEY / OWNER_EMAIL)" }, 500);
@@ -142,7 +142,8 @@ Deno.serve(async (req: Request) => {
 
   // 4) le message : le lien d'abord, le code ensuite pour qui préfère le
   // recopier — ou pour qui ouvre le site sur un autre appareil.
-  const lien = appUrl + "?commun=" + encodeURIComponent(code);
+  // Il ouvre l'application du Fokontany (fokontany/), et non le stock.
+  const lien = appUrl + "fokontany/?commun=" + encodeURIComponent(code);
   const texte = [
     "Bonjour,",
     "",
