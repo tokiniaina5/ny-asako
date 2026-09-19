@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="66f02418">
+<meta name="ny-asako-version" content="56dcad73">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -136,7 +136,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=821571f5">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=6a2f349b">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=7033f60b">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -574,6 +574,10 @@
         <button type="button" class="nav-action" id="menuArticles">📋 Articles</button>
         <button type="button" class="nav-action" id="menuCommun">🗂️ Administratif Fokontany</button>
         <button type="button" class="nav-action" id="menuCommunAdmin">🏛️ Administratif Commun</button>
+        <!-- Installer les deux applications : le propriétaire seul, et d'ici
+             seulement — leurs pages ne s'installent pour personne d'autre. -->
+        <button type="button" class="nav-action" id="menuInstallFokontany">📲 Télécharger Fokontany</button>
+        <button type="button" class="nav-action" id="menuInstallCommun">📲 Télécharger Commun</button>
         <button type="button" class="nav-action" id="notifToggle" aria-label="Notifications" aria-expanded="false" style="position:relative;">
           <span>🔔 Notifications</span>
           <span id="notifBadge" style="display:none; background:#ff6b6b; color:#fff; font-size:0.62rem; font-weight:700; border-radius:999px; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 4px;">0</span>
@@ -2625,7 +2629,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="gestion-stockage-js/common.js?v=2821cf4d"></script>
+<script src="gestion-stockage-js/common.js?v=aedf1d6b"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>

@@ -93,7 +93,6 @@ document.addEventListener('DOMContentLoaded', function () {
   if (APP_COMMUN) {
     $('fkNomApp').textContent = 'Administratif Commun';
     $('fkMarque').innerHTML = '🏛️ Administratif <span>Commun</span>';
-    $('fkTitreIos').setAttribute('content', 'Commun');
     // Regarder sans toucher, comme dans Ny asako (components.css).
     $('communCorps').classList.add('lecture-seule');
   }
@@ -138,10 +137,69 @@ document.addEventListener('DOMContentLoaded', function () {
     var interdit = communInterdit();
     $('fkReserve').style.display = interdit ? '' : 'none';
     $('dash-commun').style.display = interdit ? 'none' : '';
+    if (isOwnerEmail(currentUser.email)) rendreInstallable();
     choisirOngletCommun(ongletCommun);
   }
 
+  // ---------- Installation : le propriétaire seul ----------
+  // La page n'a pas de manifeste : pour tout autre compte, le navigateur n'a
+  // rien à installer. Le propriétaire, lui, le reçoit ici, avec les balises
+  // d'iOS qui ne lit pas le manifeste. Il ne se retire pas à la déconnexion :
+  // le navigateur l'a déjà lu, et seul un rechargement l'oublierait — d'où
+  // le rechargement dans fermer().
+  var invitation = null;
+  var installable = false;
+  function dejaInstallee() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+  function surIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+  function montrerInstallation() {
+    var proprio = !!(currentUser && isOwnerEmail(currentUser.email)) && !dejaInstallee();
+    $('fkInstaller').style.display = (proprio && invitation) ? '' : 'none';
+    $('fkInstallIos').style.display = (proprio && !invitation && surIOS()) ? '' : 'none';
+  }
+  function rendreInstallable() {
+    if (!installable) {
+      installable = true;
+      var tete = document.head;
+      function balise(tag, attributs) {
+        var el = document.createElement(tag);
+        Object.keys(attributs).forEach(function (k) { el.setAttribute(k, attributs[k]); });
+        tete.appendChild(el);
+      }
+      balise('link', { rel: 'manifest', href: APP_COMMUN ? '/commun/manifest.webmanifest' : '/fokontany/manifest.webmanifest' });
+      balise('meta', { name: 'mobile-web-app-capable', content: 'yes' });
+      balise('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
+      balise('meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' });
+      balise('meta', { name: 'apple-mobile-web-app-title', content: APP_COMMUN ? 'Commun' : 'Fokontany' });
+    }
+    montrerInstallation();
+  }
+  // Chrome et Edge le préviennent une fois le manifeste lu ; on garde
+  // l'invitation pour le bouton, qui seul peut la déclencher.
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    if (!(currentUser && isOwnerEmail(currentUser.email))) return;
+    invitation = e;
+    montrerInstallation();
+  });
+  window.addEventListener('appinstalled', function () {
+    invitation = null;
+    montrerInstallation();
+  });
+  $('fkInstaller').addEventListener('click', function () {
+    if (!invitation) return;
+    invitation.prompt();
+    invitation.userChoice.then(function () { invitation = null; montrerInstallation(); }, function () {});
+  });
+
   function fermer() {
+    // Le manifeste du propriétaire a été lu : seul un rechargement le fait
+    // oublier au navigateur, pour que le compte suivant ne puisse installer.
+    if (installable) { window.location.reload(); return; }
     currentUser = null;
     $('appScreen').style.display = 'none';
     $('loginScreen').style.display = '';
@@ -179,8 +237,10 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   $('fkSortir').addEventListener('click', function () {
-    if (auth) auth.signOut().then(function () {}, function () {});
-    fermer();
+    // Attendre la fin : fermer() peut recharger la page, et un rechargement
+    // pendant la déconnexion garderait la session.
+    if (!auth) { fermer(); return; }
+    auth.signOut().then(fermer, fermer);
   });
 
   document.querySelectorAll('#dash-commun [data-commun]').forEach(function (tab) {

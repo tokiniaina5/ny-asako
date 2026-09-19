@@ -4912,6 +4912,17 @@
   if(menuCommun) menuCommun.addEventListener('click', function(){ ouvrirDepuisLeMenu('commun'); });
   const menuCommunAdmin = document.getElementById('menuCommunAdmin');
   if(menuCommunAdmin) menuCommunAdmin.addEventListener('click', function(){ ouvrirDepuisLeMenu('communadmin'); });
+  // Les deux applications s'installent depuis leur propre page, où le
+  // propriétaire connecté trouve « 📲 Installer ». Un nouvel onglet : dans
+  // Ny asako installée, la page s'ouvrirait sinon dans l'application, où le
+  // navigateur ne propose rien.
+  [['menuInstallFokontany', '/fokontany/'], ['menuInstallCommun', '/commun/']].forEach(function(p){
+    const el = document.getElementById(p[0]);
+    if(el) el.addEventListener('click', function(){
+      if(!(currentUser && currentUser.email && isOwnerEmail(currentUser.email))) return;
+      window.open(p[1], '_blank');
+    });
+  });
   document.querySelectorAll('#dash-commun [data-commun]').forEach(function(tab){
     tab.addEventListener('click', function(){ choisirOngletCommun(tab.dataset.commun); });
   });

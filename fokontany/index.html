@@ -9,19 +9,18 @@
      modification là-bas doit être reportée ici. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Administratif Fokontany</title>
-<link rel="manifest" href="/fokontany/manifest.webmanifest">
+<!-- Pas de manifeste ici : sans lui, la page ne s'installe pas. Il n'est
+     posé qu'une fois le propriétaire connecté (fokontany-app.js) — c'est lui
+     qui valide, lui seul installe, et il y vient depuis Ny asako. -->
 <meta name="theme-color" content="#0a0d10">
 <!-- « /commun/ » sert cette même page (_redirects) : c'est l'Administratif
      Commun, le tableau de bord seul, à regarder sans rien changer. Il a son
-     manifeste, pour s'installer comme une troisième application. Posé ici,
-     avant que le navigateur ne lise le manifeste. -->
+     manifeste (commun/), posé comme l'autre au propriétaire seul. -->
 <script>
   (function(){
     if(!/^\/commun(\/|$)/.test(location.pathname)) return;
     document.documentElement.classList.add('app-commun');
     document.title = 'Administratif Commun';
-    var m = document.querySelector('link[rel="manifest"]');
-    if(m) m.setAttribute('href', '/commun/manifest.webmanifest');
   })();
 </script>
 <!-- Le thème choisi dans Ny asako vaut ici aussi (même localStorage). -->
@@ -99,14 +98,10 @@
     }catch(e){}
   })();
 </script>
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Fokontany" id="fkTitreIos">
 <link rel="apple-touch-icon" href="/icone-192.png">
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="/gestion-stockage-css/base.css?v=821571f5">
-<link rel="stylesheet" href="/gestion-stockage-css/components.css?v=6a2f349b">
+<link rel="stylesheet" href="/gestion-stockage-css/components.css?v=7033f60b">
 <style>
   .fk-barre{ display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
     padding:0.9rem 1rem; border-bottom:1px solid var(--line); background:var(--panel); position:sticky; top:0; z-index:40; }
@@ -153,11 +148,14 @@
     <div class="brand" id="fkMarque">🗂️ Administratif <span>Fokontany</span></div>
     <div style="display:flex; align-items:center; gap:0.8rem;">
       <div class="fk-qui"><strong id="fkNom">—</strong><span id="fkEmail"></span></div>
+      <!-- Au propriétaire seul, quand le navigateur sait installer. -->
+      <button type="button" class="btn btn-sm btn-primary" id="fkInstaller" style="width:auto; display:none;">📲 Installer</button>
       <button type="button" class="btn btn-sm" id="fkSortir" style="width:auto;">Hivoaka</button>
     </div>
   </header>
   <main class="fk-corps">
     <!-- L'Administratif Commun est au propriétaire seul (fokontany-app.js). -->
+    <p id="fkInstallIos" class="empty-hint" style="display:none;">📲 Hametrahana azy : Partager ⬆️ ary « Sur l'écran d'accueil ».</p>
     <p id="fkReserve" class="empty-hint" style="display:none;">🔒 Ho an'ny admin ihany ity pejy ity. Tsy afaka mijery azy ny kaonty hafa.</p>
         <div class="dash-view active" id="dash-commun">
           <!-- La porte : ce qui est dedans ne regarde pas tout le monde. On la
@@ -573,7 +571,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="/gestion-stockage-js/fokontany-app.js?v=3f6eb2a8"></script>
+<script src="/gestion-stockage-js/fokontany-app.js?v=9a4e9f71"></script>
 <script src="/gestion-stockage-js/pieces-identite.js?v=73a1d838"></script>
 <script src="/gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
 <script src="/gestion-stockage-js/commun-alalana.js?v=8ba8f694"></script>
