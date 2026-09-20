@@ -141,9 +141,17 @@ document.addEventListener('DOMContentLoaded', function () {
       $('fkLoginStatus').textContent = 'Mbola tsy manana kaonty ianao : forony eto ambany, dia hiditra.';
     }
     if (!nom || APP_COMMUN) return;
-    $('fkMarque').innerHTML = '🗂️ Fokontany <span>' + nom.replace(/[<>&]/g, '') + '</span>';
-    $('fkNomApp').textContent = 'Fokontany ' + nom;
-    document.title = 'Fokontany ' + nom;
+    // Un nom de fokontany ne se traduit pas : le navigateur rendait
+    // « Tsena » par « Open-air market ». translate="no" (et .notranslate,
+    // que Google lit) le laissent tel qu'il est écrit.
+    var propre = nom.replace(/[<>&]/g, '');
+    $('fkMarque').innerHTML = '🗂️ Fokontany <span translate="no" class="notranslate">' + propre + '</span>';
+    $('fkNomApp').textContent = 'Fokontany ' + propre;
+    [$('fkMarque'), $('fkNomApp')].forEach(function (el) {
+      el.setAttribute('translate', 'no');
+      el.classList.add('notranslate');
+    });
+    document.title = 'Fokontany ' + propre;
   })();
 
   // ---------- Sans réseau ----------
