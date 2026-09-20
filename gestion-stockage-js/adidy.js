@@ -15,6 +15,13 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // Le Commun lit les registres de tous les fokontany ; partout ailleurs, on
+  // ne lit que les siens (fokontany-app.js pose __lectureCommun).
+  function mien(requete, email) {
+    if (typeof window.__lectureCommun === 'function' && window.__lectureCommun()) return requete;
+    return requete.eq('owner_email', email);
+  }
+
   // Ce qui se fait ici se retrouve sous la cloche : les avis restent dans le
   // site, et se relisent (fokontany-app.js, common.js).
   function avertir(message) {
@@ -99,7 +106,7 @@
       dire('adidyMessage', client ? 'Midira aloha.' : 'Tsy azo ampiasaina eto ity pejy ity.', true);
       return Promise.resolve();
     }
-    return client.from('adidy').select('*').eq('owner_email', email).order('created_at', { ascending: true })
+    return mien(client.from('adidy').select('*'), email).order('created_at', { ascending: true })
       .then(function (res) {
         if (res.error) { dire('adidyMessage', expliquer(res), true); return; }
         adidy = res.data || [];
@@ -329,7 +336,7 @@
     const email = monEmail();
     if (!client || !email) { tous = []; return Promise.resolve(); }
     // Tout le versement, et non ses seuls chiffres : l'historique en vit.
-    return client.from('adidy_fandoavana').select('*').eq('owner_email', email)
+    return mien(client.from('adidy_fandoavana').select('*'), email)
       .then(function (res) {
         tous = (res.error ? [] : (res.data || []));
       }, function () { tous = []; });

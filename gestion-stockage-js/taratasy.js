@@ -16,6 +16,13 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // Le Commun lit les registres de tous les fokontany ; partout ailleurs, on
+  // ne lit que les siens (fokontany-app.js pose __lectureCommun).
+  function mien(requete, email) {
+    if (typeof window.__lectureCommun === 'function' && window.__lectureCommun()) return requete;
+    return requete.eq('owner_email', email);
+  }
+
   // Ce qui se fait ici se retrouve sous la cloche : les avis restent dans le
   // site, et se relisent (fokontany-app.js, common.js).
   function avertir(message) {
@@ -354,11 +361,9 @@
     // leur numéro et le nom. Des départs, on ne lit que le numéro et la date :
     // de quoi donner le numéro suivant sans rien montrer de l'archive.
     return Promise.all([
-      client.from('taratasy').select('*')
-        .eq('owner_email', email).neq('karazana', 'fifindramonina')
+      mien(client.from('taratasy').select('*'), email).neq('karazana', 'fifindramonina')
         .order('daty', { ascending: false }),
-      client.from('taratasy').select('laharana,daty')
-        .eq('owner_email', email).eq('karazana', 'fifindramonina')
+      mien(client.from('taratasy').select('laharana,daty'), email).eq('karazana', 'fifindramonina')
     ]).then(function (r) {
       const res = r[0];
       if (res.error) { dire(expliquer(res), true); return; }
@@ -519,8 +524,8 @@
     dessinerLesTaratasy(auj);
 
     // head : le serveur ne renvoie que le compte, aucune ligne.
-    return client.from('taratasy').select('id', { count: 'exact', head: true })
-      .eq('owner_email', email).eq('karazana', 'fifindramonina')
+    return mien(client.from('taratasy').select('id', { count: 'exact', head: true }), email)
+      .eq('karazana', 'fifindramonina')
       .then(function (res) {
         const n = (res && typeof res.count === 'number') ? res.count : 0;
         $('communKpiFifindra').textContent = n.toLocaleString('fr-FR');
@@ -717,8 +722,8 @@
     direArchive('Mikaroka…');
     // Les deux ensemble, et l'un ne suffit pas : c'est ce qui tient l'archive
     // fermée à qui la feuilletterait.
-    client.from('taratasy').select('*')
-      .eq('owner_email', email).eq('karazana', 'fifindramonina')
+    mien(client.from('taratasy').select('*'), email)
+      .eq('karazana', 'fifindramonina')
       .eq('laharana', laharana).ilike('anarana', anarana)
       .then(function (res) {
         if (res.error) { direArchive(expliquer(res), true); return; }

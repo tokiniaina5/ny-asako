@@ -14,6 +14,13 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // Le Commun lit les registres de tous les fokontany ; partout ailleurs, on
+  // ne lit que les siens (fokontany-app.js pose __lectureCommun).
+  function mien(requete, email) {
+    if (typeof window.__lectureCommun === 'function' && window.__lectureCommun()) return requete;
+    return requete.eq('owner_email', email);
+  }
+
   // Ce qui se fait ici se retrouve sous la cloche : les avis restent dans le
   // site, et se relisent (fokontany-app.js, common.js).
   function avertir(message) {
@@ -81,7 +88,7 @@
       dire('famMessage', client ? 'Midira aloha.' : 'Tsy azo ampiasaina eto ity pejy ity.', true);
       return Promise.resolve();
     }
-    return client.from('fianakaviana').select('*').eq('owner_email', email)
+    return mien(client.from('fianakaviana').select('*'), email)
       .order('created_at', { ascending: false })
       .then(function (res) {
         if (res.error) { dire('famMessage', expliquer(res), true); return; }
@@ -97,7 +104,7 @@
     const client = sb();
     const email = monEmail();
     if (!client || !email) { mpikambana = []; return Promise.resolve(); }
-    return client.from('fianakaviana_mpikambana').select('*').eq('owner_email', email)
+    return mien(client.from('fianakaviana_mpikambana').select('*'), email)
       .then(function (res) { mpikambana = (res.error ? [] : (res.data || [])); },
         function () { mpikambana = []; });
   }
@@ -473,7 +480,7 @@
     const client = sb();
     const email = monEmail();
     if (!client || !email) return Promise.resolve([]);
-    return client.from('fianakaviana_mpikambana').select('anarana,laharana_cin,karazana').eq('owner_email', email)
+    return mien(client.from('fianakaviana_mpikambana').select('anarana,laharana_cin,karazana'), email)
       .then(function (res) {
         if (res.error) return [];
         const vues = {};

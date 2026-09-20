@@ -25,6 +25,14 @@ function isOwnerEmail(email) { return normEmail(email) === normEmail(OWNER_EMAIL
 // tableau de bord seul, en lecture (le script de l'en-tête pose la classe).
 var APP_COMMUN = document.documentElement.classList.contains('app-commun');
 
+// Le Commun surplombe les fokontany : il lit LEURS registres, et non ceux
+// de l'admin, qui n'en tient aucun. Les fichiers du Fokontany le demandent
+// avant de filtrer par compte (fianakaviana.js, adidy.js, taratasy.js) ; le
+// serveur, lui, ne l'accorde qu'au propriétaire (règles « lecture commun »).
+window.__lectureCommun = function () {
+  return APP_COMMUN && !!currentUser && isOwnerEmail(currentUser.email);
+};
+
 // ---------- Les onglets (les mêmes que dans common.js) ----------
 var ongletCommun = 'tableau';
 // L'Administratif Commun est au propriétaire seul, comme dans Ny asako.
