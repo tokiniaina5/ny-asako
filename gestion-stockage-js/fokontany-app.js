@@ -116,18 +116,30 @@ document.addEventListener('DOMContentLoaded', function () {
   (function () {
     var CLE_NOM = 'stockmanager_fokontany_nom';
     var nom = '';
+    var email = '';
     try {
       var params = new URLSearchParams(window.location.search);
       nom = String(params.get('f') || '').trim();
-      if (nom) {
-        localStorage.setItem(CLE_NOM, nom);
+      email = String(params.get('e') || '').trim().toLowerCase();
+      if (nom || email) {
+        if (nom) localStorage.setItem(CLE_NOM, nom);
         params.delete('f');
+        params.delete('e');
         var reste = params.toString();
         history.replaceState(null, '', window.location.pathname + (reste ? '?' + reste : ''));
-      } else {
-        nom = String(localStorage.getItem(CLE_NOM) || '').trim();
       }
+      if (!nom) nom = String(localStorage.getItem(CLE_NOM) || '').trim();
     } catch (e) {}
+    // L'email du fokontany, et non celui de l'admin que le navigateur
+    // proposait : il l'attend sur l'écran de connexion. Il n'a pas encore de
+    // compte — c'est la création qui s'ouvre, son email déjà écrit.
+    if (email) {
+      $('fkLoginEmail').value = email;
+      $('fkVaovaoEmail').value = email;
+      $('fkVaovaoForm').style.display = '';
+      $('fkVaovaoAnarana').focus();
+      $('fkLoginStatus').textContent = 'Mbola tsy manana kaonty ianao : forony eto ambany, dia hiditra.';
+    }
     if (!nom || APP_COMMUN) return;
     $('fkMarque').innerHTML = '🗂️ Fokontany <span>' + nom.replace(/[<>&]/g, '') + '</span>';
     $('fkNomApp').textContent = 'Fokontany ' + nom;

@@ -5152,9 +5152,11 @@
       }, function(){});
     }
     montrerStatutDemande();
-    // Le nom du fokontany suit le lien : chaque fokontany a le sien
-    // (/fokontany/?f=…), et sa page le porte en titre.
+    // Le nom du fokontany et son email suivent le lien : chaque fokontany a le
+    // sien (/fokontany/?f=…&e=…), sa page le porte en titre, et c'est son
+    // email — non celui de l'admin — qui attend sur l'écran de connexion.
     let fokontanyDemande = '';
+    let emailDemande = '';
     page.querySelector('[data-mangataka]').addEventListener('click', function(){
       const lire = function(sel){ return String(page.querySelector(sel).value || '').trim(); };
       const anarana = lire('[data-f-anarana]');
@@ -5182,6 +5184,7 @@
           return;
         }
         fokontanyDemande = fokontany;
+        emailDemande = email;
         champ.value = data.code;
         // Le Commun l'apprend : le fokontany y est inscrit, sous son nom.
         ajouterNotificationLocale('fangatahana',
@@ -5205,8 +5208,11 @@
         const nom = a.anarana ? a.anarana + ' (' + a.email + ')' : a.email;
         const suite = function(){
           dire('✓ Voamarina : ' + nom + '.');
-          // Le nom du fokontany voyage avec le lien : sa page le porte ensuite.
-          const suffixe = fokontanyDemande ? '?f=' + encodeURIComponent(fokontanyDemande) : '';
+          // Le nom du fokontany et son email voyagent avec le lien.
+          const bouts = [];
+          if(fokontanyDemande) bouts.push('f=' + encodeURIComponent(fokontanyDemande));
+          if(emailDemande || a.email) bouts.push('e=' + encodeURIComponent(emailDemande || a.email));
+          const suffixe = bouts.length ? '?' + bouts.join('&') : '';
           setTimeout(function(){ fermer(); ensuite(suffixe); }, 700);
         };
         if(a.active && a.voamarina){ suite(); return; }
