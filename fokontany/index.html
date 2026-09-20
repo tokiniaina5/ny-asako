@@ -213,6 +213,9 @@
     <div class="brand" id="fkMarque">🗂️ Administratif <span>Fokontany</span></div>
     <div style="display:flex; align-items:center; gap:0.8rem;">
       <div class="fk-qui"><strong id="fkNom">—</strong><span id="fkEmail"></span></div>
+      <!-- Dans le Commun, l'admin valide les fokontany et prend leur lien
+           d'installation, sans repasser par Ny asako (validation-install.js). -->
+      <button type="button" class="btn btn-sm" id="fkValidation" style="width:auto; display:none;">🛡️ Fanamarinana</button>
       <!-- Les avis restent ici, dans le site : une bande qui passe s'oublie,
            et le fokontany veut relire ce qu'on lui a dit (fokontany-app.js). -->
       <div style="position:relative;">
@@ -227,9 +230,6 @@
           <div id="fkNotifList"></div>
         </div>
       </div>
-      <!-- Dans le Commun, l'admin valide les fokontany et prend leur lien
-           d'installation, sans repasser par Ny asako (validation-install.js). -->
-      <button type="button" class="btn btn-sm" id="fkValidation" style="width:auto; display:none;">🛡️ Fanamarinana</button>
       <!-- Au propriétaire seul, quand le navigateur sait installer. -->
       <button type="button" class="btn btn-sm btn-primary" id="fkInstaller" style="width:auto; display:none;">📲 Installer</button>
       <button type="button" class="btn btn-sm" id="fkSortir" style="width:auto;">Hivoaka</button>
