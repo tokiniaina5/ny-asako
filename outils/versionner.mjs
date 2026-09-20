@@ -17,7 +17,8 @@ import { fileURLToPath } from 'url';
 
 // Ny asako, puis l'Administratif Fokontany : installable à part, mais fait
 // des mêmes fichiers — un script changé doit changer d'adresse dans les deux.
-const PAGES = ['index.html', 'fokontany/index.html'];
+// Et la boutique publique, qui emprunte les mêmes feuilles de style.
+const PAGES = ['index.html', 'fokontany/index.html', 'botika/index.html'];
 // fileURLToPath et non l'URL brute : le chemin du projet contient une espace,
 // que l'URL code en « %20 » et qui ne désigne alors aucun dossier réel.
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

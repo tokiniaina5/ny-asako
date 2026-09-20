@@ -269,13 +269,34 @@
   // mihitsy no alefa amin'ny feuille de partage, ka hitan'ny olona rehetra any
   // amin'ilay tambajotra nofidina. Raha tsy misy media na tsy tohanan'ny
   // navigateur izany, dia ny lahatsoratra sy ny rohy no zaraina.
+  // Le lien d'une annonce mène à la boutique, et non à « Connexion » : on
+  // montre la marchandise avant de demander un compte. Celui qui n'en veut
+  // pas ne s'inscrit pas, et celui qui en veut trouve le bouton.
+  //
+  // Le parrainage suit dans « ref » — celui qui partage garde son filleul,
+  // même si le chemin passe maintenant par la boutique — et « a » désigne
+  // l'annonce, pour qu'on tombe dessus et non sur le fil entier.
+  function lienDeLAnnonce(n){
+    if(n.link && /^https?:\/\//i.test(n.link)) return n.link;
+    const base = appShareLink();
+    let racine = base.split('?')[0].replace(/confirmation\/?$/, '');
+    if(!/\/$/.test(racine)) racine += '/';
+    let ref = '';
+    const m = base.match(/[?&]ref=([^&]*)/);
+    if(m) ref = m[1];
+    const bouts = [];
+    if(ref) bouts.push('ref=' + ref);
+    if(n.id) bouts.push('a=' + encodeURIComponent(n.id));
+    return racine + 'botika/' + (bouts.length ? '?' + bouts.join('&') : '');
+  }
+
   function sharePost(n){
     const parts = [];
     if(n.client_name) parts.push(n.client_name + ' :');
     if(n.message) parts.push(n.message);
     if(n.price) parts.push('(' + formatAr(n.price) + ')');
     const text = parts.join(' ').trim() || 'Vaovao ao amin\'ny asako';
-    const link = (n.link && /^https?:\/\//i.test(n.link)) ? n.link : appShareLink();
+    const link = lienDeLAnnonce(n);
 
     function shareTextOnly(){
       if(typeof shareContent === 'function'){
@@ -313,7 +334,7 @@
     if(n.message) parts.push(n.message);
     if(n.price) parts.push('(' + formatAr(n.price) + ')');
     const text = parts.join(' ').trim() || 'Vaovao ao amin\'ny asako';
-    const link = (n.link && /^https?:\/\//i.test(n.link)) ? n.link : appShareLink();
+    const link = lienDeLAnnonce(n);
     window.__zaraoAminyRehetra({ texte: text, rohy: link });
   }
 
