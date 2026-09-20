@@ -4788,6 +4788,8 @@
 
   function remplirOngletCommun(){
     const nom = ongletCommun;
+    // Le bloc revient du Commun : la liste des installations s'y referme.
+    window.__montrerLesInstallations();
     if(nom === 'fangatahana'){
       if(typeof renderFangatahana === 'function') renderFangatahana();
       return;
@@ -4819,6 +4821,55 @@
   // Le tableau de bord du Fokontany vit dans sa fenêtre ; l'Administratif
   // Commun le lui emprunte. Une seule vue est ouverte à la fois
   // (showDashView), si bien que le bloc n'a jamais à être à deux endroits.
+  // Le Commun surplombe les fokontany : il lit LEURS registres, et non ceux
+  // de l'admin, qui n'en tient aucun. Les fichiers du registre le demandent
+  // avant de filtrer par compte (fianakaviana.js, adidy.js, taratasy.js).
+  //
+  // Le même bloc sert ici aux deux fenêtres : « Administratif Fokontany »,
+  // où l'admin tient son propre registre, et « Administratif Commun », qui
+  // les regarde tous. Ce qui les distingue est l'endroit où le bloc se
+  // trouve à l'instant (rangerTableauCommun) — pas l'adresse de la page,
+  // comme dans l'application à part (fokontany-app.js).
+  //
+  // Le serveur, lui, ne l'accorde qu'au propriétaire (règles
+  // « lecture commun »).
+  window.__lectureCommun = function(){
+    const corps = document.getElementById('communCorps');
+    const hote = document.getElementById('communAdminCorps');
+    if(!corps || !hote || corps.parentElement !== hote) return false;
+    return !!(currentUser && currentUser.email && isOwnerEmail(currentUser.email));
+  };
+
+  // Ce qui est déjà installé : l'admin passe de fokontany en fokontany, et
+  // sans cette liste il ne sait plus lequel est fait. Elle n'a de sens que
+  // dans le Commun, qui les surplombe — dans sa propre fenêtre, le
+  // fokontany n'a pas à savoir qui d'autre a installé l'application. Le
+  // panneau vit dans le bloc emprunté : hors du Commun, on le referme.
+  // (Même liste que dans l'application à part : fokontany-app.js.)
+  window.__montrerLesInstallations = function(){
+    const panneau = document.getElementById('communInstallesPanneau');
+    const liste = document.getElementById('communInstalles');
+    if(!panneau || !liste) return;
+    if(!window.__lectureCommun() || !window.__sb){ panneau.style.display = 'none'; return; }
+    panneau.style.display = '';
+    window.__sb.from('fokontany_installation').select('*').order('created_at', { ascending: false })
+      .then(function(res){
+        const lignes = (res && !res.error && res.data) || [];
+        liste.innerHTML = lignes.length
+          ? lignes.map(function(i){
+              const nom = String(i.fokontany || i.email || '').replace(/[<>&]/g, '');
+              const quoi = i.karazana === 'commun' ? '🏛️ Commun' : '🗂️ Fokontany';
+              const d = new Date(i.created_at);
+              return '<div class="list-row">' +
+                '<span>' + quoi + ' ' + nom + ' <span style="color:var(--muted);">· ' +
+                  String(i.email || '').replace(/[<>&]/g, '') + '</span></span>' +
+                '<span style="white-space:nowrap; color:var(--muted);">' +
+                  (isNaN(d) ? '—' : d.toLocaleDateString('fr-FR')) + '</span>' +
+              '</div>';
+            }).join('')
+          : '<p class="empty-hint" style="padding:0.4rem 0;">Mbola tsy misy fokontany nametraka ny app.</p>';
+      }, function(){});
+  };
   function rangerTableauCommun(chez){
     const corps = document.getElementById('communCorps');
     const hote = chez === 'communadmin'
@@ -4848,7 +4899,9 @@
           '🔐 Mila alalana ity pejy ity : sokafy aloha ny « Administratif Fokontany » miaraka amin\'ny code nomen\'ny tompon\'ny site.';
       }
       if(!ouverte) return;
-      // Les mêmes lectures que l'onglet Tableau de bord du Fokontany.
+      // Les mêmes lectures que l'onglet Tableau de bord du Fokontany,
+      // et la liste des installations, qui n'est qu'ici.
+      window.__montrerLesInstallations();
       if(typeof renderFianakavianaIsa === 'function') renderFianakavianaIsa();
       if(typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
       if(typeof renderTaratasyIsa === 'function') renderTaratasyIsa();
