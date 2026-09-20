@@ -4765,7 +4765,7 @@
   var ongletCommun = 'tableau';
   function choisirOngletCommun(nom){
     const PANNEAUX = {
-      tableau: 'communCorps', pieces: 'communPieces',
+      tableau: 'communCorps',
       adidy: 'communAdidy', historique: 'communHistorique',
       taratasy: 'communTaratasy', fianakaviana: 'communFianakaviana', fangatahana: 'communFangatahana'
     };
@@ -4804,12 +4804,13 @@
       if(typeof renderTaratasy === 'function') renderTaratasy();
     } else if(ongletCommun === 'fianakaviana'){
       if(typeof renderFianakaviana === 'function') renderFianakaviana();
-    } else if(typeof renderPiecesIdentite === 'function'){
-      renderPiecesIdentite();
+    } else if(typeof renderFianakaviana === 'function'){
+      renderFianakaviana();
     }
     // Le tableau de bord montre aussi l'argent entré : il le relit lui-même,
     // sans qu'il ait fallu passer par l'onglet Adidy.
     if(ongletCommun === 'tableau'){
+      if(typeof renderFianakavianaIsa === 'function') renderFianakavianaIsa();
       if(typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
       if(typeof renderTaratasyIsa === 'function') renderTaratasyIsa();
     }
@@ -4848,7 +4849,7 @@
       }
       if(!ouverte) return;
       // Les mêmes lectures que l'onglet Tableau de bord du Fokontany.
-      if(typeof renderPiecesIdentite === 'function') renderPiecesIdentite();
+      if(typeof renderFianakavianaIsa === 'function') renderFianakavianaIsa();
       if(typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
       if(typeof renderTaratasyIsa === 'function') renderTaratasyIsa();
     }

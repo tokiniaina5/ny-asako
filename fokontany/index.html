@@ -261,7 +261,6 @@
                DANS la fenêtre. Un data-dash ferait basculer la page entière. -->
           <div class="dash-tabs">
             <div class="dash-tab active" data-commun="tableau">📊 Tableau de bord</div>
-            <div class="dash-tab" data-commun="pieces">🆔 CIN / Passeport</div>
             <div class="dash-tab" data-commun="adidy">💰 Adidy</div>
             <div class="dash-tab" data-commun="historique">📜 Historique</div>
             <div class="dash-tab" data-commun="taratasy">📄 Taratasy</div>
@@ -279,23 +278,24 @@
                  et sa liste ; chaque fichier remplit la sienne. -->
 
             <section class="fk-bloc fk-bloc-cin">
-              <h3 class="fk-bloc-titre">🆔 CIN / Passeport</h3>
+              <h3 class="fk-bloc-titre">📖 Livre de famille</h3>
               <div class="kpi-row">
+                <div class="kpi-card"><div class="kpi-label">Livre de famille</div><div class="kpi-value" id="communKpiFianakaviana">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Olona voasoratra</div><div class="kpi-value" id="communKpiPersonnes">0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Ray aman-dreny</div><div class="kpi-value" id="communKpiRayReny">0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Zanaka</div><div class="kpi-value" id="communKpiZanaka">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">CIN</div><div class="kpi-value" id="communKpiCin">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Passeports</div><div class="kpi-value" id="communKpiPasseports">0</div></div>
-                <div class="kpi-card"><div class="kpi-label">Vaovao ity volana ity</div><div class="kpi-value" id="communKpiMois">0</div></div>
-                <div class="kpi-card"><div class="kpi-label">Vaovao ity taona ity</div><div class="kpi-value" id="communKpiTaona">0</div></div>
-                <div class="kpi-card"><div class="kpi-label">Passeport lany daty</div><div class="kpi-value" id="communKpiExpires">0</div></div>
-                <div class="kpi-card"><div class="kpi-label">Ho lany ao anatin'ny 3 volana</div><div class="kpi-value" id="communKpiBientot">0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Fanambadiana ity taona ity</div><div class="kpi-value" id="communKpiFanambadiana">0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Voasoratra ity volana ity</div><div class="kpi-value" id="communKpiMois">0</div></div>
               </div>
               <div class="chart-grid">
                 <div class="chart-panel"><h4>Olona voasoratra isam-bolana</h4><div class="chart-box" style="height:220px;"><canvas id="communChartMois"></canvas></div></div>
-                <div class="chart-panel"><h4>CIN / Passeport</h4><div class="chart-box" style="height:220px;"><canvas id="communChartTypes"></canvas></div></div>
+                <div class="chart-panel"><h4>Andraikitra ao amin'ny livre</h4><div class="chart-box" style="height:220px;"><canvas id="communChartTypes"></canvas></div></div>
               </div>
               <div class="list-panel">
-                <h4>⚠️ Passeports tokony havaozina</h4>
-                <div id="communListeExpiration"></div>
+                <h4>📚 Livre de famille farany</h4>
+                <div id="communListeLivre"></div>
               </div>
             </section>
 
@@ -344,85 +344,6 @@
                 <div id="communListeTaratasy"></div>
               </div>
             </section>
-          </div>
-
-          <!-- Le registre des pièces d'identité (pieces-identite.js). -->
-          <div id="communPieces" style="display:none;">
-            <div class="panel">
-              <h3>🆔 Enregistrer une pièce d'identité</h3>
-              <div class="form-grid">
-                <div class="field">
-                  <label for="pieceType">Type</label>
-                  <select id="pieceType">
-                    <option value="cin">CIN</option>
-                    <option value="passeport">Passeport</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="pieceNumero">Numéro</label>
-                  <input type="text" id="pieceNumero" placeholder="Ex : 101 234 567 890" autocomplete="off">
-                </div>
-                <div class="field">
-                  <label for="pieceNom">Nom complet</label>
-                  <textarea id="pieceNom" class="champ-anarana" rows="1" placeholder="Nom et prénoms" autocomplete="off"></textarea>
-                </div>
-                <div class="field">
-                  <label for="pieceDelivrance">Date de délivrance</label>
-                  <input type="date" id="pieceDelivrance">
-                </div>
-                <div class="field" id="pieceExpirationChamp" style="display:none;">
-                  <label for="pieceExpiration">Date d'expiration</label>
-                  <input type="date" id="pieceExpiration">
-                </div>
-              </div>
-              <!-- Photographier la carte plutôt que recopier douze chiffres.
-                   La puce biométrique, elle, ne se lit pas dans un navigateur :
-                   ce qui est lu ici est ce qui est imprimé (pieces-scan.js). -->
-              <div style="margin-bottom:0.9rem;">
-                <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
-                  <button type="button" class="btn btn-violet btn-sm" id="pieceScanBtn" style="width:auto;">📷 Recto</button>
-                  <button type="button" class="btn btn-violet btn-sm" id="pieceScanVersoBtn" style="width:auto;">🔄 Verso</button>
-                  <button type="button" class="btn btn-sm" id="pieceScanEffacer" style="width:auto; display:none;">Effacer les photos</button>
-                </div>
-                <!-- Le recours quand il n'y a pas d'appareil photo ouvrable. -->
-                <input type="file" id="pieceScanFichier" accept="image/*" capture="environment" style="display:none;">
-                <div id="pieceScanZone" style="display:none; margin-top:0.7rem;">
-                  <video id="pieceScanVideo" playsinline muted style="width:100%; max-width:420px; border-radius:10px; background:#000;"></video>
-                  <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.5rem;">
-                    <button type="button" class="btn btn-primary btn-sm" id="pieceScanPrendre" style="width:auto;">Alaina ny sary</button>
-                    <button type="button" class="btn btn-sm" id="pieceScanFermer" style="width:auto;">Ajanona</button>
-                  </div>
-                </div>
-                <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.7rem;">
-                  <img id="pieceScanApercu" alt="Sarin'ny karatra (recto)" title="Recto" style="display:none; max-width:200px; border-radius:10px; border:1px solid var(--line);">
-                  <img id="pieceScanApercuVerso" alt="Sarin'ny karatra (verso)" title="Verso" style="display:none; max-width:200px; border-radius:10px; border:1px solid var(--line);">
-                </div>
-                <p id="pieceScanStatut" style="font-size:0.75rem; color:var(--muted); margin-top:0.5rem; line-height:1.5; min-height:1.1em;"></p>
-              </div>
-
-              <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
-                <button type="button" class="btn btn-primary btn-sm" id="pieceEnregistrer" style="width:auto;">Enregistrer</button>
-                <button type="button" class="btn btn-sm" id="pieceAnnuler" style="width:auto; display:none;">Annuler</button>
-              </div>
-              <p id="pieceMessage" style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>
-            </div>
-
-            <div class="panel">
-              <h3>📇 Pièces enregistrées</h3>
-              <div class="field">
-                <label for="pieceRecherche">Fikarohana</label>
-                <input type="search" id="pieceRecherche" placeholder="Anarana na laharana..." autocomplete="off">
-              </div>
-              <div class="table-scroll">
-                <table>
-                  <thead>
-                    <tr><th>Type</th><th>Numéro</th><th>Nom</th><th>Délivrée le</th><th>Expire le</th><th>Sary</th><th></th></tr>
-                  </thead>
-                  <tbody id="piecesListe"></tbody>
-                </table>
-              </div>
-              <p class="empty-hint" id="piecesVide">Mbola tsy misy CIN na passeport voasoratra.</p>
-            </div>
           </div>
 
           <!-- Les cotisations, et qui les a versées (adidy.js). Les personnes
@@ -738,8 +659,8 @@
               <h3 id="famOuvertTitre">👪 Mpianakavy</h3>
               <div class="form-grid">
                 <div class="field">
-                  <label for="famOlona">Olona (avy ao amin'ny CIN / Passeport)</label>
-                  <select id="famOlona"></select>
+                  <label for="famMpAnarana">Anarana feno</label>
+                  <textarea id="famMpAnarana" class="champ-anarana" rows="1" placeholder="Nom et prénoms" autocomplete="off"></textarea>
                 </div>
                 <div class="field">
                   <label for="famAndraikitra">Andraikitra</label>
@@ -750,13 +671,37 @@
                     <option value="hafa">Hafa</option>
                   </select>
                 </div>
+                <div class="field">
+                  <label for="famKarazana">Karazana taratasy</label>
+                  <select id="famKarazana">
+                    <option value="cin">CIN</option>
+                    <option value="passeport">Passeport</option>
+                    <option value="">Tsy mbola misy</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="famLaharanaCin">Laharana (CIN / Passeport)</label>
+                  <input type="text" id="famLaharanaCin" placeholder="101 234 567 890" autocomplete="off">
+                </div>
+                <div class="field" id="famExpirationChamp" style="display:none;">
+                  <label for="famExpiration">Daty fahataperan'ny passeport</label>
+                  <input type="date" id="famExpiration">
+                </div>
+                <div class="field">
+                  <label for="famTeraka">Daty nahaterahana</label>
+                  <input type="date" id="famTeraka">
+                </div>
+                <div class="field">
+                  <label for="famTerakaToerana">Toerana nahaterahana</label>
+                  <input type="text" id="famTerakaToerana" placeholder="Antananarivo" autocomplete="off">
+                </div>
               </div>
               <button type="button" class="btn btn-primary btn-sm" id="famAmpio" style="width:auto;">➕ Ampio ao amin'ny livre</button>
               <p id="famOuvertMessage" style="font-size:0.78rem; margin:0.7rem 0; min-height:1.1em;"></p>
               <div class="table-scroll">
                 <table>
                   <thead>
-                    <tr><th>Anarana</th><th>Laharana CIN</th><th>Andraikitra</th><th></th></tr>
+                    <tr><th>Anarana</th><th>Andraikitra</th><th>Taratasy</th><th>Laharana</th><th>Teraka</th><th></th></tr>
                   </thead>
                   <tbody id="famMpikambana"></tbody>
                 </table>
@@ -808,12 +753,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="/gestion-stockage-js/fokontany-app.js?v=62e8db5a"></script>
-<script src="/gestion-stockage-js/pieces-identite.js?v=150aefad"></script>
-<script src="/gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
+<script src="/gestion-stockage-js/fokontany-app.js?v=8fbcee73"></script>
 <script src="/gestion-stockage-js/commun-alalana.js?v=682d598c"></script>
-<script src="/gestion-stockage-js/taratasy.js?v=1ae17057"></script>
-<script src="/gestion-stockage-js/fianakaviana.js?v=31e647b9"></script>
-<script src="/gestion-stockage-js/adidy.js?v=71cace69"></script>
+<script src="/gestion-stockage-js/taratasy.js?v=adc905f6"></script>
+<script src="/gestion-stockage-js/fianakaviana.js?v=36459fe5"></script>
+<script src="/gestion-stockage-js/adidy.js?v=58bdd49b"></script>
 </body>
 </html>

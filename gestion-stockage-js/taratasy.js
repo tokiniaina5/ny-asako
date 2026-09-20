@@ -6,8 +6,8 @@
 // sans faute ce qui doit y figurer, garder ce qui a été remis, et pouvoir le
 // réimprimer à l'identique.
 //
-// Les personnes viennent du registre des CIN / passeports : on ne tient pas
-// deux listes de gens (pieces-identite.js).
+// Les personnes viennent du livre de famille (fianakaviana.js) : on ne tient
+// pas deux listes de gens.
 //
 // Tout vit dans Supabase (supabase/sql/supabase-taratasy.sql).
 
@@ -129,27 +129,14 @@
     $('tarZavaToeranaLabel').textContent = k === 'fahafatesana' ? 'Toerana nahafatesana' : 'Toerana nanambadiana';
   }
 
+  // Les personnes viennent du livre de famille (fianakaviana.js) : c'est là
+  // qu'on inscrit les gens, et il n'y a pas de seconde liste.
   function chargerPersonnes() {
-    const client = sb();
-    const email = monEmail();
-    if (!client || !email) { personnes = []; return Promise.resolve(); }
-    return client.from('pieces_identite').select('anarana,laharana,karazana').eq('owner_email', email)
-      .then(function (res) {
-        if (res.error) { personnes = []; return; }
-        const vues = {};
-        (res.data || []).forEach(function (p) {
-          const cle = String(p.anarana || '').trim().toLowerCase().replace(/\s+/g, ' ');
-          if (!cle) return;
-          // La CIN l'emporte sur le passeport : c'est elle qu'on porte sur un
-          // papier de résidence.
-          if (!vues[cle] || (p.karazana === 'cin' && vues[cle].karazana !== 'cin')) {
-            vues[cle] = { cle: cle, anarana: String(p.anarana).trim(), laharana: p.laharana || '', karazana: p.karazana };
-          }
-        });
-        personnes = Object.keys(vues).map(function (c) { return vues[c]; })
-          .sort(function (a, b) { return a.anarana.localeCompare(b.anarana, 'fr'); });
+    if (typeof window.__personnesDuFokontany !== 'function') { personnes = []; return Promise.resolve(); }
+    return window.__personnesDuFokontany().then(function (liste) {
+      personnes = liste || [];
         remplirLeChoix();
-      }, function () { personnes = []; });
+    }, function () { personnes = []; });
   }
 
   function remplirLeChoix() {

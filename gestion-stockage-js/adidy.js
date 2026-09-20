@@ -4,9 +4,9 @@
 // revient chaque mois ou chaque année), puis les versements — qui a payé,
 // pour quelle période.
 //
-// Les personnes viennent du registre des CIN / passeports : on ne tient pas
-// deux listes de gens, elles finiraient par ne plus se ressembler. Une
-// personne qui a une CIN et un passeport n'y paraît qu'une fois, par son nom.
+// Les personnes viennent du livre de famille (fianakaviana.js) : on ne tient
+// pas deux listes de gens, elles finiraient par ne plus se ressembler. Une
+// personne inscrite dans plusieurs livrets n'y paraît qu'une fois, par son nom.
 //
 // Tout vit dans Supabase (supabase/sql/supabase-adidy.sql).
 
@@ -205,21 +205,13 @@
 
   // ---------- Les personnes, prises au registre ----------
 
+  // Les personnes viennent du livre de famille (fianakaviana.js) : c'est là
+  // qu'on inscrit les gens, et il n'y a pas de seconde liste.
   function chargerPersonnes() {
-    const client = sb();
-    const email = monEmail();
-    if (!client || !email) { personnes = []; return Promise.resolve(); }
-    return client.from('pieces_identite').select('anarana').eq('owner_email', email)
-      .then(function (res) {
-        if (res.error) { personnes = []; return; }
-        const vues = {};
-        (res.data || []).forEach(function (p) {
-          const cle = cleOlona(p.anarana);
-          if (cle && !vues[cle]) vues[cle] = { cle: cle, anarana: String(p.anarana).trim() };
-        });
-        personnes = Object.keys(vues).map(function (c) { return vues[c]; })
-          .sort(function (a, b) { return a.anarana.localeCompare(b.anarana, 'fr'); });
-      }, function () { personnes = []; });
+    if (typeof window.__personnesDuFokontany !== 'function') { personnes = []; return Promise.resolve(); }
+    return window.__personnesDuFokontany().then(function (liste) {
+      personnes = liste || [];
+    }, function () { personnes = []; });
   }
 
   // ---------- Les versements ----------

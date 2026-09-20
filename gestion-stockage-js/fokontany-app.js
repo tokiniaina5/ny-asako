@@ -37,7 +37,7 @@ function choisirOngletCommun(nom) {
   if (communInterdit()) return;
   if (APP_COMMUN) nom = 'tableau';
   var PANNEAUX = {
-    tableau: 'communCorps', pieces: 'communPieces',
+    tableau: 'communCorps',
     adidy: 'communAdidy', historique: 'communHistorique',
     taratasy: 'communTaratasy', fianakaviana: 'communFianakaviana', fangatahana: 'communFangatahana'
   };
@@ -79,10 +79,11 @@ function remplirOngletCommun() {
     if (typeof renderTaratasy === 'function') renderTaratasy();
   } else if (nom === 'fianakaviana') {
     if (typeof renderFianakaviana === 'function') renderFianakaviana();
-  } else if (typeof renderPiecesIdentite === 'function') {
-    renderPiecesIdentite();
+  } else if (typeof renderFianakaviana === 'function') {
+    renderFianakaviana();
   }
   if (nom === 'tableau') {
+    if (typeof renderFianakavianaIsa === 'function') renderFianakavianaIsa();
     if (typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
     if (typeof renderTaratasyIsa === 'function') renderTaratasyIsa();
   }

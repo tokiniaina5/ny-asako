@@ -1,8 +1,8 @@
 // Livre de famille : le livret, et ceux qui y sont inscrits.
 //
-// Le livret ne tient pas une seconde liste de gens : ses membres sont ceux du
-// registre des CIN / passeports (pieces-identite.js), rattachés par leur nom —
-// comme les adidy et les taratasy le font déjà.
+// Le livret EST le registre des gens : le nom, la pièce d'identité et la
+// naissance s'écrivent ici, et nulle part ailleurs. Les adidy et les taratasy
+// y prennent leurs personnes (window.__personnesDuFokontany).
 //
 // Le mariage des parents est porté par le livret : c'est de lui que la famille
 // date, et c'est ce qui sépare un livre de famille d'une simple liste.
@@ -19,7 +19,6 @@
   const RANG = { ray: 0, reny: 1, zanaka: 2, hafa: 3 };
 
   let familles = [];
-  let personnes = [];
   let mpikambana = [];
   let ouvert = null;      // le livret ouvert
   let enEdition = null;   // le livret qu'on corrige
@@ -126,6 +125,7 @@
     }).join('');
     $('famVide').style.display = familles.length ? 'none' : '';
     montrerLouvert();
+    compter();
   }
 
   function lireFormulaire() {
@@ -201,64 +201,53 @@
     $('famOuvertTitre').textContent = '👪 ' + f.anarana + (f.laharana ? ' — ' + f.laharana : '');
     const liste = membresDe(f.id);
     $('famMpikambana').innerHTML = liste.map(function (m) {
+      const piece = m.karazana === 'passeport' ? 'Passeport' : (m.karazana === 'cin' ? 'CIN' : '—');
       return '<tr>' +
         '<td>' + echapper(m.anarana) + '</td>' +
-        '<td style="font-family:var(--font-mono); white-space:nowrap;">' + echapper(m.laharana_cin || '—') + '</td>' +
         '<td>' + echapper(ANDRAIKITRA[m.andraikitra] || m.andraikitra) + '</td>' +
+        '<td>' + piece + '</td>' +
+        '<td style="font-family:var(--font-mono); white-space:nowrap;">' + echapper(m.laharana_cin || '—') + '</td>' +
+        '<td style="white-space:nowrap;">' + dateFr(m.teraka_daty) + '</td>' +
         '<td><button type="button" class="btn btn-red btn-sm" data-mp-fafao="' + echapper(m.id) + '">Esorina</button></td>' +
       '</tr>';
     }).join('');
     $('famMpikambanaVide').style.display = liste.length ? 'none' : '';
   }
 
-  function chargerPersonnes() {
-    const client = sb();
-    const email = monEmail();
-    if (!client || !email) { personnes = []; return Promise.resolve(); }
-    return client.from('pieces_identite').select('anarana,laharana,karazana').eq('owner_email', email)
-      .then(function (res) {
-        if (res.error) { personnes = []; return; }
-        const vues = {};
-        (res.data || []).forEach(function (p) {
-          const cle = cleOlona(p.anarana);
-          if (!cle) return;
-          // La CIN l'emporte sur le passeport : c'est elle qu'on porte sur un livret.
-          if (!vues[cle] || (p.karazana === 'cin' && vues[cle].karazana !== 'cin')) {
-            vues[cle] = { cle: cle, anarana: String(p.anarana).trim(), laharana: p.laharana || '', karazana: p.karazana };
-          }
-        });
-        personnes = Object.keys(vues).map(function (c) { return vues[c]; })
-          .sort(function (a, b) { return a.anarana.localeCompare(b.anarana, 'fr'); });
-        remplirLeChoix();
-      }, function () { personnes = []; });
+  // Le passeport seul a une date d'expiration.
+  function ajusterKarazana() {
+    $('famExpirationChamp').style.display = $('famKarazana').value === 'passeport' ? '' : 'none';
   }
 
-  function remplirLeChoix() {
-    const choix = $('famOlona');
-    const avant = choix.value;
-    choix.innerHTML = '<option value="">— Safidio ny olona —</option>' + personnes.map(function (p) {
-      return '<option value="' + echapper(p.cle) + '">' + echapper(p.anarana) + '</option>';
-    }).join('');
-    if (avant) choix.value = avant;
+  function viderMembre() {
+    ['famMpAnarana', 'famLaharanaCin', 'famExpiration', 'famTeraka', 'famTerakaToerana']
+      .forEach(function (id) { $(id).value = ''; });
   }
 
   function ampio() {
     const client = sb();
     const email = monEmail();
     if (!client || !email || !ouvert) return;
-    const p = personnes.filter(function (x) { return x.cle === $('famOlona').value; })[0];
-    if (!p) { dire('famOuvertMessage', 'Safidio aloha ny olona.', true); return; }
+    const anarana = $('famMpAnarana').value.trim();
+    if (!anarana) { dire('famOuvertMessage', 'Soraty ny anaran\'ilay olona.', true); return; }
+    const karazana = $('famKarazana').value || null;
+    const laharana = $('famLaharanaCin').value.trim() || null;
+    if (karazana && !laharana) { dire('famOuvertMessage', 'Soraty ny laharan\'ny taratasy, na safidio « Tsy mbola misy ».', true); return; }
     dire('famOuvertMessage', 'Mitahiry…');
     client.from('fianakaviana_mpikambana').insert({
       owner_email: email,
       fianakaviana_id: ouvert,
-      anarana: p.anarana,
-      laharana_cin: p.karazana === 'cin' ? (p.laharana || null) : null,
+      anarana: anarana,
+      laharana_cin: laharana,
+      karazana: karazana,
+      daty_fahataperana: (karazana === 'passeport' && $('famExpiration').value) ? $('famExpiration').value : null,
+      teraka_daty: $('famTeraka').value || null,
+      teraka_toerana: $('famTerakaToerana').value.trim() || null,
       andraikitra: $('famAndraikitra').value
     }).then(function (res) {
       if (res.error) { dire('famOuvertMessage', expliquer(res), true); return; }
       dire('famOuvertMessage', 'Voasoratra ao amin\'ny livre.');
-      $('famOlona').value = '';
+      viderMembre();
       charger();
     }, function () { dire('famOuvertMessage', 'Tsy tratra ny serveur : jereo ny réseau.', true); });
   }
@@ -280,6 +269,7 @@
   $('famTehirizo').addEventListener('click', enregistrer);
   $('famAnnuler').addEventListener('click', function () { vider(); dire('famMessage', ''); });
   $('famAmpio').addEventListener('click', ampio);
+  $('famKarazana').addEventListener('change', ajusterKarazana);
   $('famListe').addEventListener('click', function (e) {
     const sokafy = e.target.closest('[data-fam-sokafy]');
     const ovay = e.target.closest('[data-fam-ovay]');
@@ -296,9 +286,134 @@
     if (fafao) esorina(fafao.dataset.mpFafao);
   });
 
+  // ---------- Les chiffres du tableau de bord ----------
+  // Ce que le registre des pièces comptait, le livret le compte désormais :
+  // les familles, les gens, les rôles, les pièces, les mariages de l'année.
+  const COULEURS = (typeof chartColors !== 'undefined') ? chartColors : ['#4fd8e0', '#f2a33c', '#8b93ff', '#6ee7b7'];
+  const graphiques = {};
+  function dessiner(id, config) {
+    const canvas = $(id);
+    if (!canvas || !window.Chart) return;
+    if (graphiques[id]) graphiques[id].destroy();
+    graphiques[id] = new Chart(canvas.getContext('2d'), config);
+  }
+  function isoLocal(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function compter() {
+    if (!$('communKpiFianakaviana')) return;
+    const maintenant = new Date();
+    const auj = isoLocal(maintenant);
+    const moisCourant = auj.slice(0, 7);
+    const taona = auj.slice(0, 4);
+    const nombre = function (n) { return Number(n).toLocaleString('fr-FR'); };
+    const par = function (r) { return mpikambana.filter(function (m) { return m.andraikitra === r; }).length; };
+    const poser = function (id, v) { const el = $(id); if (el) el.textContent = nombre(v); };
+
+    poser('communKpiFianakaviana', familles.length);
+    poser('communKpiPersonnes', mpikambana.length);
+    poser('communKpiRayReny', par('ray') + par('reny'));
+    poser('communKpiZanaka', par('zanaka'));
+    poser('communKpiCin', mpikambana.filter(function (m) { return m.karazana === 'cin'; }).length);
+    poser('communKpiPasseports', mpikambana.filter(function (m) { return m.karazana === 'passeport'; }).length);
+    poser('communKpiFanambadiana', familles.filter(function (f) {
+      return String(f.fanambadiana_daty || '').slice(0, 4) === taona;
+    }).length);
+    poser('communKpiMois', mpikambana.filter(function (m) {
+      return String(m.created_at || '').slice(0, 7) === moisCourant;
+    }).length);
+
+    // Les douze derniers mois, le courant compris : un mois sans personne
+    // inscrite est une information, pas un trou à refermer.
+    const mois = [];
+    for (let i = 11; i >= 0; i--) mois.push(new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1));
+    dessiner('communChartMois', {
+      type: 'bar',
+      data: {
+        labels: mois.map(function (m) { return m.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }); }),
+        datasets: [{
+          data: mois.map(function (m) {
+            const cle = isoLocal(m).slice(0, 7);
+            return mpikambana.filter(function (x) { return String(x.created_at || '').slice(0, 7) === cle; }).length;
+          }),
+          backgroundColor: COULEURS[0], borderRadius: 4, maxBarThickness: 42
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: '#1f2a30' }, beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+
+    const roles = ['ray', 'reny', 'zanaka', 'hafa'];
+    const vide = !mpikambana.length;
+    dessiner('communChartTypes', {
+      type: 'doughnut',
+      data: {
+        labels: vide ? ['Tsy misy'] : roles.map(function (r) { return ANDRAIKITRA[r]; }),
+        datasets: [{
+          data: vide ? [1] : roles.map(par),
+          backgroundColor: vide ? ['#2a343b'] : roles.map(function (r, i) { return COULEURS[i % COULEURS.length]; }),
+          borderWidth: 0
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } }, tooltip: { enabled: !vide } }
+      }
+    });
+
+    const liste = $('communListeLivre');
+    if (liste) {
+      const derniers = familles.slice(0, 5);
+      liste.innerHTML = derniers.length
+        ? derniers.map(function (f) {
+            return '<div class="list-row">' +
+              '<span>' + echapper(f.anarana) + ' <span style="color:var(--muted);">· ' +
+                membresDe(f.id).length + ' olona' + (f.laharana ? ' · ' + echapper(f.laharana) : '') + '</span></span>' +
+              '<span style="white-space:nowrap; color:var(--muted);">' +
+                (f.fanambadiana_daty ? 'Nanambady ny ' + dateFr(f.fanambadiana_daty) : '—') + '</span>' +
+            '</div>';
+          }).join('')
+        : '<p class="empty-hint" style="padding:0.4rem 0;">Mbola tsy misy livre de famille.</p>';
+    }
+  }
+
+  // Appelée à l'ouverture du tableau de bord (common.js, fokontany-app.js) :
+  // les chiffres s'y montrent sans qu'on ait ouvert l'onglet.
+  window.renderFianakavianaIsa = function () {
+    return charger();
+  };
+
   // Appelée quand l'onglet s'ouvre (common.js, fokontany-app.js).
   window.renderFianakaviana = function () {
     dire('famMessage', '');
-    return Promise.all([charger(), chargerPersonnes()]);
+    ajusterKarazana();
+    return charger();
+  };
+
+  // Les personnes du fokontany, pour les adidy et les taratasy : celles qui
+  // sont inscrites dans un livre de famille, chacune une fois, la CIN d'abord.
+  window.__personnesDuFokontany = function () {
+    const client = sb();
+    const email = monEmail();
+    if (!client || !email) return Promise.resolve([]);
+    return client.from('fianakaviana_mpikambana').select('anarana,laharana_cin,karazana').eq('owner_email', email)
+      .then(function (res) {
+        if (res.error) return [];
+        const vues = {};
+        (res.data || []).forEach(function (m) {
+          const cle = cleOlona(m.anarana);
+          if (!cle) return;
+          if (!vues[cle] || (m.karazana === 'cin' && vues[cle].karazana !== 'cin')) {
+            vues[cle] = { cle: cle, anarana: String(m.anarana).trim(), laharana: m.laharana_cin || '', karazana: m.karazana };
+          }
+        });
+        return Object.keys(vues).map(function (c) { return vues[c]; })
+          .sort(function (a, b) { return a.anarana.localeCompare(b.anarana, 'fr'); });
+      }, function () { return []; });
   };
 })();

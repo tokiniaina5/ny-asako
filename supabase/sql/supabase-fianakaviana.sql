@@ -62,9 +62,9 @@ create policy "fianakaviana suppression proprietaire"
 
 
 -- ---------- Ceux qui y sont inscrits ----------
--- « andraikitra » : ray, reny, zanaka, hafa. Le nom est celui du registre
--- des CIN / passeports ; le numéro de CIN est recopié pour que le livret
--- se lise seul, même si la pièce est refaite plus tard.
+-- « andraikitra » : ray, reny, zanaka, hafa. Tout s'écrit ici — le nom, la
+-- pièce, la naissance : le livret est devenu le registre des gens, et il n'y
+-- en a plus d'autre. Les adidy et les taratasy y prennent leurs personnes.
 create table if not exists public.fianakaviana_mpikambana (
   id uuid primary key default gen_random_uuid(),
   owner_email text not null,
@@ -84,6 +84,16 @@ create unique index if not exists fianakaviana_mpikambana_unique
 
 create index if not exists fianakaviana_mpikambana_idx
   on public.fianakaviana_mpikambana (owner_email, fianakaviana_id);
+
+-- La pièce d'identité et la naissance, écrites à même le livret : ajoutées
+-- après coup, pour qu'une base déjà créée les reçoive aussi.
+alter table public.fianakaviana_mpikambana add column if not exists karazana text;
+alter table public.fianakaviana_mpikambana drop constraint if exists fianakaviana_mpikambana_karazana_check;
+alter table public.fianakaviana_mpikambana add constraint fianakaviana_mpikambana_karazana_check
+  check (karazana is null or karazana in ('cin', 'passeport'));
+alter table public.fianakaviana_mpikambana add column if not exists daty_fahataperana date;
+alter table public.fianakaviana_mpikambana add column if not exists teraka_daty date;
+alter table public.fianakaviana_mpikambana add column if not exists teraka_toerana text;
 
 alter table public.fianakaviana_mpikambana enable row level security;
 
