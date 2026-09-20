@@ -5175,9 +5175,20 @@
       const nomComplet = anarana + ' ' + prenom + ' — Fokontany ' + fokontany +
         ' / Commun ' + commun + ' (' + asa + ')';
       dire('Mandefa ny fangatahana…');
-      // La fonction « commun-code », inchangée : elle tire le code, pose
-      // l'accès et envoie le code et le lien à l'email indiqué.
-      sb.functions.invoke('commun-code', { body: { email: email, anarana: nomComplet } }).then(function(res){
+      // La lettre part chez l'admin, et chez lui seul : c'est lui qui donnera
+      // le code au fokontany. La fonction pose l'accès comme d'habitude.
+      const lettre = [
+        'Ireto tompoko ny mombamomba ahy, ary ekeo ny fangatahako ilay code :',
+        'Anarana : ' + anarana,
+        'Fanampin\'anarana : ' + prenom,
+        'Fokontany : ' + fokontany,
+        'Commun : ' + commun,
+        'Email hanokafana ny site : ' + email,
+        'Asa eo anivon\'ny fokontany : ' + asa
+      ].join('\n');
+      sb.functions.invoke('commun-code', {
+        body: { email: email, anarana: nomComplet, pour_le_proprietaire: true, lettre: lettre }
+      }).then(function(res){
         const data = (res && res.data) || {};
         if(!data.code){
           dire('Tsy nety : ' + ((res && res.error && res.error.message) || data.error || 'tsy fantatra'), true);
@@ -5190,8 +5201,8 @@
         ajouterNotificationLocale('fangatahana',
           'Voasoratra ao amin\'ny Commun « ' + commun + ' » ny Fokontany « ' + fokontany + ' » (' + email + ').');
         dire(data.sent
-          ? 'Lasa tamin\'ny ' + email + ' ny code sy ny rohy. Code : ' + data.code + ' — tsindrio « 🔓 Sokafy ny pejy ».'
-          : 'Tsy lasa ny mailaka (' + (data.error || 'antony tsy fantatra') + '). Code : ' + data.code + ' — lazao azy mivantana.', !data.sent);
+          ? 'Lasa tao amin\'ny mailakao (admin) ny taratasy sy ny code. Code : ' + data.code + ' — tsindrio « 🔓 Sokafy ny pejy ».'
+          : 'Tsy lasa ny mailaka (' + (data.error || 'antony tsy fantatra') + '). Code : ' + data.code + ' — voatahiry ihany izy.', !data.sent);
         montrerStatutDemande();
         chargerLesDemandes();
       }, function(err){ dire('Tsy tratra ny fonction : ' + ((err && err.message) || 'réseau'), true); });

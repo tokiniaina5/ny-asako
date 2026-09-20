@@ -113,10 +113,17 @@ Deno.serve(async (req: Request) => {
 
   let cible = "";
   let anarana = "";
+  // La lettre de demande, écrite par le propriétaire pour un fokontany
+  // nouveau : le message part alors chez LUI, et non chez le fokontany —
+  // c'est lui qui transmettra le code. Le reste ne bouge pas.
+  let pourLeProprietaire = false;
+  let lettre = "";
   try {
     const corps = await req.json();
     cible = String(corps?.email ?? "").trim().toLowerCase();
     anarana = String(corps?.anarana ?? "").trim();
+    pourLeProprietaire = corps?.pour_le_proprietaire === true;
+    lettre = String(corps?.lettre ?? "").trim();
   } catch {
     return json({ error: "corps de requête illisible" }, 400);
   }
@@ -159,7 +166,26 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("OWNER_NAME") ?? "",
   ].join("\n");
 
-  const envoi = await envoyer(cible, "Votre accès à « Administratif Fokontany » — Gestion de Stockage", texte);
+  const texteProprietaire = [
+    "Bonjour,",
+    "",
+    "Demande d'accès à « Administratif Fokontany » :",
+    "",
+    lettre || anarana || cible,
+    "",
+    "Email qui ouvrira le site : " + cible,
+    "",
+    "Code à lui transmettre : " + code,
+    "",
+    "Son lien, à lui donner une fois l'accès confirmé :",
+    lien,
+    "",
+    "Il reste à confirmer l'accès (« ✅ Hamafiso » ou « 🔓 Sokafy ny pejy »).",
+  ].join("\n");
+
+  const envoi = pourLeProprietaire
+    ? await envoyer(ownerEmail, "Demande d'accès à « Administratif Fokontany » — " + (anarana || cible), texteProprietaire)
+    : await envoyer(cible, "Votre accès à « Administratif Fokontany » — Gestion de Stockage", texte);
 
   // Le code revient au propriétaire : si le mail n'est pas parti, il peut le
   // dire lui-même plutôt que de laisser la personne dehors.
