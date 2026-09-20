@@ -14,7 +14,15 @@
 
   function $(id) { return document.getElementById(id); }
 
-  const ANDRAIKITRA = { ray: 'Ray', reny: 'Reny', zanaka: 'Zanaka', hafa: 'Hafa' };
+  // Ce qui se fait ici se retrouve sous la cloche : les avis restent dans le
+  // site, et se relisent (fokontany-app.js, common.js).
+  function avertir(message) {
+    if (typeof window.__ajouterNotificationAction === 'function') {
+      window.__ajouterNotificationAction('modification', message);
+    }
+  }
+
+  const ANDRAIKITRA ={ ray: 'Ray', reny: 'Reny', zanaka: 'Zanaka', hafa: 'Hafa' };
   // L'ordre du livret : les parents d'abord, les enfants ensuite.
   const RANG = { ray: 0, reny: 1, zanaka: 2, hafa: 3 };
 
@@ -209,6 +217,7 @@
       : client.from('fianakaviana').insert(Object.assign({ owner_email: email }, f));
     suite.then(function (res) {
       if (res.error) { dire('famMessage', expliquer(res), true); return; }
+      if (!enEdition) avertir('📖 Livre de famille vaovao : ' + f.anarana + (f.laharana ? ' (' + f.laharana + ')' : '') + '.');
       dire('famMessage', enEdition ? 'Voaova.' : 'Voatahiry.');
       vider();
       charger();
@@ -298,6 +307,8 @@
     }).then(function (res) {
       if (res.error) { dire('famOuvertMessage', expliquer(res), true); return; }
       dire('famOuvertMessage', 'Voasoratra ao amin\'ny livre.');
+      avertir('👪 Voasoratra ao amin\'ny livre : ' + anarana +
+        ' (' + (ANDRAIKITRA[$('famAndraikitra').value] || '') + ').');
       viderMembre();
       charger();
     }, function () { dire('famOuvertMessage', 'Tsy tratra ny serveur : jereo ny réseau.', true); });

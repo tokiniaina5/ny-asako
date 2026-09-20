@@ -15,6 +15,14 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // Ce qui se fait ici se retrouve sous la cloche : les avis restent dans le
+  // site, et se relisent (fokontany-app.js, common.js).
+  function avertir(message) {
+    if (typeof window.__ajouterNotificationAction === 'function') {
+      window.__ajouterNotificationAction('modification', message);
+    }
+  }
+
   let adidy = [];
   let personnes = [];
   let versements = [];
@@ -288,6 +296,9 @@
         vola: choisie && choisie.vidiny != null ? choisie.vidiny : null
       }).then(function (res) {
         if (res.error) { dire('adidyFandoavanaMessage', expliquer(res), true); }
+        else avertir('💰 Adidy voaloa : ' + personne.anarana + ' — ' +
+          (choisie ? choisie.anarana : 'adidy') + ' (' + periodeLisible(periode) + ')' +
+          (choisie && choisie.vidiny != null ? ' · ' + ariary(choisie.vidiny) : '') + '.');
         chargerVersements();
       }, function () { dire('adidyFandoavanaMessage', 'Tsy tratra ny serveur.', true); });
       return;

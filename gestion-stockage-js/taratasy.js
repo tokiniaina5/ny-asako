@@ -16,6 +16,14 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // Ce qui se fait ici se retrouve sous la cloche : les avis restent dans le
+  // site, et se relisent (fokontany-app.js, common.js).
+  function avertir(message) {
+    if (typeof window.__ajouterNotificationAction === 'function') {
+      window.__ajouterNotificationAction('modification', message);
+    }
+  }
+
   // Cinq sortes de papiers. Le départ seul est archivé (il ne se liste ni ne
   // se modifie) ; les autres se listent, se réimpriment et s'effacent.
   const TITRES = {
@@ -437,6 +445,7 @@
       // Le PDF part du formulaire et non de la ligne relue : la personne
       // l'attend maintenant, et non après un aller-retour au serveur.
       fabriquerPdf(t);
+      avertir('📄 Taratasy nomena : ' + nomDe(t) + ' — ' + t.anarana + ' (' + (t.laharana || '—') + ').');
       dire(t.karazana === 'fifindramonina'
         ? 'Voatahiry sy voahidy. Ny laharana « ' + t.laharana + ' » sy ny anarana no manokatra azy indray.'
         : 'Vita ny taratasy, ary voatahiry.');
