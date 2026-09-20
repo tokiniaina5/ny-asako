@@ -131,9 +131,12 @@
               '<div class="field"><label for="pvFanampiny" style="color:#3d4b53;">Fanampin\'anarana (prénom) *</label>' +
                 '<input type="text" id="pvFanampiny" data-f-prenom placeholder="Jean" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
               '<div class="field"><label for="pvFokontany" style="color:#3d4b53;">Anaran\'ny fokontany *</label>' +
-                '<input type="text" id="pvFokontany" data-f-fokontany placeholder="Ambohimanarina" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
+                '<input type="text" id="pvFokontany" data-f-fokontany list="pvFokontanyListe" placeholder="Ambohimanarina" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;">' +
+                '<datalist id="pvFokontanyListe" data-liste-fokontany></datalist></div>' +
               '<div class="field"><label for="pvCommun" style="color:#3d4b53;">Anaran\'ny commun *</label>' +
-                '<input type="text" id="pvCommun" data-f-commun placeholder="Antananarivo" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
+                '<input type="text" id="pvCommun" data-f-commun list="pvCommunListe" placeholder="Antananarivo" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;">' +
+                '<datalist id="pvCommunListe" data-liste-commun></datalist>' +
+                '<span data-commun-auto style="display:none; font-size:0.72rem; color:#2a7f62; margin-top:0.25rem;">Feno ho azy : avy amin\'ny listra.</span></div>' +
               '<div class="field"><label for="pvMail" style="color:#3d4b53;">Email hanokafana ny site *</label>' +
                 '<input type="email" id="pvMail" data-f-email placeholder="fokontany@exemple.com" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
               '<div class="field"><label for="pvAsa" style="color:#3d4b53;">Asa eo anivon\'ny fokontany *</label>' +
@@ -257,8 +260,51 @@
             '</tr>';
           }).join('');
           vide.style.display = installes.length ? 'none' : '';
+          poserLesListes();
         }, function () { vide.style.display = ''; });
     }
+
+    // Ce qui est déjà installé sert de liste : l'admin ne réécrit pas ce
+    // qu'il a déjà écrit, et le commun d'un fokontany connu se pose tout
+    // seul — un même fokontany ne relève pas de deux communs.
+    function options(valeurs){
+      const vus = {};
+      return valeurs.filter(function(x){
+        const c = String(x || '').trim(); if(!c) return false;
+        const k = c.toLowerCase(); if(vus[k]) return false; vus[k] = 1; return true;
+      }).sort().map(function(x){ return '<option value="' + echap(x) + '"></option>'; }).join('');
+    }
+    function poserLesListes(){
+      const lf = page.querySelector('[data-liste-fokontany]');
+      const lc = page.querySelector('[data-liste-commun]');
+      if(lf) lf.innerHTML = options(installes.map(function(i){ return i.fokontany; }));
+      if(lc) lc.innerHTML = options(installes.map(function(i){ return i.commun; }));
+    }
+    // Le commun de ce fokontany, tel qu'il a été inscrit la première fois.
+    function communDe(nom){
+      const c = String(nom || '').trim().toLowerCase();
+      if(!c) return '';
+      const trouve = installes.filter(function(i){
+        return String(i.fokontany || '').trim().toLowerCase() === c && String(i.commun || '').trim();
+      })[0];
+      return trouve ? String(trouve.commun).trim() : '';
+    }
+    (function(){
+      const champF = page.querySelector('[data-f-fokontany]');
+      const champC = page.querySelector('[data-f-commun]');
+      const avis = page.querySelector('[data-commun-auto]');
+      if(!champF || !champC) return;
+      // Le commun d'un fokontany connu l'emporte sur ce qu'on tape : un
+      // fokontany ne relève que d'un commun. La marque « auto » ne sert qu'à
+      // effacer ce qu'on a posé quand le nom redevient inconnu.
+      champC.addEventListener('input', function(){ champC.dataset.auto = ''; avis.style.display = 'none'; });
+      champF.addEventListener('input', function(){
+        const trouve = communDe(champF.value);
+        if(trouve){ champC.value = trouve; champC.dataset.auto = '1'; avis.style.display = ''; return; }
+        if(champC.dataset.auto){ champC.value = ''; champC.dataset.auto = ''; }
+        avis.style.display = 'none';
+      });
+    })();
     chargerLesInstallations();
 
     // Déjà installé pour cet email, ou pour ce nom de fokontany : on ne
@@ -292,6 +338,7 @@
     // sien (/fokontany/?f=…&e=…), sa page le porte en titre, et c'est son
     // email — non celui de l'admin — qui attend sur l'écran de connexion.
     let fokontanyDemande = '';
+    let communDemande = '';
     let emailDemande = '';
     page.querySelector('[data-mangataka]').addEventListener('click', function(){
       const lire = function(sel){ return String(page.querySelector(sel).value || '').trim(); };
@@ -331,6 +378,7 @@
           return;
         }
         fokontanyDemande = fokontany;
+        communDemande = commun;
         emailDemande = email;
         champ.value = data.code;
         // Le Commun l'apprend : le fokontany y est inscrit, sous son nom.
@@ -372,6 +420,7 @@
           // Le nom du fokontany et son email voyagent avec le lien.
           const bouts = [];
           if(fokontanyDemande) bouts.push('f=' + encodeURIComponent(fokontanyDemande));
+          if(communDemande) bouts.push('c=' + encodeURIComponent(communDemande));
           if(emailDemande || a.email) bouts.push('e=' + encodeURIComponent(emailDemande || a.email));
           const suffixe = bouts.length ? '?' + bouts.join('&') : '';
           setTimeout(function(){ fermer(); ensuite(suffixe); }, 700);

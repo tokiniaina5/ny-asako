@@ -132,16 +132,22 @@ document.addEventListener('DOMContentLoaded', function () {
   // ensuite à son nom, sans l'adresse.
   (function () {
     var CLE_NOM = 'stockmanager_fokontany_nom';
+    // Le commun dont ce fokontany relève : il vient du lien, et s'inscrit
+    // avec l'installation. L'admin le retrouve ensuite sans le réécrire.
+    var CLE_COMMUN = 'stockmanager_fokontany_commun';
     var nom = '';
     var email = '';
     try {
       var params = new URLSearchParams(window.location.search);
       nom = String(params.get('f') || '').trim();
       email = String(params.get('e') || '').trim().toLowerCase();
-      if (nom || email) {
+      var commun = String(params.get('c') || '').trim();
+      if (nom || email || commun) {
         if (nom) localStorage.setItem(CLE_NOM, nom);
+        if (commun) localStorage.setItem(CLE_COMMUN, commun);
         params.delete('f');
         params.delete('e');
+        params.delete('c');
         var reste = params.toString();
         history.replaceState(null, '', window.location.pathname + (reste ? '?' + reste : ''));
       }
@@ -420,12 +426,17 @@ document.addEventListener('DOMContentLoaded', function () {
   function noterLinstallation() {
     if (!currentUser || !window.__sb) return;
     var nom = '';
-    try { nom = String(localStorage.getItem('stockmanager_fokontany_nom') || '').trim(); } catch (e) {}
+    var commun = '';
+    try {
+      nom = String(localStorage.getItem('stockmanager_fokontany_nom') || '').trim();
+      commun = String(localStorage.getItem('stockmanager_fokontany_commun') || '').trim();
+    } catch (e) {}
     var appareil = '';
     try { appareil = String(navigator.userAgent || '').slice(0, 160); } catch (e) {}
     window.__sb.from('fokontany_installation').insert({
       email: String(currentUser.email || '').trim().toLowerCase(),
       fokontany: nom || null,
+      commun: commun || null,
       karazana: APP_COMMUN ? 'commun' : 'fokontany',
       appareil: appareil || null
     }).then(function () {}, function () {});
