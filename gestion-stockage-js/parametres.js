@@ -304,6 +304,19 @@
     }, shareTextOnly);
   }
 
+  // Le même message que « Partager », mais adressé à la liste des clients
+  // plutôt qu'à la fenêtre de WhatsApp, qui n'en accepte qu'une poignée.
+  function shareToutLeMonde(n){
+    if(typeof window.__zaraoAminyRehetra !== 'function') return;
+    const parts = [];
+    if(n.client_name) parts.push(n.client_name + ' :');
+    if(n.message) parts.push(n.message);
+    if(n.price) parts.push('(' + formatAr(n.price) + ')');
+    const text = parts.join(' ').trim() || 'Vaovao ao amin\'ny asako';
+    const link = (n.link && /^https?:\/\//i.test(n.link)) ? n.link : appShareLink();
+    window.__zaraoAminyRehetra({ texte: text, rohy: link });
+  }
+
   // Ouvre « Acheter » avec ce que l'annonce dit déjà : le nom, le prix, le
   // vendeur. Il ne reste qu'à confirmer la quantité — recopier ces trois
   // choses de mémoire est le meilleur moyen de se tromper de prix.
@@ -607,7 +620,11 @@
             (type === 'entana'
               ? '<span class="fb-buy-action" data-buy style="cursor:pointer; color:var(--cyan);">🛒 Acheter</span>'
               : '') +
-            '<span class="fb-share-action" data-share style="cursor:pointer;">↗️ Partager</span></div>' +
+            '<span class="fb-share-action" data-share style="cursor:pointer;">↗️ Partager</span>' +
+            // La feuille de WhatsApp coche cinq personnes et s'arrête là.
+            // Celui-ci passe par la liste des clients (zara-rehetra.js) :
+            // tout cocher d'un coup, sans plafond.
+            '<span class="fb-share-action" data-share-all style="cursor:pointer;">📢 Rehetra</span></div>' +
             '<div class="fb-comments" data-comments style="display:none;"></div>';
           // La ligne du compte se glisse juste avant la rangée des actions.
           const actionsRow = div.querySelector('.fb-post-actions');
@@ -619,6 +636,10 @@
           const shareEl = div.querySelector('[data-share]');
           if(shareEl){
             shareEl.addEventListener('click', function(){ sharePost(n); });
+          }
+          const shareAllEl = div.querySelector('[data-share-all]');
+          if(shareAllEl){
+            shareAllEl.addEventListener('click', function(){ shareToutLeMonde(n); });
           }
           const buyEl = div.querySelector('[data-buy]');
           if(buyEl){
