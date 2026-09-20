@@ -214,10 +214,16 @@
     dire('famMessage', 'Mitahiry…');
     const suite = enEdition
       ? client.from('fianakaviana').update(Object.assign({ updated_at: new Date().toISOString() }, f)).eq('id', enEdition)
-      : client.from('fianakaviana').insert(Object.assign({ owner_email: email }, f));
+      // select : l'identifiant revient, et le livret s'ouvre aussitôt — c'est
+      // là qu'on écrit les gens, leur CIN et leur passeport.
+      : client.from('fianakaviana').insert(Object.assign({ owner_email: email }, f)).select('id');
     suite.then(function (res) {
       if (res.error) { dire('famMessage', expliquer(res), true); return; }
-      if (!enEdition) avertir('📖 Livre de famille vaovao : ' + f.anarana + (f.laharana ? ' (' + f.laharana + ')' : '') + '.');
+      if (!enEdition) {
+        avertir('📖 Livre de famille vaovao : ' + f.anarana + (f.laharana ? ' (' + f.laharana + ')' : '') + '.');
+        const cree = res.data && res.data[0];
+        if (cree && cree.id) ouvert = cree.id;
+      }
       dire('famMessage', enEdition ? 'Voaova.' : 'Voatahiry.');
       vider();
       charger();
@@ -256,6 +262,10 @@
   function montrerLouvert() {
     const boite = $('famOuvert');
     const f = familles.filter(function (x) { return x.id === ouvert; })[0];
+    const note = $('famOuvertVide');
+    // Un livret fermé : on dit où écrire les gens, plutôt que de ne rien
+    // montrer — c'est là que vont les CIN et les passeports.
+    if (note) note.style.display = (!f && familles.length) ? '' : 'none';
     if (!f) { boite.style.display = 'none'; return; }
     boite.style.display = '';
     $('famOuvertTitre').textContent = '👪 ' + f.anarana + (f.laharana ? ' — ' + f.laharana : '');

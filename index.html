@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="47a7c975">
+<meta name="ny-asako-version" content="e07ee73f">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -1250,6 +1250,8 @@
               </div>
               <p class="empty-hint" id="famVide">Mbola tsy misy livre de famille.</p>
             </div>
+
+            <p class="empty-hint" id="famOuvertVide" style="display:none;">Tsindrio « 📖 Sokafy » eo amin'ny livre iray, dia hiseho eto ny fanoratana ny mpianakavy : anarana, CIN na passeport, daty nahaterahana.</p>
 
             <!-- Le livret ouvert : ses membres, pris dans le registre. -->
             <div class="panel" id="famOuvert" style="display:none;">
@@ -2774,7 +2776,7 @@
 <script src="gestion-stockage-js/photocopie.js?v=362c711f"></script>
 <script src="gestion-stockage-js/commun-alalana.js?v=682d598c"></script>
 <script src="gestion-stockage-js/taratasy.js?v=1a168f41"></script>
-<script src="gestion-stockage-js/fianakaviana.js?v=796f8b3d"></script>
+<script src="gestion-stockage-js/fianakaviana.js?v=13cae749"></script>
 <script src="gestion-stockage-js/adidy.js?v=5387bd85"></script>
 <script src="gestion-stockage-js/theme.js?v=096262fd"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
