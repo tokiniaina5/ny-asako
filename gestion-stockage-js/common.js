@@ -5200,6 +5200,13 @@
         // Le Commun l'apprend : le fokontany y est inscrit, sous son nom.
         ajouterNotificationLocale('fangatahana',
           'Voasoratra ao amin\'ny Commun « ' + commun + ' » ny Fokontany « ' + fokontany + ' » (' + email + ').');
+        // Un fokontany nouveau vaut 500 000 Ar au portefeuille (commun-code).
+        if(data.credite){
+          ajouterNotificationLocale('parrainage',
+            '💰 ' + Number(data.montant || 0).toLocaleString('fr-FR') + ' Ar tafiditra ao amin\'ny portefeuillenao : ' +
+            'Fokontany vaovao « ' + fokontany + ' ».');
+          if(typeof renderWallet === 'function') renderWallet();
+        }
         dire(data.sent
           ? 'Lasa tao amin\'ny mailakao (admin) ny taratasy sy ny code. Code : ' + data.code + ' — tsindrio « 🔓 Sokafy ny pejy ».'
           : 'Tsy lasa ny mailaka (' + (data.error || 'antony tsy fantatra') + '). Code : ' + data.code + ' — voatahiry ihany izy.', !data.sent);

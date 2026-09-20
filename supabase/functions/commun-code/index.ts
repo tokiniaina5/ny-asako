@@ -142,6 +142,27 @@ Deno.serve(async (req: Request) => {
 
   if (ecrit.error) return json({ error: ecrit.error.message }, 502);
 
+  // Un fokontany nouveau — un email qu'on n'avait pas — vaut 500 000 Ar au
+  // portefeuille du propriétaire. Le solde n'est pas une colonne qu'on
+  // incrémente : il se déduit des versements (wallet_deposits), et seule
+  // cette fonction, qui tient la clé de service, peut en écrire un.
+  // « provider_ref » est l'email : l'index unique empêche de créditer deux
+  // fois le même fokontany, même si l'on redemande un code.
+  const VALEUR_FOKONTANY = 500000;
+  let credite = false;
+  if (pourLeProprietaire && !ligne) {
+    const versement = await admin.from("wallet_deposits").insert({
+      email: ownerEmail,
+      amount_ar: VALEUR_FOKONTANY,
+      provider: "fokontany",
+      provider_ref: cible,
+      status: "confirme",
+      confirmed_at: new Date().toISOString(),
+      note: "Fokontany vaovao : " + (anarana || cible),
+    });
+    credite = !versement.error;
+  }
+
   // 3) la demande, marquée acceptée
   await admin.from("commun_fangatahana")
     .update({ statut: "ekena", updated_at: new Date().toISOString() })
@@ -181,7 +202,10 @@ Deno.serve(async (req: Request) => {
     lien,
     "",
     "Il reste à confirmer l'accès (« ✅ Hamafiso » ou « 🔓 Sokafy ny pejy »).",
-  ].join("\n");
+    credite ? "" : null,
+    credite ? "Fokontany nouveau : " + VALEUR_FOKONTANY.toLocaleString("fr-FR") +
+      " Ar sont entrés dans votre portefeuille." : null,
+  ].filter((l) => l !== null).join("\n");
 
   const envoi = pourLeProprietaire
     ? await envoyer(ownerEmail, "Demande d'accès à « Administratif Fokontany » — " + (anarana || cible), texteProprietaire)
@@ -189,5 +213,5 @@ Deno.serve(async (req: Request) => {
 
   // Le code revient au propriétaire : si le mail n'est pas parti, il peut le
   // dire lui-même plutôt que de laisser la personne dehors.
-  return json({ ok: true, code, sent: envoi.sent, error: envoi.error, lien });
+  return json({ ok: true, code, sent: envoi.sent, error: envoi.error, lien, credite, montant: credite ? VALEUR_FOKONTANY : 0 });
 });
