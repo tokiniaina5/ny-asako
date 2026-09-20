@@ -80,15 +80,19 @@
         // Un même numéro inscrit deux fois ne fait qu'un destinataire : on
         // garde le plus récent, qui porte le nom le plus à jour.
         var vus = {};
+        var vusMail = {};
         var gardes = [];
+        var mails = 0;
         lignes.forEach(function (c) {
+          var mail = String(c.email || '').trim().toLowerCase();
+          if (mail.indexOf('@') > 0 && !vusMail[mail]) { vusMail[mail] = 1; mails++; }
           var num = numeroInternational(c.phone);
           if (!num || vus[num]) return;
           vus[num] = 1;
           gardes.push({ nom: String(c.name || '').trim() || c.email || num, numero: num });
         });
-        return gardes;
-      }, function () { return []; });
+        return { clients: gardes, mails: mails };
+      }, function () { return { clients: [], mails: 0 }; });
   }
 
   window.__zaraoAminyRehetra = function (opts) {
@@ -157,6 +161,22 @@
           '<div data-reseaux></div>' +
         '</div>' +
 
+        // 3) L'email : le seul qui parte vraiment, sans que personne
+    //    n'appuie sur « Envoyer » à l'autre bout.
+        '<div class="panel">' +
+          '<h3>📧 Mailaka</h3>' +
+          '<p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0 0 0.9rem;">' +
+            'Ity irery no <strong style="color:var(--text);">tena mandeha any amin\'ny client</strong> : ' +
+            'ny serveur no mandefa azy, ka mahazo ny hafatra ao anaty boaty mailaka izy ireo, tsy misy tsindriana. ' +
+            'Miafina ny adiresy : tsy mifampahita ny client.' +
+          '</p>' +
+          '<label class="list-row" style="cursor:pointer;">' +
+            '<span style="display:flex; align-items:center; gap:0.6rem;">' +
+              '<input type="checkbox" data-mailaka checked> <strong>Alefa amin\'ny client rehetra manana email</strong></span>' +
+            '<span data-mailaka-isa style="color:var(--muted); font-size:0.74rem; white-space:nowrap;"></span>' +
+          '</label>' +
+        '</div>' +
+
         '<button type="button" class="btn btn-primary" data-alefa>📨 Alefa</button>' +
 
         // La file : un envoi à la fois, un appui par envoi.
@@ -188,6 +208,8 @@
     var somary = page.querySelector('[data-somary]');
 
     var clients = [];
+    var mailaka = page.querySelector('[data-mailaka]');
+    var mailakaIsa = page.querySelector('[data-mailaka-isa]');
     var reseaux = RESEAUX.map(function (r) {
       var copie = {};
       Object.keys(r).forEach(function (k) { copie[k] = r[k]; });
@@ -211,8 +233,10 @@
       var vus = visibles();
       daholo.checked = vus.length > 0 && vus.every(function (c) { return c.coche; });
       daholoR.checked = reseaux.every(function (r) { return r.coche; });
-      tout.checked = daholoR.checked && (clients.length === 0 || clients.every(function (c) { return c.coche; }));
-      somary.textContent = cochesC().length + ' client + ' + cochesR().length + ' tambajotra';
+      tout.checked = daholoR.checked && mailaka.checked &&
+        (clients.length === 0 || clients.every(function (c) { return c.coche; }));
+      somary.textContent = cochesC().length + ' client + ' + cochesR().length + ' tambajotra' +
+        (mailaka.checked ? ' + mailaka' : '');
     }
 
     function dessiner() {
@@ -267,13 +291,17 @@
     tout.addEventListener('change', function () {
       clients.forEach(function (c) { c.coche = tout.checked; });
       reseaux.forEach(function (r) { r.coche = tout.checked; });
+      mailaka.checked = tout.checked;
       dessiner();
       dessinerReseaux();
     });
     sivana.addEventListener('input', dessiner);
+    mailaka.addEventListener('change', direLIsa);
 
     dessinerReseaux();
-    lireLesClients().then(function (liste) {
+    lireLesClients().then(function (res) {
+      mailakaIsa.textContent = res.mails + ' email';
+      var liste = res.clients;
       clients = liste.map(function (c) { c.coche = true; return c; });
       vide.style.display = clients.length ? 'none' : '';
       dessiner();
@@ -302,6 +330,14 @@
       }
       var e = attente[rang];
       fileTitre.textContent = 'Fandefasana ' + (rang + 1) + ' / ' + attente.length;
+      bSokafy.disabled = false;
+      bSokafy.textContent = e.mail ? '📧 Alefa ny mailaka' : '📨 Sokafy';
+      if (e.mail) {
+        fileQui.innerHTML = '<strong>📧 Mailaka amin\'ny client rehetra</strong>' +
+          ' <span style="color:var(--muted); font-size:0.8rem;">— ny serveur no mandefa, tsy azo averina</span>';
+        fileVita.textContent = nalefa ? nalefa + ' efa nosokafana.' : '';
+        return;
+      }
       fileQui.innerHTML = e.client
         ? '<strong>' + echap(e.client.nom) + '</strong> · +' + echap(e.client.numero)
         : '<strong style="color:' + e.reseau.couleur + ';">' + echap(e.reseau.nom) + '</strong>' +
@@ -311,7 +347,8 @@
 
     page.querySelector('[data-alefa]').addEventListener('click', function () {
       attente = cochesC().map(function (c) { return { client: c }; })
-        .concat(cochesR().map(function (r) { return { reseau: r }; }));
+        .concat(cochesR().map(function (r) { return { reseau: r }; }))
+        .concat(mailaka.checked ? [{ mail: true }] : []);
       if (!attente.length) { alert('Tsy misy voamarika.'); return; }
       rang = 0;
       nalefa = 0;
@@ -326,6 +363,35 @@
     bSokafy.addEventListener('click', function () {
       var e = attente[rang];
       if (!e) return;
+      // Une annonce envoyée à tout le carnet ne se rattrape pas : on
+      // demande, et on dit combien de personnes la recevront.
+      if (e.mail) {
+        if (!confirm('Halefa any amin\'ny client rehetra manana email ny hafatra. Tsy azo averina. Hitohy?')) return;
+        if (!window.__sb || !window.__sb.functions) {
+          fileVita.textContent = 'Tsy tafiditra ny serveur.';
+          return;
+        }
+        bSokafy.disabled = true;
+        fileVita.textContent = 'Mandefa…';
+        window.__sb.functions.invoke('annonce-mailaka', {
+          body: { texte: texte, rohy: rohy, sujet: (texte.split('\n')[0] || '').slice(0, 80) }
+        }).then(function (res) {
+          var d = (res && res.data) || {};
+          if (d.sent) {
+            nalefa++;
+            rang++;
+            montrerLeRang();
+            fileVita.textContent = '✓ ' + d.sent + ' mailaka lasa' + (d.error ? ' (' + d.error + ')' : '') + '.';
+            return;
+          }
+          bSokafy.disabled = false;
+          fileVita.textContent = 'Tsy lasa : ' + (d.error || (res && res.error && res.error.message) || 'antony tsy fantatra');
+        }, function (err) {
+          bSokafy.disabled = false;
+          fileVita.textContent = 'Tsy tratra ny fonction : ' + ((err && err.message) || 'réseau');
+        });
+        return;
+      }
       if (e.client) {
         window.open('https://wa.me/' + e.client.numero + '?text=' + encodeURIComponent(hafatra), '_blank');
       } else if (e.reseau.copie) {
