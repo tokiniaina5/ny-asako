@@ -126,6 +126,29 @@
     $('famVide').style.display = familles.length ? 'none' : '';
     montrerLouvert();
     compter();
+    poserLaharana();
+  }
+
+  // Le numéro du livret se pose tout seul : « 001/2026 », puis 002, 003…
+  // Compté sur le plus grand numéro déjà donné cette année, et non sur le
+  // nombre de livrets — un livret effacé ne rend pas son numéro à un autre.
+  // Il reste modifiable : on ne réécrit que celui qu'on avait posé.
+  let laharanaPose = '';
+  function laharanaSuivant() {
+    const taona = String(new Date().getFullYear());
+    let plusGrand = 0;
+    familles.forEach(function (f) {
+      const m = String(f.laharana || '').match(/^(\d+)\s*\/\s*(\d{4})$/);
+      if (m && m[2] === taona && Number(m[1]) > plusGrand) plusGrand = Number(m[1]);
+    });
+    return String(plusGrand + 1).padStart(3, '0') + '/' + taona;
+  }
+  function poserLaharana() {
+    const champ = $('famLaharana');
+    // On ne touche ni à ce qui a été écrit à la main, ni au livret qu'on corrige.
+    if (enEdition || (champ.value && champ.value !== laharanaPose)) return;
+    laharanaPose = laharanaSuivant();
+    champ.value = laharanaPose;
   }
 
   function lireFormulaire() {
@@ -144,6 +167,9 @@
       .forEach(function (id) { $(id).value = ''; });
     enEdition = null;
     $('famTehirizo').textContent = '💾 Tehirizo';
+    // Le numéro du livret suivant, et non celui qu'on vient de donner.
+    laharanaPose = '';
+    poserLaharana();
   }
 
   function enregistrer() {
