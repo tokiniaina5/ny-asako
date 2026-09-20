@@ -149,6 +149,31 @@
     if (enEdition || (champ.value && champ.value !== laharanaPose)) return;
     laharanaPose = laharanaSuivant();
     champ.value = laharanaPose;
+    direLannee();
+  }
+
+  // Le compteur repart à 001 chaque année : un livret de janvier ne suit pas
+  // celui de décembre. On le dit sous le champ, et une fois — la première de
+  // l'année — en notification : le numéro a changé d'année, pas de registre.
+  const CLE_TAONA = 'stockmanager_fianakaviana_taona';
+  function direLannee() {
+    const taona = String(new Date().getFullYear());
+    const note = $('famLaharanaNote');
+    const premier = laharanaPose.indexOf('001/') === 0;
+    if (note) {
+      note.textContent = premier
+        ? '🔄 Taona vaovao : miverina amin\'ny 001 ny laharan\'ny boky amin\'ity taona ' + taona + ' ity.'
+        : 'Laharana ho azy, misesy isan-taona (miverina amin\'ny 001 isaky ny taona vaovao).';
+    }
+    if (!premier || !familles.length) return;
+    let deja = '';
+    try { deja = localStorage.getItem(CLE_TAONA) || ''; } catch (e) {}
+    if (deja === taona) return;
+    try { localStorage.setItem(CLE_TAONA, taona); } catch (e) {}
+    if (typeof window.__ajouterNotificationAction === 'function') {
+      window.__ajouterNotificationAction('modification',
+        '🔄 Taona ' + taona + ' : niverina amin\'ny 001 ny laharan\'ny livre de famille.');
+    }
   }
 
   function lireFormulaire() {
