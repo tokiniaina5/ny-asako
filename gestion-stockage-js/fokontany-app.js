@@ -267,6 +267,9 @@ document.addEventListener('DOMContentLoaded', function () {
     $('fkReserve').style.display = interdit ? '' : 'none';
     $('dash-commun').style.display = interdit ? 'none' : '';
     if (isOwnerEmail(currentUser.email)) rendreInstallable();
+    // Le Commun surplombe les fokontany : l'admin y valide et y prend les
+    // liens d'installation, la même page que dans Ny asako.
+    $('fkValidation').style.display = (APP_COMMUN && isOwnerEmail(currentUser.email)) ? '' : 'none';
     choisirOngletCommun(ongletCommun);
   }
 
@@ -593,6 +596,13 @@ document.addEventListener('DOMContentLoaded', function () {
       try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
       if (up.data && up.data.user) ouvrir(up.data.user);
     }, function () { st.textContent = 'Tsy tratra ny serveur : jereo ny réseau.'; });
+  });
+
+  $('fkValidation').addEventListener('click', function () {
+    if (typeof window.__validerAvantInstall !== 'function') return;
+    window.__validerAvantInstall(function (suffixe) {
+      window.__versLInstallation('/fokontany/', suffixe);
+    });
   });
 
   $('fkSortir').addEventListener('click', function () {

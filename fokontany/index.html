@@ -227,6 +227,9 @@
           <div id="fkNotifList"></div>
         </div>
       </div>
+      <!-- Dans le Commun, l'admin valide les fokontany et prend leur lien
+           d'installation, sans repasser par Ny asako (validation-install.js). -->
+      <button type="button" class="btn btn-sm" id="fkValidation" style="width:auto; display:none;">🛡️ Fanamarinana</button>
       <!-- Au propriétaire seul, quand le navigateur sait installer. -->
       <button type="button" class="btn btn-sm btn-primary" id="fkInstaller" style="width:auto; display:none;">📲 Installer</button>
       <button type="button" class="btn btn-sm" id="fkSortir" style="width:auto;">Hivoaka</button>
@@ -777,10 +780,11 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="/gestion-stockage-js/fokontany-app.js?v=8d3aef37"></script>
+<script src="/gestion-stockage-js/fokontany-app.js?v=4721f6ce"></script>
 <script src="/gestion-stockage-js/commun-alalana.js?v=682d598c"></script>
 <script src="/gestion-stockage-js/taratasy.js?v=1a168f41"></script>
 <script src="/gestion-stockage-js/fianakaviana.js?v=13cae749"></script>
+<script src="/gestion-stockage-js/validation-install.js?v=cbdb7ada"></script>
 <script src="/gestion-stockage-js/adidy.js?v=5387bd85"></script>
 </body>
 </html>
