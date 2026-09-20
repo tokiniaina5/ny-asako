@@ -368,10 +368,30 @@ document.addEventListener('DOMContentLoaded', function () {
   // L'application installée s'ouvre sur l'écran de connexion, pour le compte
   // du fokontany : elle a sa propre session (supabase-init.js), l'admin reste
   // connecté dans le navigateur.
+  // Installée : on l'écrit, pour que l'admin sache lequel est fait et ne
+  // donne pas deux fois l'accès au même fokontany. C'est le compte du
+  // fokontany qui écrit sa ligne, et lui seul (supabase-fokontany-installation.sql).
+  function noterLinstallation() {
+    if (!currentUser || !window.__sb) return;
+    var nom = '';
+    try { nom = String(localStorage.getItem('stockmanager_fokontany_nom') || '').trim(); } catch (e) {}
+    var appareil = '';
+    try { appareil = String(navigator.userAgent || '').slice(0, 160); } catch (e) {}
+    window.__sb.from('fokontany_installation').insert({
+      email: String(currentUser.email || '').trim().toLowerCase(),
+      fokontany: nom || null,
+      karazana: APP_COMMUN ? 'commun' : 'fokontany',
+      appareil: appareil || null
+    }).then(function () {}, function () {});
+  }
   window.addEventListener('appinstalled', function () {
     invitation = null;
     montrerInstallation();
+    noterLinstallation();
   });
+  // Ouverte dans la fenêtre de l'application : elle est donc installée, même
+  // si l'on n'a pas vu l'événement (installée hier, ou sur un autre profil).
+  if (dejaInstallee()) setTimeout(function () { if (currentUser) noterLinstallation(); }, 3000);
   $('fkInstaller').addEventListener('click', function () {
     if (!invitation) return;
     invitation.prompt();

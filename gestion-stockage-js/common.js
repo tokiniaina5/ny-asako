@@ -5066,6 +5066,16 @@
           '<button type="button" class="btn btn-primary btn-sm" data-sokafy style="width:auto;">🔓 Sokafy ny pejy</button>' +
           '<p data-statut style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>' +
         '</div>' +
+        // Ce qui est déjà installé : l'admin passe de fokontany en fokontany,
+        // et sans cette liste il ne sait plus lequel est fait.
+        '<div class="panel">' +
+          '<h3>📲 Installation vita</h3>' +
+          '<div class="table-scroll"><table>' +
+            '<thead><tr><th>Daty</th><th>Fokontany</th><th>Email</th><th>App</th></tr></thead>' +
+            '<tbody data-installes></tbody>' +
+          '</table></div>' +
+          '<p class="empty-hint" data-installes-vide style="display:none;">Mbola tsy misy installation vita.</p>' +
+        '</div>' +
         // Toutes les demandes, ici même : on valide d'un bouton, sans aller
         // chercher le code dans l'onglet Fangatahana.
         '<div class="panel">' +
@@ -5139,6 +5149,45 @@
       }, function(){ vide.style.display = ''; });
     }
     chargerLesDemandes();
+
+    // Les installations déjà faites : la liste que l'admin regarde, et la
+    // garde contre le doublon — même email, ou même nom de fokontany.
+    let installes = [];
+    function nomDuFokontany(texte) {
+      const m = String(texte || '').match(/Fokontany\s+([^\/(—]+)/i);
+      return m ? m[1].trim().toLowerCase() : '';
+    }
+    function chargerLesInstallations() {
+      const corps = page.querySelector('[data-installes]');
+      const vide = page.querySelector('[data-installes-vide]');
+      if (!sb) { vide.style.display = ''; return Promise.resolve(); }
+      return sb.from('fokontany_installation').select('*').order('created_at', { ascending: false })
+        .then(function (res) {
+          installes = (res && !res.error && res.data) || [];
+          corps.innerHTML = installes.map(function (i) {
+            return '<tr>' +
+              '<td style="white-space:nowrap;">' + (i.created_at ? new Date(i.created_at).toLocaleDateString('fr-FR') : '—') + '</td>' +
+              '<td>' + echap(i.fokontany || '—') + '</td>' +
+              '<td style="color:var(--muted);">' + echap(i.email) + '</td>' +
+              '<td>' + (i.karazana === 'commun' ? '🏛️ Commun' : '🗂️ Fokontany') + '</td>' +
+            '</tr>';
+          }).join('');
+          vide.style.display = installes.length ? 'none' : '';
+        }, function () { vide.style.display = ''; });
+    }
+    chargerLesInstallations();
+
+    // Déjà installé pour cet email, ou pour ce nom de fokontany : on ne
+    // valide pas une seconde fois. Deux accès pour un même fokontany, ce
+    // sont deux registres qui finissent par se séparer.
+    function dejaInstalle(email, texteAnarana) {
+      const mail = String(email || '').trim().toLowerCase();
+      const nom = nomDuFokontany(texteAnarana);
+      return installes.filter(function (i) {
+        if (String(i.email || '').trim().toLowerCase() === mail) return true;
+        return !!nom && String(i.fokontany || '').trim().toLowerCase() === nom;
+      })[0] || null;
+    }
 
     // « 📩 Mangataka fanokafana » : le même chemin que la porte
     // (commun-alalana.js) — la fonction commun-angataka pose la demande, tire
@@ -5227,6 +5276,13 @@
         const a = res && !res.error && (res.data || [])[0];
         if(!a){ dire('Tsy mety ny code : jereo ao amin\'ny « 🛡️ Fangatahana ».', true); return; }
         const nom = a.anarana ? a.anarana + ' (' + a.email + ')' : a.email;
+        const deja = dejaInstalle(a.email, a.anarana);
+        if (deja && !(a.active && a.voamarina)) {
+          dire('Efa nisy installation : ' + (deja.fokontany || deja.email) +
+            ' (' + new Date(deja.created_at).toLocaleDateString('fr-FR') + '). ' +
+            'Tsy azo hamafisina indray ny mail na ny anaran\'ny fokontany mitovy.', true);
+          return;
+        }
         const suite = function(){
           dire('✓ Voamarina : ' + nom + '.');
           // Le nom du fokontany et son email voyagent avec le lien.
