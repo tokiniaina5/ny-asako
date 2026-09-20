@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="4b7182ab">
+<meta name="ny-asako-version" content="47a7c975">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -886,6 +886,12 @@
               <div class="list-panel">
                 <h4>📚 Livre de famille farany</h4>
                 <div id="communListeLivre"></div>
+              </div>
+              <!-- Le Commun suit les fokontany : ceux qui ont installé leur
+                   application s'inscrivent ici (fokontany-app.js). -->
+              <div class="list-panel" id="communInstallesPanneau" style="display:none;">
+                <h4>📲 Fokontany nametraka ny app</h4>
+                <div id="communInstalles"></div>
               </div>
             </section>
 

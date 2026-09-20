@@ -35,7 +35,6 @@ function communInterdit() {
 function choisirOngletCommun(nom) {
   // Rien ne se montre ni ne se demande au serveur pour un autre compte.
   if (communInterdit()) return;
-  if (APP_COMMUN) nom = 'tableau';
   var PANNEAUX = {
     tableau: 'communCorps',
     adidy: 'communAdidy', historique: 'communHistorique',
@@ -83,6 +82,7 @@ function remplirOngletCommun() {
     renderFianakaviana();
   }
   if (nom === 'tableau') {
+    if (typeof window.__montrerLesInstallations === 'function') window.__montrerLesInstallations();
     if (typeof renderFianakavianaIsa === 'function') renderFianakavianaIsa();
     if (typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
     if (typeof renderTaratasyIsa === 'function') renderTaratasyIsa();
@@ -108,8 +108,14 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]').forEach(function (l) {
       l.setAttribute('href', '/commun/icone-192.png');
     });
-    // Regarder sans toucher, comme dans Ny asako (components.css).
-    $('communCorps').classList.add('lecture-seule');
+    // Le Commun voit tout ce que voit le Fokontany : les mêmes onglets, les
+    // mêmes pages. Mais il regarde sans toucher — la classe va sur chaque
+    // panneau, jamais sur la rangée d'onglets, qui doit rester cliquable.
+    ['communCorps', 'communAdidy', 'communHistorique', 'communTaratasy',
+      'communFianakaviana', 'communFangatahana'].forEach(function (id) {
+      var el = $(id);
+      if (el) el.classList.add('lecture-seule');
+    });
   }
 
   // ---------- Le nom du fokontany ----------
@@ -263,6 +269,35 @@ document.addEventListener('DOMContentLoaded', function () {
     if (isOwnerEmail(currentUser.email)) rendreInstallable();
     choisirOngletCommun(ongletCommun);
   }
+
+  // ---------- Le Commun suit les fokontany ----------
+  // Il les surplombe : il voit lesquels ont installé leur application, et
+  // quand. La règle du serveur ne le montre qu'au propriétaire, qui seul les
+  // lit toutes (supabase-fokontany-installation.sql).
+  window.__montrerLesInstallations = function () {
+    var panneau = $('communInstallesPanneau');
+    var liste = $('communInstalles');
+    if (!panneau || !liste || !APP_COMMUN || !window.__sb) return;
+    if (!(currentUser && isOwnerEmail(currentUser.email))) return;
+    panneau.style.display = '';
+    window.__sb.from('fokontany_installation').select('*').order('created_at', { ascending: false })
+      .then(function (res) {
+        var lignes = (res && !res.error && res.data) || [];
+        liste.innerHTML = lignes.length
+          ? lignes.map(function (i) {
+              var nom = String(i.fokontany || i.email || '').replace(/[<>&]/g, '');
+              var quoi = i.karazana === 'commun' ? '🏛️ Commun' : '🗂️ Fokontany';
+              var d = new Date(i.created_at);
+              return '<div class="list-row">' +
+                '<span>' + quoi + ' ' + nom + ' <span style="color:var(--muted);">· ' +
+                  String(i.email || '').replace(/[<>&]/g, '') + '</span></span>' +
+                '<span style="white-space:nowrap; color:var(--muted);">' +
+                  (isNaN(d) ? '—' : d.toLocaleDateString('fr-FR')) + '</span>' +
+              '</div>';
+            }).join('')
+          : '<p class="empty-hint" style="padding:0.4rem 0;">Mbola tsy misy fokontany nametraka ny app.</p>';
+      }, function () {});
+  };
 
   // ---------- Installation : l'admin, et le fokontany qu'il a validé ----------
   // La page n'a pas de manifeste : pour qui n'est pas entré, le navigateur n'a
