@@ -5045,6 +5045,8 @@
                 '<input type="text" id="pvFanampiny" data-f-prenom placeholder="Jean" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
               '<div class="field"><label for="pvFokontany" style="color:#3d4b53;">Anaran\'ny fokontany *</label>' +
                 '<input type="text" id="pvFokontany" data-f-fokontany placeholder="Ambohimanarina" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
+              '<div class="field"><label for="pvCommun" style="color:#3d4b53;">Anaran\'ny commun *</label>' +
+                '<input type="text" id="pvCommun" data-f-commun placeholder="Antananarivo" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
               '<div class="field"><label for="pvMail" style="color:#3d4b53;">Email hanokafana ny site *</label>' +
                 '<input type="email" id="pvMail" data-f-email placeholder="fokontany@exemple.com" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
               '<div class="field"><label for="pvAsa" style="color:#3d4b53;">Asa eo anivon\'ny fokontany *</label>' +
@@ -5158,14 +5160,18 @@
       const anarana = lire('[data-f-anarana]');
       const prenom = lire('[data-f-prenom]');
       const fokontany = lire('[data-f-fokontany]');
+      const commun = lire('[data-f-commun]');
       const email = lire('[data-f-email]').toLowerCase();
       const asa = lire('[data-f-asa]');
-      if(!anarana || !prenom || !fokontany || !email || !asa){
+      if(!anarana || !prenom || !fokontany || !commun || !email || !asa){
         dire('Fenoy daholo ireo saha rehetra ao amin\'ny taratasy.', true); return;
       }
       if(email.indexOf('@') < 0){ dire('Tsy mety ny email hanokafana ny site.', true); return; }
       if(!sb || !sb.functions || !sb.functions.invoke){ dire('Tsy tafiditra ny serveur : havaozy ny pejy.', true); return; }
-      const nomComplet = anarana + ' ' + prenom + ' — Fokontany ' + fokontany + ' (' + asa + ')';
+      // Le nom du commun voyage avec celui du fokontany : c'est de lui que le
+      // fokontany relève, et l'Administratif Commun le retrouve ainsi.
+      const nomComplet = anarana + ' ' + prenom + ' — Fokontany ' + fokontany +
+        ' / Commun ' + commun + ' (' + asa + ')';
       dire('Mandefa ny fangatahana…');
       // La fonction « commun-code », inchangée : elle tire le code, pose
       // l'accès et envoie le code et le lien à l'email indiqué.
@@ -5177,6 +5183,9 @@
         }
         fokontanyDemande = fokontany;
         champ.value = data.code;
+        // Le Commun l'apprend : le fokontany y est inscrit, sous son nom.
+        ajouterNotificationLocale('fangatahana',
+          'Voasoratra ao amin\'ny Commun « ' + commun + ' » ny Fokontany « ' + fokontany + ' » (' + email + ').');
         dire(data.sent
           ? 'Lasa tamin\'ny ' + email + ' ny code sy ny rohy. Code : ' + data.code + ' — tsindrio « 🔓 Sokafy ny pejy ».'
           : 'Tsy lasa ny mailaka (' + (data.error || 'antony tsy fantatra') + '). Code : ' + data.code + ' — lazao azy mivantana.', !data.sent);
