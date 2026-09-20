@@ -4979,17 +4979,18 @@
   // Le Fokontany s'installe pour un fokontany précis : sa validation vient
   // d'abord (validerAvantInstall, une page comme la porte), le lien ensuite. Le Commun est à l'admin
   // seul : pas de validation, le lien tout de suite.
-  function versLInstallation(chemin){
+  function versLInstallation(chemin, suffixe){
+    const adresse = chemin + (suffixe || '');
     let installee = false;
     try { installee = !window.matchMedia('(display-mode: browser)').matches || window.navigator.standalone === true; } catch(e){}
-    if(!installee){ window.open(chemin, '_blank'); return; }
-    montrerAdresseAInstaller(location.origin + chemin);
+    if(!installee){ window.open(adresse, '_blank'); return; }
+    montrerAdresseAInstaller(location.origin + adresse);
   }
   [['menuInstallFokontany', '/fokontany/', true], ['menuInstallCommun', '/commun/', false]].forEach(function(p){
     const el = document.getElementById(p[0]);
     if(el) el.addEventListener('click', function(){
       if(!(currentUser && currentUser.email && isOwnerEmail(currentUser.email))) return;
-      if(p[2]) validerAvantInstall(function(){ versLInstallation(p[1]); });
+      if(p[2]) validerAvantInstall(function(suffixe){ versLInstallation(p[1], suffixe); });
       else versLInstallation(p[1]);
     });
   });
@@ -5030,9 +5031,25 @@
             'Indray mandeha ihany no ilana ny code : aorian\'izay dia ny fidiranao amin\'ny kaontinao ' +
             'no manokatra azy, na eo amin\'ny appareil hafa aza.' +
           '</p>' +
-          '<div class="field">' +
-            '<label for="pvHafatra">Hafatra (raha misy)</label>' +
-            '<input type="text" id="pvHafatra" data-hafatra placeholder="Ohatra : mpiara-miasa ao amin\'ny fokontany" autocomplete="off">' +
+          // La demande est une lettre, sur papier blanc : ce qu'on écrit là
+          // part tel quel au propriétaire. Tout y est obligatoire — un
+          // fokontany se reconnaît à son nom, son email et la fonction de
+          // celui qui demande.
+          '<div data-taratasy style="background:#ffffff; color:#12181d; border-radius:12px; padding:1rem 1.1rem; margin-bottom:0.9rem;">' +
+            '<p style="margin:0 0 0.9rem; font-size:0.86rem; line-height:1.6; color:#12181d;">' +
+              'Ireto tompoko ny mombamomba ahy, ary ekeo ny fangatahako ilay <strong>code</strong> :</p>' +
+            '<div class="form-grid">' +
+              '<div class="field"><label for="pvAnarana" style="color:#3d4b53;">Anarana *</label>' +
+                '<input type="text" id="pvAnarana" data-f-anarana placeholder="RAKOTO" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
+              '<div class="field"><label for="pvFanampiny" style="color:#3d4b53;">Fanampin\'anarana (prénom) *</label>' +
+                '<input type="text" id="pvFanampiny" data-f-prenom placeholder="Jean" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
+              '<div class="field"><label for="pvFokontany" style="color:#3d4b53;">Anaran\'ny fokontany *</label>' +
+                '<input type="text" id="pvFokontany" data-f-fokontany placeholder="Ambohimanarina" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
+              '<div class="field"><label for="pvMail" style="color:#3d4b53;">Email hanokafana ny site *</label>' +
+                '<input type="email" id="pvMail" data-f-email placeholder="fokontany@exemple.com" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
+              '<div class="field"><label for="pvAsa" style="color:#3d4b53;">Asa eo anivon\'ny fokontany *</label>' +
+                '<input type="text" id="pvAsa" data-f-asa placeholder="Ohatra : sekretera" autocomplete="off" style="background:#f3f6f8; color:#12181d; border-color:#c9d4da;"></div>' +
+            '</div>' +
           '</div>' +
           '<button type="button" class="btn btn-sm" data-mangataka style="width:auto;">📩 Mangataka fanokafana</button>' +
           '<p data-mangataka-statut style="font-size:0.76rem; color:var(--muted); margin:0.7rem 0 0.9rem; min-height:1.1em;"></p>' +
@@ -5133,29 +5150,39 @@
       }, function(){});
     }
     montrerStatutDemande();
+    // Le nom du fokontany suit le lien : chaque fokontany a le sien
+    // (/fokontany/?f=…), et sa page le porte en titre.
+    let fokontanyDemande = '';
     page.querySelector('[data-mangataka]').addEventListener('click', function(){
-      const hafatra = String(page.querySelector('[data-hafatra]').value || '').trim() || null;
-      const anarana = String(u.name || '').trim() || null;
-      if(!sb){ dire('Tsy tafiditra ny serveur : havaozy ny pejy.', true); return; }
+      const lire = function(sel){ return String(page.querySelector(sel).value || '').trim(); };
+      const anarana = lire('[data-f-anarana]');
+      const prenom = lire('[data-f-prenom]');
+      const fokontany = lire('[data-f-fokontany]');
+      const email = lire('[data-f-email]').toLowerCase();
+      const asa = lire('[data-f-asa]');
+      if(!anarana || !prenom || !fokontany || !email || !asa){
+        dire('Fenoy daholo ireo saha rehetra ao amin\'ny taratasy.', true); return;
+      }
+      if(email.indexOf('@') < 0){ dire('Tsy mety ny email hanokafana ny site.', true); return; }
+      if(!sb || !sb.functions || !sb.functions.invoke){ dire('Tsy tafiditra ny serveur : havaozy ny pejy.', true); return; }
+      const nomComplet = anarana + ' ' + prenom + ' — Fokontany ' + fokontany + ' (' + asa + ')';
       dire('Mandefa ny fangatahana…');
-      const apres = function(){ montrerStatutDemande(); chargerLesDemandes(); };
-      const ecrire = function(){
-        sb.from('commun_fangatahana').insert({ email: monEmailDemande, anarana: anarana, hafatra: hafatra }).then(function(res){
-          if(res && res.error){
-            dire(res.error.code === '23505' ? 'Efa nalefa ny fangatahanao : miandry ny valin\'ny tompon\'ny site.' : 'Tsy nety : ' + res.error.message, res.error.code !== '23505');
-          } else dire('Nalefa ny fangatahanao. Ny tompon\'ny site no hanome anao code.');
-          apres();
-        }, function(){ dire('Tsy tratra ny serveur : jereo ny réseau.', true); });
-      };
-      if(!sb.functions || !sb.functions.invoke){ ecrire(); return; }
-      sb.functions.invoke('commun-angataka', { body: { hafatra: hafatra, anarana: anarana } }).then(function(res){
+      // La fonction « commun-code », inchangée : elle tire le code, pose
+      // l'accès et envoie le code et le lien à l'email indiqué.
+      sb.functions.invoke('commun-code', { body: { email: email, anarana: nomComplet } }).then(function(res){
         const data = (res && res.data) || {};
-        if(res && res.error && !data.ok){ ecrire(); return; }
+        if(!data.code){
+          dire('Tsy nety : ' + ((res && res.error && res.error.message) || data.error || 'tsy fantatra'), true);
+          return;
+        }
+        fokontanyDemande = fokontany;
+        champ.value = data.code;
         dire(data.sent
-          ? 'Nalefa ny fangatahanao sy ny code, ary nampandrenesina ny tompon\'ny site. Misokatra ny pejy rehefa nohamafisiny.'
-          : 'Voatahiry ny fangatahanao sy ny code. Tsy lasa ny mailaka, fa ho hitany ao amin\'ny pejiny ihany izy.');
-        apres();
-      }, ecrire);
+          ? 'Lasa tamin\'ny ' + email + ' ny code sy ny rohy. Code : ' + data.code + ' — tsindrio « 🔓 Sokafy ny pejy ».'
+          : 'Tsy lasa ny mailaka (' + (data.error || 'antony tsy fantatra') + '). Code : ' + data.code + ' — lazao azy mivantana.', !data.sent);
+        montrerStatutDemande();
+        chargerLesDemandes();
+      }, function(err){ dire('Tsy tratra ny fonction : ' + ((err && err.message) || 'réseau'), true); });
     });
 
     page.querySelector('[data-sokafy]').addEventListener('click', function(){
@@ -5169,7 +5196,9 @@
         const nom = a.anarana ? a.anarana + ' (' + a.email + ')' : a.email;
         const suite = function(){
           dire('✓ Voamarina : ' + nom + '.');
-          setTimeout(function(){ fermer(); ensuite(); }, 700);
+          // Le nom du fokontany voyage avec le lien : sa page le porte ensuite.
+          const suffixe = fokontanyDemande ? '?f=' + encodeURIComponent(fokontanyDemande) : '';
+          setTimeout(function(){ fermer(); ensuite(suffixe); }, 700);
         };
         if(a.active && a.voamarina){ suite(); return; }
         const maintenant = new Date().toISOString();

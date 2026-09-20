@@ -109,6 +109,31 @@ document.addEventListener('DOMContentLoaded', function () {
     $('communCorps').classList.add('lecture-seule');
   }
 
+  // ---------- Le nom du fokontany ----------
+  // Le lien donné à un fokontany porte son nom (« ?f=… », common.js) : sa
+  // page le montre, et s'en souvient — l'application installée s'ouvre
+  // ensuite à son nom, sans l'adresse.
+  (function () {
+    var CLE_NOM = 'stockmanager_fokontany_nom';
+    var nom = '';
+    try {
+      var params = new URLSearchParams(window.location.search);
+      nom = String(params.get('f') || '').trim();
+      if (nom) {
+        localStorage.setItem(CLE_NOM, nom);
+        params.delete('f');
+        var reste = params.toString();
+        history.replaceState(null, '', window.location.pathname + (reste ? '?' + reste : ''));
+      } else {
+        nom = String(localStorage.getItem(CLE_NOM) || '').trim();
+      }
+    } catch (e) {}
+    if (!nom || APP_COMMUN) return;
+    $('fkMarque').innerHTML = '🗂️ Fokontany <span>' + nom.replace(/[<>&]/g, '') + '</span>';
+    $('fkNomApp').textContent = 'Fokontany ' + nom;
+    document.title = 'Fokontany ' + nom;
+  })();
+
   // ---------- Sans réseau ----------
   // Comme dans Ny asako : la page s'ouvre, mais les listes restent vides sans
   // qu'on sache pourquoi. La bande le dit.
