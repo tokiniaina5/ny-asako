@@ -80,6 +80,13 @@
     if(!installee){ window.open(adresse, '_blank'); return; }
     window.__montrerAdresseAInstaller(location.origin + adresse);
   }
+  // Cette page sert aux deux endroits : dans Ny asako et dans
+  // l'Administratif Commun, qui l'ouvre depuis sa propre fenêtre. Elle porte
+  // donc le nom de celui qui l'a ouverte — le Commun se reconnaît à la
+  // classe posée par son en-tête (fokontany/index.html).
+  const MARQUE = document.documentElement.classList.contains('app-commun')
+    ? '🏛️ Administratif <span>Commun</span>'
+    : '🗂️ Administratif <span>Fokontany</span>';
   window.__validerAvantInstall = function(ensuite){
     const sb = window.__sb;
     const ancien = document.getElementById('pageValidationInstall');
@@ -92,7 +99,7 @@
     page.innerHTML =
       '<div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; ' +
         'padding:0.9rem 1rem; border-bottom:1px solid var(--line); background:var(--panel); position:sticky; top:0;">' +
-        '<div class="brand">🗂️ Administratif <span>Fokontany</span></div>' +
+        '<div class="brand">' + MARQUE + '</div>' +
         '<div style="display:flex; align-items:center; gap:0.8rem;">' +
           '<div style="font-size:0.76rem; color:var(--muted); text-align:right; line-height:1.4;">' +
             '<strong data-nom style="color:var(--text); display:block; font-size:0.84rem;"></strong><span data-email></span></div>' +
