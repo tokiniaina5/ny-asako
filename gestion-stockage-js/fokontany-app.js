@@ -287,6 +287,43 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   // Le propriétaire, et le fokontany dont l'admin a validé l'accès.
   window.__fkRendreInstallable = function () { rendreInstallable(); };
+  // Chaque fokontany a son application : même page, mais un manifeste à son
+  // nom — identifiant, adresse de départ et titre différents. Pour le
+  // navigateur, ce sont des applications distinctes, et l'admin peut donc les
+  // installer l'une après l'autre, même sur le même ordinateur. Sans nom
+  // (ou dans le Commun), c'est le manifeste du site qui sert.
+  function adresseDuManifeste() {
+    if (APP_COMMUN) return '/commun/manifest.webmanifest';
+    var nom = '';
+    try { nom = String(localStorage.getItem('stockmanager_fokontany_nom') || '').trim(); } catch (e) {}
+    if (!nom) return '/fokontany/manifest.webmanifest';
+    var depart = '/fokontany/?f=' + encodeURIComponent(nom);
+    var manifeste = {
+      id: depart,
+      name: 'Fokontany ' + nom,
+      short_name: nom.length > 12 ? nom.slice(0, 12) : nom,
+      description: 'Administratif Fokontany ' + nom + ' : livre de famille, adidy, taratasy.',
+      lang: 'mg', dir: 'ltr',
+      start_url: depart,
+      scope: '/fokontany/',
+      display: 'standalone',
+      background_color: '#0a0d10',
+      theme_color: '#0a0d10',
+      icons: [
+        { src: '/fokontany/icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/fokontany/icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/fokontany/icone-512-masquable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+      ]
+    };
+    try {
+      return URL.createObjectURL(new Blob([JSON.stringify(manifeste)], { type: 'application/manifest+json' }));
+    } catch (e) {
+      // Un navigateur qui refuse le manifeste fabriqué garde celui du site :
+      // l'application s'installe, sous le nom commun.
+      return '/fokontany/manifest.webmanifest';
+    }
+  }
+
   function rendreInstallable() {
     if (!installable) {
       installable = true;
@@ -301,7 +338,18 @@ document.addEventListener('DOMContentLoaded', function () {
         Object.keys(attributs).forEach(function (k) { el.setAttribute(k, attributs[k]); });
         tete.appendChild(el);
       }
-      balise('link', { rel: 'manifest', href: APP_COMMUN ? '/commun/manifest.webmanifest' : '/fokontany/manifest.webmanifest' });
+      var manifesteDuFokontany = adresseDuManifeste();
+      balise('link', { rel: 'manifest', href: manifesteDuFokontany });
+      // Un navigateur qui refuserait le manifeste fabriqué (blob) ne
+      // proposerait rien du tout : au bout de quelques secondes sans
+      // invitation, on repasse à celui du site, commun à tous les fokontany.
+      if (manifesteDuFokontany.indexOf('blob:') === 0) {
+        setTimeout(function () {
+          if (invitation || dejaInstallee()) return;
+          var lien = document.querySelector('link[rel="manifest"]');
+          if (lien) lien.setAttribute('href', '/fokontany/manifest.webmanifest');
+        }, 4000);
+      }
       balise('meta', { name: 'mobile-web-app-capable', content: 'yes' });
       balise('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
       balise('meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' });
