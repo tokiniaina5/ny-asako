@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="dc7483fe">
+<meta name="ny-asako-version" content="bd5b252e">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -855,6 +855,7 @@
             <div class="dash-tab" data-commun="adidy">💰 Adidy</div>
             <div class="dash-tab" data-commun="historique">📜 Historique</div>
             <div class="dash-tab" data-commun="taratasy">📄 Taratasy</div>
+            <div class="dash-tab" data-commun="fianakaviana">📖 Livre de famille</div>
             <!-- Le propriétaire seul : le style le montre, commun-alalana.js le décide. -->
             <div class="dash-tab" data-commun="fangatahana" id="ongletFangatahana" style="display:none;">🛡️ Fangatahana</div>
           </div>
@@ -1267,6 +1268,90 @@
                 </table>
               </div>
               <p class="empty-hint" id="tarVide">Mbola tsy misy taratasy natao.</p>
+            </div>
+          </div>
+
+          <!-- Le livre de famille (fianakaviana.js). Ses membres viennent du
+               registre des CIN / passeports : on ne tient pas deux listes de
+               gens. Le mariage des parents date le livret. -->
+          <div id="communFianakaviana" style="display:none;">
+            <div class="panel">
+              <h3>📖 Livre de famille vaovao</h3>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="famLaharana">Laharan'ny livre</label>
+                  <input type="text" id="famLaharana" placeholder="001/2026" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="famAnarana">Anaran'ny fianakaviana</label>
+                  <input type="text" id="famAnarana" placeholder="Fianakaviana RAKOTO" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="famFonenana">Fonenana</label>
+                  <input type="text" id="famFonenana" placeholder="Lot, fokontany, kaominina" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="famDaty">Daty nanambadiana</label>
+                  <input type="date" id="famDaty">
+                </div>
+                <div class="field">
+                  <label for="famToerana">Toerana nanambadiana</label>
+                  <input type="text" id="famToerana" placeholder="Antananarivo" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="famNote">Fanamarihana</label>
+                  <input type="text" id="famNote" placeholder="Raha misy" autocomplete="off">
+                </div>
+              </div>
+              <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary btn-sm" id="famTehirizo" style="width:auto;">💾 Tehirizo</button>
+                <button type="button" class="btn btn-sm" id="famAnnuler" style="width:auto;">Hanafoana</button>
+              </div>
+              <p id="famMessage" style="font-size:0.78rem; margin-top:0.7rem; min-height:1.1em;"></p>
+            </div>
+
+            <div class="panel">
+              <h3>📚 Livre de famille voasoratra</h3>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Laharana</th><th>Fianakaviana</th><th>Fonenana</th><th>Fanambadiana</th><th>Mpianakavy</th><th></th></tr>
+                  </thead>
+                  <tbody id="famListe"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint" id="famVide">Mbola tsy misy livre de famille.</p>
+            </div>
+
+            <!-- Le livret ouvert : ses membres, pris dans le registre. -->
+            <div class="panel" id="famOuvert" style="display:none;">
+              <h3 id="famOuvertTitre">👪 Mpianakavy</h3>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="famOlona">Olona (avy ao amin'ny CIN / Passeport)</label>
+                  <select id="famOlona"></select>
+                </div>
+                <div class="field">
+                  <label for="famAndraikitra">Andraikitra</label>
+                  <select id="famAndraikitra">
+                    <option value="ray">Ray</option>
+                    <option value="reny">Reny</option>
+                    <option value="zanaka">Zanaka</option>
+                    <option value="hafa">Hafa</option>
+                  </select>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="famAmpio" style="width:auto;">➕ Ampio ao amin'ny livre</button>
+              <p id="famOuvertMessage" style="font-size:0.78rem; margin:0.7rem 0; min-height:1.1em;"></p>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Anarana</th><th>Laharana CIN</th><th>Andraikitra</th><th></th></tr>
+                  </thead>
+                  <tbody id="famMpikambana"></tbody>
+                </table>
+              </div>
+              <p class="empty-hint" id="famMpikambanaVide">Mbola tsy misy mpianakavy voasoratra.</p>
             </div>
           </div>
 
@@ -2717,7 +2802,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=d06b13f1"></script>
+<script src="gestion-stockage-js/common.js?v=61660f52"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2739,6 +2824,7 @@
 <script src="gestion-stockage-js/pieces-scan.js?v=78fcdf02"></script>
 <script src="gestion-stockage-js/commun-alalana.js?v=682d598c"></script>
 <script src="gestion-stockage-js/taratasy.js?v=1ae17057"></script>
+<script src="gestion-stockage-js/fianakaviana.js?v=31e647b9"></script>
 <script src="gestion-stockage-js/adidy.js?v=71cace69"></script>
 <script src="gestion-stockage-js/theme.js?v=096262fd"></script>
 <script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>

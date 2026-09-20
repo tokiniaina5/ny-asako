@@ -39,7 +39,7 @@ function choisirOngletCommun(nom) {
   var PANNEAUX = {
     tableau: 'communCorps', pieces: 'communPieces',
     adidy: 'communAdidy', historique: 'communHistorique',
-    taratasy: 'communTaratasy', fangatahana: 'communFangatahana'
+    taratasy: 'communTaratasy', fianakaviana: 'communFianakaviana', fangatahana: 'communFangatahana'
   };
   ongletCommun = PANNEAUX[nom] ? nom : 'tableau';
   Object.keys(PANNEAUX).forEach(function (cle) {
@@ -77,6 +77,8 @@ function remplirOngletCommun() {
     if (typeof renderTaratasyHistorique === 'function') renderTaratasyHistorique();
   } else if (nom === 'taratasy') {
     if (typeof renderTaratasy === 'function') renderTaratasy();
+  } else if (nom === 'fianakaviana') {
+    if (typeof renderFianakaviana === 'function') renderFianakaviana();
   } else if (typeof renderPiecesIdentite === 'function') {
     renderPiecesIdentite();
   }
