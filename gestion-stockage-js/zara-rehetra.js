@@ -189,6 +189,10 @@
             '<button type="button" class="btn btn-sm" data-ajanona style="width:auto;">✖ Ajanony</button>' +
           '</div>' +
           '<p data-file-vita style="font-size:0.78rem; color:var(--muted); margin:0.9rem 0 0;"></p>' +
+          // Tout ce qui a été coché reste écrit : on voit d'où l'on vient,
+          // où l'on est, et ce qui attend encore.
+          '<div data-file-liste style="max-height:34vh; overflow-y:auto; margin-top:0.9rem; ' +
+            'border-top:1px solid var(--line); padding-top:0.5rem;"></div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(page);
@@ -312,6 +316,7 @@
     var fileTitre = page.querySelector('[data-file-titre]');
     var fileQui = page.querySelector('[data-file-qui]');
     var fileVita = page.querySelector('[data-file-vita]');
+    var fileListe = page.querySelector('[data-file-liste]');
     var bSokafy = page.querySelector('[data-sokafy]');
     var bDingana = page.querySelector('[data-dingana]');
     var bAjanona = page.querySelector('[data-ajanona]');
@@ -319,7 +324,38 @@
     var rang = 0;
     var nalefa = 0;
 
+    // Le nom d'un envoi, qu'il soit une personne, un réseau ou l'email.
+    function nomDe(e) {
+      if (e.client) return echap(e.client.nom) + ' · +' + echap(e.client.numero);
+      if (e.mail) return '📧 Mailaka amin\'ny client rehetra';
+      return echap(e.reseau.nom);
+    }
+    function couleurDe(e) {
+      return e.reseau ? e.reseau.couleur : 'var(--text)';
+    }
+    // ✓ fait · ▶ celui-ci · les suivants attendent.
+    function dessinerLaFile() {
+      fileListe.innerHTML = attente.map(function (e, i) {
+        var fait = i < rang;
+        var ici = i === rang;
+        var marque = fait ? '✓' : (ici ? '▶' : '·');
+        return '<div class="list-row" style="' +
+            (ici ? 'background:var(--panel-2); border-radius:8px;' : '') +
+            (fait ? ' opacity:0.55;' : '') + '">' +
+          '<span style="display:flex; align-items:center; gap:0.5rem;">' +
+            '<span style="width:1em; color:var(--muted);">' + marque + '</span>' +
+            '<span style="color:' + couleurDe(e) + ';' + (ici ? ' font-weight:700;' : '') + '">' +
+              nomDe(e) + '</span></span>' +
+          '<span style="color:var(--muted); font-size:0.72rem; white-space:nowrap;">' +
+            (i + 1) + ' / ' + attente.length + '</span>' +
+        '</div>';
+      }).join('');
+      var actif = fileListe.children[rang];
+      if (actif && actif.scrollIntoView) actif.scrollIntoView({ block: 'nearest' });
+    }
+
     function montrerLeRang() {
+      dessinerLaFile();
       if (rang >= attente.length) {
         fileTitre.textContent = '✓ Vita';
         fileQui.textContent = nalefa + ' nosokafana amin\'ny ' + attente.length + '.';
