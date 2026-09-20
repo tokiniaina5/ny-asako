@@ -169,11 +169,44 @@ document.addEventListener('DOMContentLoaded', function () {
     majReseau();
   })();
 
-  // ---------- Notifications ----------
-  // Pas de cloche ici : un bandeau bref suffit. Les demandes d'accès ont
-  // déjà le leur, avec « Ekena » (commun-alalana.js).
+  // ---------- Fampahafantarana ----------
+  // Elles restent dans le site, sous la cloche : une bande qui passe s'oublie,
+  // et l'on veut relire ce qui a été dit. Gardées dans ce navigateur, comme
+  // celles de Ny asako — elles n'ont rien à faire sur le serveur.
+  var CLE_NOTIFS = 'stockmanager_fokontany_notifs';
+  function lireNotifs() {
+    try { return JSON.parse(localStorage.getItem(CLE_NOTIFS)) || []; } catch (e) { return []; }
+  }
+  function ecrireNotifs(liste) {
+    try { localStorage.setItem(CLE_NOTIFS, JSON.stringify(liste.slice(0, 50))); } catch (e) {}
+  }
+  function rendreNotifs() {
+    var liste = lireNotifs();
+    var corps = $('fkNotifList');
+    var badge = $('fkNotifBadge');
+    if (!corps || !badge) return;
+    var pasLues = liste.filter(function (n) { return !n.lu; }).length;
+    badge.textContent = pasLues > 9 ? '9+' : String(pasLues);
+    badge.style.display = pasLues ? '' : 'none';
+    corps.innerHTML = liste.length
+      ? liste.map(function (n) {
+          var d = new Date(n.date);
+          return '<div style="padding:0.65rem 0.9rem; border-bottom:1px solid var(--line); font-size:0.8rem; line-height:1.5;' +
+            (n.lu ? ' color:var(--muted);' : '') + '">' +
+            '<div>' + String(n.message).replace(/[<>&]/g, '') + '</div>' +
+            '<div style="font-size:0.68rem; color:var(--muted); margin-top:0.2rem;">' +
+              (isNaN(d) ? '' : d.toLocaleString('fr-FR')) + '</div>' +
+          '</div>';
+        }).join('')
+      : '<p class="empty-hint" style="padding:0.9rem;">Mbola tsy misy fampahafantarana.</p>';
+  }
   window.__notifActions = window.__notifActions || {};
   window.__ajouterNotificationAction = function (type, message) {
+    var liste = lireNotifs();
+    liste.unshift({ type: type, message: String(message || ''), date: new Date().toISOString(), lu: false });
+    ecrireNotifs(liste);
+    rendreNotifs();
+    // Et un mot qui passe, pour qu'on le voie tout de suite.
     var boite = $('fkToast');
     if (!boite) return;
     boite.textContent = message;
@@ -182,6 +215,24 @@ document.addEventListener('DOMContentLoaded', function () {
     boite.__minuterie = setTimeout(function () { boite.style.display = 'none'; }, 6000);
   };
   window.__marquerNotificationFaite = function () {};
+  $('fkNotifBtn').addEventListener('click', function () {
+    var panneau = $('fkNotifPanel');
+    var ouvert = panneau.style.display !== 'none';
+    panneau.style.display = ouvert ? 'none' : 'block';
+    $('fkNotifBtn').setAttribute('aria-expanded', ouvert ? 'false' : 'true');
+    // Ouvrir, c'est avoir lu.
+    if (!ouvert) { ecrireNotifs(lireNotifs().map(function (n) { n.lu = true; return n; })); rendreNotifs(); }
+  });
+  $('fkNotifFafao').addEventListener('click', function () { ecrireNotifs([]); rendreNotifs(); });
+  document.addEventListener('click', function (e) {
+    var panneau = $('fkNotifPanel');
+    if (panneau.style.display === 'none') return;
+    if (e.target.closest && !e.target.closest('#fkNotifPanel') && !e.target.closest('#fkNotifBtn')) {
+      panneau.style.display = 'none';
+      $('fkNotifBtn').setAttribute('aria-expanded', 'false');
+    }
+  });
+  rendreNotifs();
 
   // ---------- Connexion ----------
   // Le même compte que Ny asako : même base, mêmes identifiants. Créer un

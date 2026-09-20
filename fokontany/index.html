@@ -212,6 +212,20 @@
     <div class="brand" id="fkMarque">🗂️ Administratif <span>Fokontany</span></div>
     <div style="display:flex; align-items:center; gap:0.8rem;">
       <div class="fk-qui"><strong id="fkNom">—</strong><span id="fkEmail"></span></div>
+      <!-- Les avis restent ici, dans le site : une bande qui passe s'oublie,
+           et le fokontany veut relire ce qu'on lui a dit (fokontany-app.js). -->
+      <div style="position:relative;">
+        <button type="button" class="btn btn-sm" id="fkNotifBtn" aria-label="Fampahafantarana" aria-expanded="false" style="width:auto;">
+          🔔 <span id="fkNotifBadge" style="display:none; background:#ff6b6b; color:#fff; font-size:0.62rem; font-weight:700; border-radius:999px; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 4px;">0</span>
+        </button>
+        <div id="fkNotifPanel" style="display:none; position:absolute; top:40px; right:0; width:300px; max-height:340px; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:60; text-align:left;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:0.7rem 0.9rem; border-bottom:1px solid var(--line);">
+            <strong style="font-size:0.85rem;">Fampahafantarana</strong>
+            <button type="button" id="fkNotifFafao" style="background:none; border:none; color:var(--cyan); font-size:0.72rem; cursor:pointer;">Fafana</button>
+          </div>
+          <div id="fkNotifList"></div>
+        </div>
+      </div>
       <!-- Au propriétaire seul, quand le navigateur sait installer. -->
       <button type="button" class="btn btn-sm btn-primary" id="fkInstaller" style="width:auto; display:none;">📲 Installer</button>
       <button type="button" class="btn btn-sm" id="fkSortir" style="width:auto;">Hivoaka</button>
@@ -754,7 +768,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="/gestion-stockage-js/fokontany-app.js?v=8fbcee73"></script>
+<script src="/gestion-stockage-js/fokontany-app.js?v=3640ff76"></script>
 <script src="/gestion-stockage-js/commun-alalana.js?v=682d598c"></script>
 <script src="/gestion-stockage-js/taratasy.js?v=adc905f6"></script>
 <script src="/gestion-stockage-js/fianakaviana.js?v=253b65d4"></script>
