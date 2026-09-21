@@ -12,8 +12,16 @@
 // déjà écrit. Il reste à appuyer sur « Envoyer » dans l'application —
 // envoyer à la place de quelqu'un ne se fait pas depuis une page web.
 //
-// Une ouverture par appui : le navigateur bloque les fenêtres qu'on ouvre
-// sans que la main l'ait demandé. D'où la file, un envoi à la fois.
+// Tout part d'un seul appui : les fenêtres s'ouvrent à la file, dans le geste
+// qui les demande. Le navigateur n'en autorise que pendant ce geste-là — d'où
+// aucune attente entre deux ouvertures. Il peut tout de même en refuser : la
+// file compte alors ce qui n'est pas passé, le laisse coché, et le dit. Un
+// second appui reprend exactement celles-là, une fois les « pop-up »
+// autorisées pour le site.
+//
+// L'email fait exception et garde son appui à lui : il part du serveur, chez
+// tous les clients, et ne se rattrape pas. On ne le glisse pas dans un envoi
+// groupé, où il partirait sans qu'on y pense.
 //
 // Deux natures d'envoi, et il vaut mieux le savoir avant :
 //   — WhatsApp par numéro (wa.me/<numéro>) va à UNE personne, la file en fait
@@ -341,6 +349,11 @@
     function nbCoches() {
       return attente.filter(function (e) { return e.coche; }).length;
     }
+    // Ce qui s'ouvre d'un seul appui : tout ce qui est coché, pas encore
+    // parti, et qui n'est pas l'email.
+    function aOuvrir() {
+      return attente.filter(function (e) { return e.coche && !e.fait && !e.mail; });
+    }
     function restants() {
       return attente.filter(function (e) { return !e.fait; });
     }
@@ -420,7 +433,10 @@
       bSokafy.style.display = '';
       bAjanona.textContent = '✖ Ajanony';
       bSokafy.disabled = false;
-      bSokafy.textContent = e.mail ? '📧 Alefa ny mailaka' : '📨 Sokafy';
+      var reste = aOuvrir().length;
+      bSokafy.textContent = e.mail
+        ? '📧 Alefa ny mailaka'
+        : (reste > 1 ? '📨 Sokafy daholo (' + reste + ')' : '📨 Sokafy');
       if (e.mail) {
         fileQui.innerHTML = '<strong>📧 Mailaka amin\'ny client rehetra</strong>' +
           ' <span style="color:var(--muted); font-size:0.8rem;">— ny serveur no mandefa, tsy azo averina</span>';
@@ -482,18 +498,36 @@
         });
         return;
       }
-      if (e.client) {
-        window.open('https://wa.me/' + e.client.numero + '?text=' + encodeURIComponent(hafatra), '_blank');
-      } else if (e.reseau.copie) {
-        copier(hafatra);
-        if (e.reseau.ouvrir) window.open(e.reseau.ouvrir, '_blank');
-      } else {
-        window.open(e.reseau.url(texte, rohy), '_blank');
-      }
-      nalefa++;
-      e.fait = true;
+      // Tout ce qui est coché s'ouvre ici, à la file et sans rien attendre
+      // entre deux : le navigateur n'autorise les fenêtres que pendant le
+      // geste qui les demande, et une seule attente suffirait à faire
+      // refuser toutes les suivantes.
+      var liste = aOuvrir();
+      var bloques = 0;
+      liste.forEach(function (x) {
+        var fenetre;
+        if (x.client) {
+          fenetre = window.open('https://wa.me/' + x.client.numero +
+            '?text=' + encodeURIComponent(hafatra), '_blank');
+        } else if (x.reseau.copie) {
+          // Rien à ouvrir pour certains : le message est dans le
+          // presse-papier, il reste à le coller. C'est le même message pour
+          // tous, la dernière copie vaut donc pour toutes.
+          copier(hafatra);
+          fenetre = x.reseau.ouvrir ? window.open(x.reseau.ouvrir, '_blank') : true;
+        } else {
+          fenetre = window.open(x.reseau.url(texte, rohy), '_blank');
+        }
+        // Une fenêtre refusée ne compte pas comme partie : elle reste cochée,
+        // et le second appui la reprendra.
+        if (fenetre) { x.fait = true; nalefa++; } else { bloques++; }
+      });
       recalculerLeRang();
       montrerLeRang();
+      if (bloques) {
+        fileVita.innerHTML = '⚠ ' + bloques + ' tsy nisokatra — nosakanan\'ny navigateur. ' +
+          'Ekeo ny « pop-up » ho an\'ity pejy ity, dia tsindrio indray : ireo ihany no halehany.';
+      }
     });
     bRehetra.addEventListener('click', function () {
       var reste = restants();
