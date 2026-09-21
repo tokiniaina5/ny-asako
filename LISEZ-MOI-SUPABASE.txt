@@ -701,3 +701,29 @@ Le temps réel passe par les mêmes règles de lecture (RLS) que le
 reste : ce que quelqu'un n'a pas le droit de lire, il ne le reçoit
 pas davantage par ce chemin. Les commentaires, eux, sont lisibles
 de tous — c'est un fil public.
+
+
+REPRENDRE UNE DEMANDE QUI N'EST JAMAIS PARTIE
+------------------------------
+Une demande en attente est DÉJÀ retirée du solde : c'est ce qui
+empêche de demander deux fois la même somme. Mais si elle ne part
+jamais — canal manuel laissé dormir, destination fautive, envie
+changée — la somme reste dehors sans être arrivée nulle part. Elle
+est perdue pour celui qui la possède.
+
+Un bouton la rend maintenant : "↩️ Hanafoana, averina ao amin'ny
+solde", sous la demande, dans "Mes retraits".
+
+UNE SEULE RÈGLE, ET ELLE EST ABSOLUE : on ne rend une somme que si
+l'on est SÛR qu'elle n'est pas partie. Une ligne qu'un canal
+automatique a touchée a pu partir sans que la réponse nous
+parvienne — la rendre reviendrait à la payer deux fois.
+
+Le bouton ne paraît donc pas sur ces lignes-là, et le serveur le
+refuse aussi de son côté : le bouton n'est que la porte fermée
+d'avance. Il faut alors aller voir chez le fournisseur si la somme
+est partie, puis trancher depuis la file des retraits.
+
+À FAIRE UNE FOIS :
+     supabase functions deploy wallet
+(AVEC vérification du jeton, comme toujours pour "wallet".)

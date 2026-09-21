@@ -1113,6 +1113,45 @@
         (r.instructions ? 'Consigne : ' + escapeHtml(r.instructions) + '<br>' : '') +
         new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + payoutStatusLabel(r.status) +
         (r.note ? '<br>Note : ' + escapeHtml(r.note) : '');
+
+      // Une demande en attente est déjà retirée du solde : c'est ce qui
+      // empêche de demander deux fois la même somme. Si elle ne part jamais,
+      // la somme reste dehors sans être arrivée nulle part — perdue pour son
+      // propriétaire. Ce bouton la lui rend.
+      //
+      // Il ne paraît QUE si aucun envoi automatique n'a été tenté. Une ligne
+      // qu'un fournisseur a touchée a pu partir sans que la réponse nous
+      // parvienne ; la rendre reviendrait à la payer deux fois. Le serveur le
+      // refuse aussi de son côté — le bouton n'est que la porte fermée
+      // d'avance.
+      if(r.status === 'pending' && !r.auto_provider){
+        const bouton = document.createElement('button');
+        bouton.type = 'button';
+        bouton.className = 'btn btn-sm';
+        bouton.style.cssText = 'width:auto; margin-top:0.6rem;';
+        bouton.textContent = '↩️ Hanafoana, averina ao amin\'ny solde';
+        bouton.addEventListener('click', function(){
+          if(!confirm('Hofoanana ity fangatahana ity, dia hiverina ao amin\'ny soldenao ny ' +
+            formatWalletAr(r.amount_ar) + '. Hitohy?')) return;
+          bouton.disabled = true;
+          bouton.textContent = 'Manafoana…';
+          callWallet({ action: 'annuler', id: r.id }).then(function(){
+            pushNotification('parrainage', '↩️ Nofoanana ny retrait : ' +
+              formatWalletAr(r.amount_ar) + ' naverina ao amin\'ny soldenao.');
+            refreshWalletFromServer();
+          }, function(err){
+            bouton.disabled = false;
+            bouton.textContent = '↩️ Hanafoana, averina ao amin\'ny solde';
+            // Le refus du serveur porte sa raison : elle en dit plus que le
+            // bouton n'en sait, et c'est elle qu'il faut lire.
+            const ligne = document.createElement('div');
+            ligne.style.cssText = 'color:var(--amber); margin-top:0.4rem; line-height:1.5;';
+            ligne.textContent = err.message;
+            div.appendChild(ligne);
+          });
+        });
+        div.appendChild(bouton);
+      }
       list.appendChild(div);
     });
   }

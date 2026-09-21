@@ -361,7 +361,7 @@ Deno.serve(async (req: Request) => {
 
     const balance = await balanceFor(admin, email);
     const { data: mine } = await admin.from("wallet_payouts")
-      .select("id,amount_ar,method,kind,destination,link,instructions,currency,amount_out,status,note,created_at,settled_at")
+      .select("id,amount_ar,method,kind,destination,link,instructions,currency,amount_out,status,note,created_at,settled_at,auto_provider,auto_ref")
       .eq("email", email).order("created_at", { ascending: false }).limit(20);
 
     let queue = null;
@@ -530,6 +530,64 @@ Deno.serve(async (req: Request) => {
       message: motAuClient,
       auto: tentative ? { fournisseur: tentative.fournisseur, etat: tentative.envoi.etat } : null,
     });
+  }
+
+  // ---- Reprendre une demande qui n'est jamais partie ----
+  // Une demande en attente est déjà retirée du solde : c'est ce qui empêche
+  // de demander deux fois la même somme. Mais si elle ne part jamais — canal
+  // manuel qu'on a laissé dormir, destination fautive, envie changée — la
+  // somme reste dehors sans être arrivée nulle part. Elle est perdue pour
+  // celui qui la possède.
+  //
+  // L'annulation la rend : la ligne passe en « refused », et « balanceFor »
+  // ne compte que 'pending' et 'sent'.
+  //
+  // UNE SEULE RÈGLE, ET ELLE EST ABSOLUE : on ne rend une somme que si l'on
+  // est SÛR qu'elle n'est pas partie. Une ligne qu'un canal automatique a
+  // touchée a pu partir sans que la réponse nous parvienne — la rendre
+  // reviendrait à la payer deux fois. Celle-là ne s'annule pas d'un bouton :
+  // on va voir chez le fournisseur, et c'est le propriétaire qui tranche.
+  if (action === "annuler") {
+    const id = String(body.id ?? "").trim();
+    if (!id) return json({ error: "demande introuvable" }, 400);
+
+    const { data: ligne } = await admin.from("wallet_payouts")
+      .select("id,email,status,auto_provider,auto_attempts,amount_ar")
+      .eq("id", id).maybeSingle();
+
+    if (!ligne) return json({ error: "demande introuvable" }, 404);
+
+    // La sienne, ou n'importe laquelle si l'on est le propriétaire.
+    const aLui = norm(ligne.email) === email;
+    if (!aLui && !isOwner) return json({ error: "ce retrait n'est pas le vôtre" }, 403);
+
+    if (ligne.status !== "pending") {
+      return json({ error: "Cette demande est déjà tranchée." }, 409);
+    }
+
+    if (ligne.auto_provider || Number(ligne.auto_attempts ?? 0) > 0) {
+      return json({
+        error: "Un envoi a déjà été tenté chez " + String(ligne.auto_provider ?? "le fournisseur") +
+          ". Vérifiez là-bas si la somme est partie avant d'annuler : sans cela, elle serait rendue " +
+          "alors qu'elle est déjà arrivée.",
+      }, 409);
+    }
+
+    // Le filtre sur 'pending' rend l'opération sans effet si elle vient
+    // d'être tranchée ailleurs : deux clics ne rendent pas la somme deux fois.
+    const { data, error } = await admin.from("wallet_payouts")
+      .update({
+        status: "refused",
+        note: aLui ? "Annulé par son auteur — somme rendue" : "Annulé par le propriétaire — somme rendue",
+        settled_at: new Date().toISOString(),
+      })
+      .eq("id", id).eq("status", "pending")
+      .select("id,amount_ar").maybeSingle();
+
+    if (error) return json({ error: error.message }, 500);
+    if (!data) return json({ error: "Cette demande vient d'être tranchée." }, 409);
+
+    return json({ annule: data, balanceAr: await balanceFor(admin, email) });
   }
 
   // ---- Le propriétaire a envoyé l'argent, ou refuse ----
