@@ -88,9 +88,15 @@
       return 'https://www.threads.net/intent/post?text=' + encodeURIComponent(t + '\n' + l); } },
     { cle: 'x', nom: 'X (Twitter)', couleur: '#e7e9ea', url: function (t, l) {
       return 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(t) + '&url=' + encodeURIComponent(l); } },
-    { cle: 'instagram', nom: 'Instagram', couleur: '#E1306C', copie: true, ouvrir: 'https://www.instagram.com/' },
-    { cle: 'tiktok', nom: 'TikTok', couleur: '#e7e9ea', copie: true, ouvrir: 'https://www.tiktok.com/' },
-    { cle: 'wechat', nom: 'WeChat', couleur: '#07C160', copie: true }
+    // Ces trois-là n'ont AUCUNE adresse qui écrive le message d'avance — pas
+    // même une page de partage comme Telegram. Instagram demande en plus une
+    // image : un texte seul n'y fait pas une publication. On ouvre, on colle.
+    { cle: 'instagram', nom: 'Instagram', couleur: '#E1306C', copie: true, ouvrir: 'https://www.instagram.com/',
+      remarque: 'tsy mandray hafatra avy ety — apetaho (Ctrl+V) ny hafatra voadika, ary mila sary ny Instagram' },
+    { cle: 'tiktok', nom: 'TikTok', couleur: '#e7e9ea', copie: true, ouvrir: 'https://www.tiktok.com/',
+      remarque: 'tsy mandray hafatra avy ety — apetaho (Ctrl+V) ny hafatra voadika' },
+    { cle: 'wechat', nom: 'WeChat', couleur: '#07C160', copie: true,
+      remarque: 'tsy misy pejy hosokafana — apetaho (Ctrl+V) ny hafatra voadika ao amin\'ny WeChat' }
   ];
 
   function lireLesClients() {
