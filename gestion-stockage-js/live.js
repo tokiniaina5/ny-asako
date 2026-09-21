@@ -527,7 +527,11 @@
       // (2) Fanambarana any amin'ireo lien voarafitra, mba ho hitan'ny olona
       // ivelan'ny appli koa. Menu no aseho fa tsy tabilao maro misokatra ho azy :
       // sakanan'ny navigateur rehetra ny popup marobe tsy notsindrian'olona.
-      announceLiveOnNetworks(me.name);
+      // Elle s'ouvrait toujours, par-dessus la caméra qui vient de s'allumer.
+      // Elle attend maintenant d'être demandée — et « Zarao mialoha ny rohy »
+      // reste là pour qui préfère la choisir lui-même, avant de commencer.
+      const zara = document.getElementById('liveZara');
+      if(!zara || zara.checked) announceLiveOnNetworks(me.name);
       // (3) Le billet dans le fil de la Botika, si la case est cochée. Les
       // deux avis ci-dessus ne touchent que ceux dont l'application est
       // ouverte maintenant ; celui-ci attend dans le fil ceux qui l'ouvriront
