@@ -34,7 +34,11 @@
 //
 // Deux natures d'envoi, et il vaut mieux le savoir avant :
 //   — WhatsApp par numéro (wa.me/<numéro>) va à UNE personne, la file en fait
-//     donc le tour ;
+//     donc le tour. Telegram sait ouvrir la même conversation (t.me/+numéro)
+//     mais refuse d'y écrire quoi que ce soit d'avance : le message attend
+//     dans le presse-papier, il reste à le coller. C'est le prix de la
+//     conversation nominative — sa fenêtre « Share to », elle, ne nous
+//     appartient pas plus que celle de WhatsApp ;
 //   — Facebook, Telegram, Threads, X publient UNE fois, pour tout le monde :
 //     ils n'ont pas d'adresse par personne. Les cocher n'envoie pas à chaque
 //     client, cela publie.
@@ -165,6 +169,17 @@
           '</div>' +
           '<div data-liste style="max-height:40vh; overflow-y:auto;"></div>' +
           '<p class="empty-hint" data-vide style="display:none;">Mbola tsy misy client manana nomerao.</p>' +
+          // Le même carnet, l'autre application. Décoché par défaut : cela
+          // double la file, et tout le monde n'est pas sur Telegram.
+          '<label class="list-row" style="cursor:pointer; margin-top:0.6rem;">' +
+            '<span style="display:flex; align-items:center; gap:0.6rem;">' +
+              '<input type="checkbox" data-telegram-client> ' +
+              '<span><strong>Telegram koa isaky ny client</strong>' +
+              '<span style="display:block; color:var(--muted); font-size:0.72rem; line-height:1.4;">' +
+                'Hisokatra ny resaka amin\'ny olona tsirairay. Telegram tsy mandray hafatra ' +
+                'voasoratra mialoha : <strong>apetaho</strong> (Ctrl+V) — efa voadika izy.' +
+              '</span></span></span>' +
+          '</label>' +
         '</div>' +
 
         // 2) Les réseaux : une publication, et non un envoi par client.
@@ -242,6 +257,7 @@
     var somary = page.querySelector('[data-somary]');
 
     var clients = [];
+    var telegramClient = page.querySelector('[data-telegram-client]');
     var mailaka = page.querySelector('[data-mailaka]');
     var mailakaIsa = page.querySelector('[data-mailaka-isa]');
     var reseaux = RESEAUX.map(function (r) {
@@ -269,7 +285,9 @@
       daholoR.checked = reseaux.every(function (r) { return r.coche; });
       tout.checked = daholoR.checked && mailaka.checked &&
         (clients.length === 0 || clients.every(function (c) { return c.coche; }));
-      somary.textContent = cochesC().length + ' client + ' + cochesR().length + ' tambajotra' +
+      somary.textContent = cochesC().length + ' client' +
+        (telegramClient.checked ? ' (×2 : WhatsApp + Telegram)' : '') +
+        ' + ' + cochesR().length + ' tambajotra' +
         (mailaka.checked ? ' + mailaka' : '');
     }
 
@@ -331,6 +349,7 @@
     });
     sivana.addEventListener('input', dessiner);
     mailaka.addEventListener('change', direLIsa);
+    telegramClient.addEventListener('change', direLIsa);
 
     dessinerReseaux();
     lireLesClients().then(function (res) {
@@ -390,17 +409,22 @@
 
     // Le nom d'un envoi, qu'il soit une personne, un réseau ou l'email.
     function nomDe(e) {
-      if (e.client) return echap(e.client.nom) + ' · +' + echap(e.client.numero);
+      if (e.client) return (e.telegram ? 'Telegram · ' : '') +
+        echap(e.client.nom) + ' · +' + echap(e.client.numero);
       if (e.mail) return '📧 Mailaka amin\'ny client rehetra';
       return echap(e.reseau.nom);
     }
     function couleurDe(e) {
+      if (e.telegram) return '#29A9EB';
       return e.reseau ? e.reseau.couleur : 'var(--text)';
     }
     // L'adresse qu'ouvre une ligne, ou rien du tout : l'email part du serveur,
     // et WeChat n'a pas de page où déposer le message — on le copie.
     function adresseDe(e) {
       if (e.mail) return '';
+      // « t.me/+<numéro> » ouvre la conversation avec cette personne — et rien
+      // d'autre : aucun paramètre n'y écrit le message. D'où le collage.
+      if (e.telegram) return 'https://t.me/+' + e.client.numero;
       if (e.client) return 'https://wa.me/' + e.client.numero + '?text=' + encodeURIComponent(hafatra);
       if (e.reseau.copie) return e.reseau.ouvrir || '';
       return e.reseau.url(texte, rohy);
@@ -430,9 +454,12 @@
               ' background:none; border:none; padding:0; font:inherit; cursor:pointer; text-align:left;">' +
               nomDe(e) + '</button>');
         // Ce qu'il faut savoir avant de toucher la ligne, et non après.
-        var remarque = (!e.fait && e.reseau && e.reseau.remarque)
+        var texteRemarque = e.telegram
+          ? 'apetaho ny hafatra (Ctrl+V) — efa voadika'
+          : (e.reseau && e.reseau.remarque) || '';
+        var remarque = (!e.fait && texteRemarque)
           ? '<span style="color:var(--muted); font-size:0.7rem; display:block; line-height:1.4;">' +
-            echap(e.reseau.remarque) + '</span>'
+            echap(texteRemarque) + '</span>'
           : '';
         return '<div class="list-row" data-i="' + i + '" style="' +
             (ici ? 'background:var(--panel-2); border-radius:8px;' : '') +
@@ -516,14 +543,24 @@
         return;
       }
       fileQui.innerHTML = e.client
-        ? '<strong>' + echap(e.client.nom) + '</strong> · +' + echap(e.client.numero)
+        ? (e.telegram ? '<strong style="color:#29A9EB;">Telegram</strong> · ' : '') +
+          '<strong>' + echap(e.client.nom) + '</strong> · +' + echap(e.client.numero) +
+          (e.telegram ? ' <span style="color:var(--muted); font-size:0.8rem;">— apetaho ny hafatra voadika</span>' : '')
         : '<strong style="color:' + e.reseau.couleur + ';">' + echap(e.reseau.nom) + '</strong>' +
           (e.reseau.copie ? ' <span style="color:var(--muted); font-size:0.8rem;">— hadika ny hafatra, apetaho ao</span>' : '');
       fileVita.textContent = nalefa ? nalefa + ' efa nosokafana.' : '';
     }
 
     page.querySelector('[data-alefa]').addEventListener('click', function () {
-      attente = cochesC().map(function (c) { return { client: c }; })
+      // Chaque client d'abord sur WhatsApp, puis sur Telegram s'il est demandé :
+      // les deux conversations de la même personne se suivent, plutôt que de
+      // se retrouver aux deux bouts de la file.
+      var parClient = [];
+      cochesC().forEach(function (c) {
+        parClient.push({ client: c });
+        if (telegramClient.checked) parClient.push({ client: c, telegram: true });
+      });
+      attente = parClient
         .concat(cochesR().map(function (r) { return { reseau: r }; }))
         .concat(mailaka.checked ? [{ mail: true }] : []);
       if (!attente.length) { alert('Tsy misy voamarika.'); return; }
@@ -584,7 +621,9 @@
         // pour tous, et il sauve les ouvertures où l'application ne reprend
         // pas ce qu'on lui a passé.
         copier(hafatra);
-        if (x.client) {
+        if (x.telegram) {
+          fenetre = window.open('https://t.me/+' + x.client.numero, '_blank');
+        } else if (x.client) {
           fenetre = window.open('https://wa.me/' + x.client.numero +
             '?text=' + encodeURIComponent(hafatra), '_blank');
         } else if (x.reseau.copie) {
