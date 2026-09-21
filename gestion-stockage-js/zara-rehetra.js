@@ -208,7 +208,9 @@
           '<p data-file-vita style="font-size:0.78rem; color:var(--muted); margin:0.9rem 0 0;"></p>' +
           '<p style="font-size:0.74rem; color:var(--muted); margin:0.5rem 0 0; line-height:1.5;">' +
             'Ny bokotra manokatra izay voamarika rehetra miaraka. Raha misy tsy nisokatra, ' +
-            '<strong>tsindrio ny anarany eo ambany</strong> : rohy izy ireo, tsy sakanan\'ny navigateur mihitsy.' +
+            '<strong>tsindrio ny anarany eo ambany</strong> : rohy izy ireo, tsy sakanan\'ny navigateur mihitsy. ' +
+            'Voadika ny hafatra isaky ny misokatra : raha tsy tonga izy ao amin\'ny application, ' +
+            '<strong>apetaho</strong> fotsiny.' +
           '</p>' +
           // Tout ce qui a été coché reste écrit : on voit d'où l'on vient,
           // où l'on est, et ce qui attend encore — et chaque ligne se décoche,
@@ -446,7 +448,12 @@
       var e = attente[Number(ligne.getAttribute('data-i'))];
       if (!e || e.fait) return;
       if (e.mail) { ev.preventDefault(); envoyerLeMail(e); return; }
-      if (e.reseau && e.reseau.copie) copier(hafatra);
+      // Le message passe au presse-papier à chaque ouverture, et plus
+      // seulement pour ceux qui n'ont pas d'adresse. Certaines applications
+      // s'ouvrent sans reprendre ce qu'on leur a passé — Telegram le fait
+      // quand elle ne trouve pas son application et se rabat sur sa page web.
+      // Il reste alors à coller : c'est déjà prêt.
+      copier(hafatra);
       // Surtout pas de preventDefault : c'est le lien lui-même qui ouvre
       // l'onglet. Et pas de redessin dans la foulée non plus — remplacer le
       // lien pendant qu'on clique dessus annulerait l'ouverture. Au tour
@@ -562,14 +569,15 @@
       var bloques = 0;
       liste.forEach(function (x) {
         var fenetre;
+        // Le message passe au presse-papier dans tous les cas : c'est le même
+        // pour tous, et il sauve les ouvertures où l'application ne reprend
+        // pas ce qu'on lui a passé.
+        copier(hafatra);
         if (x.client) {
           fenetre = window.open('https://wa.me/' + x.client.numero +
             '?text=' + encodeURIComponent(hafatra), '_blank');
         } else if (x.reseau.copie) {
-          // Rien à ouvrir pour certains : le message est dans le
-          // presse-papier, il reste à le coller. C'est le même message pour
-          // tous, la dernière copie vaut donc pour toutes.
-          copier(hafatra);
+          // Rien à ouvrir pour certains : il n'y a que le presse-papier.
           fenetre = x.reseau.ouvrir ? window.open(x.reseau.ouvrir, '_blank') : true;
         } else {
           fenetre = window.open(x.reseau.url(texte, rohy), '_blank');
