@@ -353,8 +353,19 @@
       .eq('inviter_id', sub.id)
       .then(function(res){
         const count = (res && typeof res.count === 'number') ? res.count : 0;
+        const avant = sub.referralCount || 0;
         sub.referralCount = count;
         saveSubscription(sub);
+        // L'argent entrait en silence : le compte montait, et il fallait aller
+        // regarder la page pour s'en apercevoir. Une installation neuve part de
+        // zéro parrainage et de zéro connu — rien ne s'annonce à tort.
+        if(count > avant){
+          const gagnants = count - avant;
+          pushNotification('parrainage',
+            gagnants + ' personne' + (gagnants > 1 ? 's' : '') +
+            ' de plus ' + (gagnants > 1 ? 'ont' : 'a') + ' ouvert l\'application avec votre lien : ' +
+            formatWalletAr(gagnants * AR_PER_CREDIT) + ' dans votre portefeuille.');
+        }
         if(callback) callback(sub);
       }, function(){ if(callback) callback(sub); });
   }
@@ -736,6 +747,8 @@
     // Demandes de déblocage en attente : le propriétaire l'apprend en ouvrant
     // l'application, pas seulement en passant par Paramètres.
     if(typeof checkPendingUnlockRequests === 'function') checkPendingUnlockRequests();
+    // L'argent entré pendant son absence : autant de personnes de plus.
+    notifyOwnerOfNewVisitors();
     renderWallet();
     initPresence();
     initCallSignaling();
@@ -955,6 +968,7 @@
       renderPayoutList();
       renderPayoutQueue();
       notifySettledPayouts(state.payouts);
+      annoncerLesVisiteurs(state);
     }, function(err){
       balanceEl.textContent = '—';
       const note = document.getElementById('walletRateNote');
@@ -1090,7 +1104,7 @@
   };
   const DEPOT_CANAUX = {
     mvola: 'MVola', orange: 'Orange Money', airtel: 'Airtel Money',
-    paypal: 'PayPal', essai: 'Essai'
+    paypal: 'PayPal', essai: 'Essai', visiteur: 'Personne nouvelle sur le site'
   };
 
   function renderDepositList(){
@@ -1348,6 +1362,59 @@
 
   // Le client peut avoir fermé la page entre la demande et l'envoi : à la
   // réouverture, on lui dit ce qui s'est passé pendant son absence.
+  // ---- L'ARGENT QUI ENTRE PENDANT QU'ON DORT ----
+  // Les personnes qui découvrent le site créditent le portefeuille du
+  // propriétaire depuis LEUR téléphone : il n'est pas là pour le voir passer.
+  // Il l'apprend donc en ouvrant l'application, comme il apprend les demandes
+  // de déblocage et les alertes de sécurité.
+  //
+  // Le nombre annoncé vient des vingt derniers versements que le serveur
+  // renvoie ; le solde, lui, est toujours juste. Entre deux ouvertures très
+  // espacées, le premier peut donc dire moins que le second — c'est pourquoi
+  // le message porte les deux.
+  const VISITEURS_VUS_KEY = 'stockmanager_depots_visiteurs_vus';
+  const VISITEURS_AMORCE_KEY = 'stockmanager_depots_visiteurs_amorce';
+
+  function annoncerLesVisiteurs(state){
+    const rows = ((state && state.deposits) || []).filter(function(d){
+      return d.provider === 'visiteur';
+    });
+    let vus = [];
+    try { vus = JSON.parse(localStorage.getItem(VISITEURS_VUS_KEY)) || []; } catch(e){}
+    let amorce = false;
+    try { amorce = localStorage.getItem(VISITEURS_AMORCE_KEY) === '1'; } catch(e){}
+    const frais = rows.filter(function(d){ return vus.indexOf(d.id) < 0; });
+
+    // Au tout premier passage on ne remonte pas l'historique : on note
+    // seulement où l'on en est. C'est le passage suivant qui annonce — et si
+    // ce premier passage ne trouve rien, la toute première personne comptera.
+    if(amorce && frais.length){
+      const somme = frais.reduce(function(t, d){ return t + (Number(d.amount_ar) || 0); }, 0);
+      ajouterNotificationLocale('parrainage',
+        frais.length + ' personne' + (frais.length > 1 ? 's' : '') +
+        ' de plus ' + (frais.length > 1 ? 'ont' : 'a') + ' ouvert le site : ' + formatWalletAr(somme) +
+        ' dans votre portefeuille. Solde : ' + formatWalletAr(state.balanceAr) + '.');
+    }
+    try {
+      localStorage.setItem(VISITEURS_AMORCE_KEY, '1');
+      if(frais.length){
+        localStorage.setItem(VISITEURS_VUS_KEY, JSON.stringify(
+          frais.map(function(d){ return d.id; }).concat(vus).slice(0, 200)));
+      }
+    } catch(e){}
+  }
+
+  // À l'ouverture de l'application, pour le propriétaire seul : lui seul
+  // reçoit ces versements, et lui seul a un jeton que la fonction accepte.
+  function notifyOwnerOfNewVisitors(){
+    if(!(currentUser && currentUser.email && isOwnerEmail(currentUser.email))) return;
+    const sub = ensureInstallDate();
+    callWallet({ action: 'state', installId: sub.id }).then(function(state){
+      walletState = state;
+      annoncerLesVisiteurs(state);
+    }, function(){});
+  }
+
   const PAYOUT_SEEN_KEY = 'stockmanager_payouts_seen';
   function notifySettledPayouts(rows){
     let seen = [];
