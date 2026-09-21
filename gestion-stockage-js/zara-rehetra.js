@@ -185,12 +185,13 @@
           '<p data-file-qui style="font-size:0.9rem; margin:0 0 0.9rem;"></p>' +
           '<div style="display:flex; gap:0.6rem; flex-wrap:wrap;">' +
             '<button type="button" class="btn btn-primary btn-sm" data-sokafy style="width:auto;">📨 Sokafy</button>' +
-            '<button type="button" class="btn btn-sm" data-dingana style="width:auto;">⏭ Dinganina</button>' +
+            '<button type="button" class="btn btn-sm" data-rehetra style="width:auto;">☑ Rehetra</button>' +
             '<button type="button" class="btn btn-sm" data-ajanona style="width:auto;">✖ Ajanony</button>' +
           '</div>' +
           '<p data-file-vita style="font-size:0.78rem; color:var(--muted); margin:0.9rem 0 0;"></p>' +
           // Tout ce qui a été coché reste écrit : on voit d'où l'on vient,
-          // où l'on est, et ce qui attend encore.
+          // où l'on est, et ce qui attend encore — et chaque ligne se décoche,
+          // d'avance, autant qu'on veut.
           '<div data-file-liste style="max-height:34vh; overflow-y:auto; margin-top:0.9rem; ' +
             'border-top:1px solid var(--line); padding-top:0.5rem;"></div>' +
         '</div>' +
@@ -318,11 +319,40 @@
     var fileVita = page.querySelector('[data-file-vita]');
     var fileListe = page.querySelector('[data-file-liste]');
     var bSokafy = page.querySelector('[data-sokafy]');
-    var bDingana = page.querySelector('[data-dingana]');
+    var bRehetra = page.querySelector('[data-rehetra]');
     var bAjanona = page.querySelector('[data-ajanona]');
     var attente = [];
     var rang = 0;
     var nalefa = 0;
+
+    // « Dinganina » sautait UNE ligne, et il fallait y revenir appui par appui
+    // pour en sauter dix. Chaque ligne se décoche maintenant d'avance, et le
+    // bouton en décoche ou en recoche le reste d'un coup.
+    //
+    // « rang » n'est donc plus un compteur qu'on avance : il se déduit de la
+    // liste. Sans cela, décocher une ligne déjà dépassée laisserait la file
+    // pointer à côté.
+    function recalculerLeRang() {
+      rang = attente.length;
+      for (var i = 0; i < attente.length; i++) {
+        if (attente[i].coche && !attente[i].fait) { rang = i; return; }
+      }
+    }
+    function nbCoches() {
+      return attente.filter(function (e) { return e.coche; }).length;
+    }
+    function restants() {
+      return attente.filter(function (e) { return !e.fait; });
+    }
+    // Le bouton dit ce qu'il fera : tout cocher s'il reste des lignes
+    // décochées, tout décocher sinon. Il disparaît quand il n'y a plus rien
+    // à cocher.
+    function majBoutonRehetra() {
+      var reste = restants();
+      var tous = reste.length > 0 && reste.every(function (e) { return e.coche; });
+      bRehetra.textContent = tous ? '☐ Tsy misy' : '☑ Rehetra';
+      bRehetra.style.display = reste.length ? '' : 'none';
+    }
 
     // Le nom d'un envoi, qu'il soit une personne, un réseau ou l'email.
     function nomDe(e) {
@@ -333,39 +363,62 @@
     function couleurDe(e) {
       return e.reseau ? e.reseau.couleur : 'var(--text)';
     }
-    // ✓ fait · ▶ celui-ci · les suivants attendent.
+    // ✓ fait · ▶ celui-ci · les autres attendent, et chacun se décoche. Une
+    // ligne ouverte garde sa case : ce qui est parti ne se reprend pas.
     function dessinerLaFile() {
       fileListe.innerHTML = attente.map(function (e, i) {
-        var fait = i < rang;
         var ici = i === rang;
-        var marque = fait ? '✓' : (ici ? '▶' : '·');
-        return '<div class="list-row" style="' +
-            (ici ? 'background:var(--panel-2); border-radius:8px;' : '') +
-            (fait ? ' opacity:0.55;' : '') + '">' +
+        var marque = e.fait ? '✓' : (ici ? '▶' : (e.coche ? '·' : '—'));
+        return '<label class="list-row" data-i="' + i + '" style="cursor:' +
+            (e.fait ? 'default' : 'pointer') + ';' +
+            (ici ? ' background:var(--panel-2); border-radius:8px;' : '') +
+            (e.fait ? ' opacity:0.55;' : (e.coche ? '' : ' opacity:0.45;')) + '">' +
           '<span style="display:flex; align-items:center; gap:0.5rem;">' +
+            '<input type="checkbox" data-ligne' + (e.coche ? ' checked' : '') +
+              (e.fait ? ' disabled' : '') + '>' +
             '<span style="width:1em; color:var(--muted);">' + marque + '</span>' +
-            '<span style="color:' + couleurDe(e) + ';' + (ici ? ' font-weight:700;' : '') + '">' +
+            '<span style="color:' + couleurDe(e) + ';' + (ici ? ' font-weight:700;' : '') +
+              (e.coche ? '' : ' text-decoration:line-through;') + '">' +
               nomDe(e) + '</span></span>' +
           '<span style="color:var(--muted); font-size:0.72rem; white-space:nowrap;">' +
             (i + 1) + ' / ' + attente.length + '</span>' +
-        '</div>';
+        '</label>';
       }).join('');
       var actif = fileListe.children[rang];
       if (actif && actif.scrollIntoView) actif.scrollIntoView({ block: 'nearest' });
+      majBoutonRehetra();
     }
+
+    fileListe.addEventListener('change', function (ev) {
+      var c = ev.target;
+      if (!c || !c.hasAttribute || !c.hasAttribute('data-ligne')) return;
+      var ligne = c.closest('[data-i]');
+      if (!ligne) return;
+      var i = Number(ligne.getAttribute('data-i'));
+      if (!attente[i] || attente[i].fait) return;
+      attente[i].coche = c.checked;
+      recalculerLeRang();
+      montrerLeRang();
+    });
 
     function montrerLeRang() {
       dessinerLaFile();
       if (rang >= attente.length) {
-        fileTitre.textContent = '✓ Vita';
-        fileQui.textContent = nalefa + ' nosokafana amin\'ny ' + attente.length + '.';
+        // Plus rien à ouvrir : ou bien tout est parti, ou bien tout a été
+        // décoché. Dans le second cas « Rehetra » les ramène, et la file
+        // repart d'où elle en était.
+        fileTitre.textContent = nalefa ? '✓ Vita' : 'Tsy misy voamarika';
+        fileQui.textContent = nalefa
+          ? nalefa + ' nosokafana amin\'ny ' + nbCoches() + '.'
+          : 'Mariho eo ambany izay tianao halefa.';
         bSokafy.style.display = 'none';
-        bDingana.style.display = 'none';
-        bAjanona.textContent = 'Hidio';
+        bAjanona.textContent = nalefa ? 'Hidio' : '✖ Ajanony';
         return;
       }
       var e = attente[rang];
-      fileTitre.textContent = 'Fandefasana ' + (rang + 1) + ' / ' + attente.length;
+      fileTitre.textContent = 'Fandefasana ' + (nalefa + 1) + ' / ' + nbCoches();
+      bSokafy.style.display = '';
+      bAjanona.textContent = '✖ Ajanony';
       bSokafy.disabled = false;
       bSokafy.textContent = e.mail ? '📧 Alefa ny mailaka' : '📨 Sokafy';
       if (e.mail) {
@@ -386,10 +439,10 @@
         .concat(cochesR().map(function (r) { return { reseau: r }; }))
         .concat(mailaka.checked ? [{ mail: true }] : []);
       if (!attente.length) { alert('Tsy misy voamarika.'); return; }
+      attente.forEach(function (e) { e.coche = true; e.fait = false; });
       rang = 0;
       nalefa = 0;
       bSokafy.style.display = '';
-      bDingana.style.display = '';
       bAjanona.textContent = '✖ Ajanony';
       file.style.display = '';
       montrerLeRang();
@@ -415,7 +468,8 @@
           var d = (res && res.data) || {};
           if (d.sent) {
             nalefa++;
-            rang++;
+            e.fait = true;
+            recalculerLeRang();
             montrerLeRang();
             fileVita.textContent = '✓ ' + d.sent + ' mailaka lasa' + (d.error ? ' (' + d.error + ')' : '') + '.';
             return;
@@ -437,11 +491,15 @@
         window.open(e.reseau.url(texte, rohy), '_blank');
       }
       nalefa++;
-      rang++;
+      e.fait = true;
+      recalculerLeRang();
       montrerLeRang();
     });
-    bDingana.addEventListener('click', function () {
-      rang++;
+    bRehetra.addEventListener('click', function () {
+      var reste = restants();
+      var tous = reste.length > 0 && reste.every(function (x) { return x.coche; });
+      reste.forEach(function (x) { x.coche = !tous; });
+      recalculerLeRang();
       montrerLeRang();
     });
     bAjanona.addEventListener('click', fermer);
