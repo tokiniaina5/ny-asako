@@ -397,12 +397,16 @@
       if (e.reseau.copie) return e.reseau.ouvrir || '';
       return e.reseau.url(texte, rohy);
     }
-    // ✓ fait · ▶ celui-ci · les autres attendent, et chacun se décoche. Une
+    // ✓ fait · — écarté · les autres attendent, et chacun se décoche. Une
     // ligne ouverte garde sa case : ce qui est parti ne se reprend pas.
+    //
+    // Pas de flèche sur « celle-ci » : depuis que chaque ligne s'ouvre d'un
+    // doigt, il n'y a plus de tour à respecter. Désigner une ligne comme la
+    // suivante laissait croire qu'il fallait commencer par elle.
     function dessinerLaFile() {
       fileListe.innerHTML = attente.map(function (e, i) {
         var ici = i === rang;
-        var marque = e.fait ? '✓' : (ici ? '▶' : (e.coche ? '·' : '—'));
+        var marque = e.fait ? '✓' : (e.coche ? '·' : '—');
         var style = 'color:' + couleurDe(e) + ';' + (ici ? ' font-weight:700;' : '') +
           (e.coche ? '' : ' text-decoration:line-through;');
         var adresse = adresseDe(e);
