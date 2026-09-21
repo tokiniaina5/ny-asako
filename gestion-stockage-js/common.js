@@ -747,8 +747,8 @@
     // Demandes de déblocage en attente : le propriétaire l'apprend en ouvrant
     // l'application, pas seulement en passant par Paramètres.
     if(typeof checkPendingUnlockRequests === 'function') checkPendingUnlockRequests();
-    // L'argent entré pendant son absence : autant de personnes de plus.
-    notifyOwnerOfNewVisitors();
+    // Le portefeuille : ce qui est parti, ce qui est entré, ce qu'on attend.
+    verifierLePortefeuille();
     renderWallet();
     initPresence();
     initCallSignaling();
@@ -1383,8 +1383,9 @@
     const fresh = (rows || []).filter(function(r){ return seen.indexOf(r.id) < 0; });
     if(!fresh.length) return;
     fresh.forEach(function(r){
-      pushNotification('parrainage', '💸 ' + (r.name || r.email) + ' demande un retrait de ' +
-        formatWalletAr(r.amount_ar) + ' · ' + payoutMethodLabel(r.method) + '.');
+      pushNotification('parrainage', '💸 ' + (r.name || r.email) + ' nanao retrait : ' +
+        formatWalletAr(r.amount_ar) + ' · ' + payoutMethodLabel(r.method) +
+        ' — miandry anao.');
     });
     try {
       localStorage.setItem(PAYOUT_QUEUE_SEEN_KEY,
@@ -1436,32 +1437,51 @@
     } catch(e){}
   }
 
-  // À l'ouverture de l'application, pour le propriétaire seul : lui seul
-  // reçoit ces versements, et lui seul a un jeton que la fonction accepte.
-  function notifyOwnerOfNewVisitors(){
-    if(!(currentUser && currentUser.email && isOwnerEmail(currentUser.email))) return;
+  // Ce qui est arrivé au portefeuille pendant l'absence, demandé une fois à
+  // l'ouverture de l'application — et non quand on passe par la page
+  // Portefeuille, où l'on ne va justement que si l'on se doute de quelque
+  // chose.
+  //
+  // Les deux côtés y trouvent leur compte, dans le même appel :
+  //   — celui qui a demandé un retrait apprend qu'il est parti, ou refusé ;
+  //   — le propriétaire apprend qu'on lui en demande un, et ce que les
+  //     nouveaux venus ont versé.
+  function verifierLePortefeuille(){
+    if(!(currentUser && currentUser.email)) return;
     const sub = ensureInstallDate();
     callWallet({ action: 'state', installId: sub.id }).then(function(state){
       walletState = state;
-      annoncerLesVisiteurs(state);
+      notifySettledPayouts(state.payouts);
+      if(state.isOwner){
+        annoncerLesVisiteurs(state);
+        notifyNewPayoutRequests(state.queue || []);
+      }
     }, function(){});
   }
 
   const PAYOUT_SEEN_KEY = 'stockmanager_payouts_seen';
+  const PAYOUT_AMORCE_KEY = 'stockmanager_payouts_amorce';
   function notifySettledPayouts(rows){
     let seen = [];
     try { seen = JSON.parse(localStorage.getItem(PAYOUT_SEEN_KEY)) || []; } catch(e){}
+    let amorce = false;
+    try { amorce = localStorage.getItem(PAYOUT_AMORCE_KEY) === '1'; } catch(e){}
+    try { localStorage.setItem(PAYOUT_AMORCE_KEY, '1'); } catch(e){}
     const fresh = (rows || []).filter(function(r){
       return r.status !== 'pending' && seen.indexOf(r.id) < 0;
     });
     if(!fresh.length) return;
-    // Au tout premier passage on ne remonte pas l'historique entier.
-    if(seen.length){
+    // Au tout premier passage on ne remonte pas l'historique entier. C'est un
+    // drapeau à part qui le retient, et non la liste des retraits vus : sans
+    // lui, une première ouverture sans aucun retrait aurait fait manquer le
+    // tout premier — celui qui compte.
+    if(amorce){
       fresh.forEach(function(r){
         pushNotification('parrainage', r.status === 'sent'
-          ? '💸 Votre retrait de ' + formatWalletAr(r.amount_ar) + ' a été envoyé vers ' + r.destination + '.'
-          : 'Votre retrait de ' + formatWalletAr(r.amount_ar) + ' a été refusé' +
-            (r.note ? ' : ' + r.note : '') + '. Le solde vous a été rendu.');
+          ? '💸 Lasa ny retrait nataonao : ' + formatWalletAr(r.amount_ar) +
+            ' nalefa tany amin\'ny ' + r.destination + '.'
+          : '💸 Tsy lasa ny retrait nataonao : ' + formatWalletAr(r.amount_ar) +
+            (r.note ? ' — ' + r.note : '') + '. Naverina ny solde.');
       });
     }
     try {
