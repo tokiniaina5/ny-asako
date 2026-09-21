@@ -114,7 +114,7 @@ async function rateFromAr(currency: string): Promise<number> {
 // ============================================================
 
 type Envoi =
-  | { etat: "envoye"; ref: string; brut: unknown }
+  | { etat: "accepte"; ref: string; brut: unknown }
   | { etat: "refuse"; raison: string; brut: unknown }
   | { etat: "incertain"; raison: string; brut: unknown };
 
@@ -153,6 +153,8 @@ async function paypalJeton(): Promise<string | null> {
   }
 }
 
+// Déposer l'ordre. « accepte » ne veut pas dire « arrivé » : PayPal prend
+// l'ordre et le traite ensuite. C'est paypalEtat() qui dira s'il a abouti.
 async function paypalEnvoyer(
   idLigne: string,
   destination: string,
@@ -183,7 +185,7 @@ async function paypalEnvoyer(
 
   // « sender_batch_id » est la clef : PayPal refuse deux fois la même. C'est
   // ce qui empêche un même retrait de partir deux fois, même si notre appel
-  // est rejoué.
+  // est rejoué — et c'est ce qui rend le bouton « Envoyer » sans danger.
   const corps = {
     sender_batch_header: {
       sender_batch_id: idLigne,
@@ -205,40 +207,33 @@ async function paypalEnvoyer(
       headers: {
         "Authorization": "Bearer " + jeton,
         "Content-Type": "application/json",
-        // Deuxième garde-fou, du côté de la requête cette fois.
         "PayPal-Request-Id": idLigne,
       },
       body: JSON.stringify(corps),
     });
   } catch (e) {
-    // Le réseau a lâché : on ne sait pas si PayPal a reçu la demande. C'est
+    // Le réseau a lâché : on ne sait pas si PayPal a reçu l'ordre. C'est
     // exactement le cas où l'on ne décide rien.
     return { etat: "incertain", raison: "réseau : " + String(e), brut: null };
   }
 
   let brut: unknown = null;
-  try {
-    brut = await res.json();
-  } catch {
-    brut = null;
-  }
+  try { brut = await res.json(); } catch { brut = null; }
   const rep = brut as Record<string, unknown> | null;
 
   if (res.status === 201 || res.status === 200) {
     const entete = (rep?.batch_header ?? {}) as Record<string, unknown>;
     const ref = String(entete.payout_batch_id ?? "");
-    if (!ref) {
-      return { etat: "incertain", raison: "PayPal a répondu sans référence.", brut };
-    }
-    return { etat: "envoye", ref, brut };
+    if (!ref) return { etat: "incertain", raison: "PayPal a répondu sans référence.", brut };
+    return { etat: "accepte", ref, brut };
   }
 
-  // Clef déjà vue : le retrait est DÉJÀ parti lors d'une tentative
-  // précédente. Ce n'est pas un échec — c'est la preuve que la règle 2 a
-  // joué, et il ne faut surtout pas renvoyer.
+  // Clef déjà vue : l'ordre est DÉJÀ déposé. Ce n'est pas un échec — c'est la
+  // preuve que la clef a joué, et il ne faut surtout pas redéposer. On ne
+  // connaît pas sa référence ici : la ligne garde celle qu'elle avait.
   const nom = String(rep?.name ?? "");
   if (res.status === 400 && nom.indexOf("DUPLICATE") >= 0) {
-    return { etat: "envoye", ref: idLigne, brut };
+    return { etat: "accepte", ref: "", brut };
   }
 
   // 4xx : PayPal a compris et refuse (adresse invalide, solde marchand
@@ -246,6 +241,62 @@ async function paypalEnvoyer(
   const raison = String(rep?.message ?? rep?.name ?? ("HTTP " + res.status));
   if (res.status >= 500) return { etat: "incertain", raison, brut };
   return { etat: "refuse", raison, brut };
+}
+
+// Où en est un ordre déposé. C'est ici, et seulement ici, qu'on apprend que
+// l'argent est ARRIVÉ — le dépôt de l'ordre ne le disait pas.
+type EtatLot =
+  | { etat: "arrive"; detail: string; brut: unknown }
+  | { etat: "echoue"; detail: string; brut: unknown }
+  | { etat: "en_cours"; detail: string; brut: unknown };
+
+// Ce que PayPal dit d'un versement, et ce qu'on en conclut.
+//   SUCCESS                      il est arrivé.
+//   FAILED RETURNED BLOCKED      il ne partira pas : la somme est rendue.
+//   REFUNDED REVERSED
+//   UNCLAIMED                    déposé, mais le destinataire n'a pas encore
+//                                de compte PayPal. Il a trente jours ; on
+//                                attend, on ne rend rien.
+//   PENDING ONHOLD NEW           en cours.
+const PAYPAL_ECHECS = ["FAILED", "RETURNED", "BLOCKED", "REFUNDED", "REVERSED", "DENIED", "CANCELED"];
+
+async function paypalEtat(refLot: string): Promise<EtatLot> {
+  const jeton = await paypalJeton();
+  if (!jeton) return { etat: "en_cours", detail: "PayPal n'a pas rendu de jeton.", brut: null };
+
+  let res: Response;
+  try {
+    res = await fetch(paypalBase() + "/v1/payments/payouts/" + encodeURIComponent(refLot), {
+      headers: { "Authorization": "Bearer " + jeton },
+    });
+  } catch (e) {
+    return { etat: "en_cours", detail: "réseau : " + String(e), brut: null };
+  }
+
+  let brut: unknown = null;
+  try { brut = await res.json(); } catch { brut = null; }
+  const rep = brut as Record<string, unknown> | null;
+
+  if (!res.ok) {
+    // On ne conclut pas sur une réponse qu'on n'a pas comprise : la ligne
+    // reste où elle est, et l'on redemandera.
+    return { etat: "en_cours", detail: "HTTP " + res.status, brut };
+  }
+
+  const entete = (rep?.batch_header ?? {}) as Record<string, unknown>;
+  const etatLot = String(entete.batch_status ?? "").toUpperCase();
+  const items = (rep?.items ?? []) as Array<Record<string, unknown>>;
+  const premier = (items[0] ?? {}) as Record<string, unknown>;
+  const etatItem = String(premier.transaction_status ?? "").toUpperCase();
+
+  if (etatItem === "SUCCESS") {
+    return { etat: "arrive", detail: "SUCCESS", brut };
+  }
+  if (PAYPAL_ECHECS.indexOf(etatItem) >= 0 || PAYPAL_ECHECS.indexOf(etatLot) >= 0) {
+    const pourquoi = String(premier.errors ? JSON.stringify(premier.errors) : (etatItem || etatLot));
+    return { etat: "echoue", detail: pourquoi, brut };
+  }
+  return { etat: "en_cours", detail: etatItem || etatLot || "sans état", brut };
 }
 
 // ---- L'aiguillage ----
@@ -485,18 +536,16 @@ Deno.serve(async (req: Request) => {
       };
       const maintenant = new Date().toISOString();
 
-      if (e.etat === "envoye") {
-        etatFinal = "sent";
-        // Le filtre sur 'pending' rend l'écriture sans effet si la ligne a
-        // déjà été tranchée entre-temps : deux chemins ne la marquent pas deux fois.
+      if (e.etat === "accepte") {
+        // Déposé, pas arrivé : la ligne reste en attente, et c'est
+        // « verifier » qui la fera passer à « envoyé » le moment venu.
         await admin.from("wallet_payouts").update({
           ...commun,
-          auto_ref: e.ref,
-          status: "sent",
-          note: "Envoyé automatiquement (" + tentative.fournisseur + ") — réf. " + e.ref,
-          settled_at: maintenant,
+          ...(e.ref ? { auto_ref: e.ref } : {}),
+          note: "Ordre déposé chez " + tentative.fournisseur + " — en cours d'acheminement",
         }).eq("id", data.id).eq("status", "pending");
-        motAuClient = "Lasa ho azy ny vola.";
+        motAuClient = "Lasa any amin'ny " + tentative.fournisseur +
+          " ny baiko. Hampandrenesina ianao rehefa tonga ny vola.";
       } else if (e.etat === "refuse") {
         // Refusé pour une raison comprise : le solde revient, et on dit
         // laquelle — un refus sans motif ne se corrige pas.
@@ -530,6 +579,131 @@ Deno.serve(async (req: Request) => {
       message: motAuClient,
       auto: tentative ? { fournisseur: tentative.fournisseur, etat: tentative.envoi.etat } : null,
     });
+  }
+
+  // ---- Déposer l'ordre chez le fournisseur, maintenant ----
+  // Le dépôt se tente déjà au moment de la demande. Ce bouton le rejoue :
+  // quand les clefs n'étaient pas encore posées, quand le réseau avait lâché,
+  // quand on veut simplement s'y remettre.
+  //
+  // Le rejouer est sans danger : la clef présentée au fournisseur est
+  // l'identifiant de la ligne, et c'est LUI qui refuse le doublon. Un ordre
+  // déjà déposé revient en « déjà vu », jamais en second versement.
+  if (action === "envoyer") {
+    const id = String(body.id ?? "").trim();
+    if (!id) return json({ error: "la page n'a pas dit quelle demande envoyer" }, 400);
+
+    const { data: ligne, error: erreurLecture } = await admin.from("wallet_payouts")
+      .select("id,email,name,status,method,destination,currency,amount_out,auto_provider,auto_ref,auto_attempts")
+      .eq("id", id).maybeSingle();
+
+    if (erreurLecture) return json({ error: "La demande n'a pas pu être lue : " + erreurLecture.message }, 500);
+    if (!ligne) return json({ error: "demande introuvable (" + id + ")" }, 404);
+
+    // Envoyer de l'argent est l'acte du propriétaire : c'est son compte
+    // marchand qui se vide. Personne d'autre ne déclenche cela à la main.
+    if (!isOwner) return json({ error: "réservé au propriétaire" }, 403);
+    if (ligne.status !== "pending") return json({ error: "Cette demande est déjà tranchée." }, 409);
+
+    const tentative = await executerLeRetrait(
+      String(ligne.method ?? ""),
+      String(ligne.id),
+      String(ligne.destination ?? ""),
+      ligne.amount_out === null || ligne.amount_out === undefined ? null : Number(ligne.amount_out),
+      String(ligne.currency ?? ""),
+    );
+
+    if (!tentative) {
+      return json({
+        error: "Ce canal ne s'envoie pas tout seul : " +
+          (String(ligne.method ?? "") === "paypal"
+            ? "les clefs PayPal ne sont pas posées (PAYPAL_CLIENT_ID, PAYPAL_SECRET)."
+            : "seul PayPal est automatique pour l'instant ; celui-ci s'envoie à la main."),
+      }, 409);
+    }
+
+    const e = tentative.envoi;
+    const maintenant = new Date().toISOString();
+    const essais = Number(ligne.auto_attempts ?? 0) + 1;
+
+    if (e.etat === "accepte") {
+      // Déposé, PAS arrivé. La ligne reste en attente : c'est « verifier »
+      // qui la fera passer à « envoyé », quand PayPal dira que c'est fait.
+      await admin.from("wallet_payouts").update({
+        auto_provider: tentative.fournisseur,
+        auto_attempts: essais,
+        auto_raw: e.brut ?? null,
+        ...(e.ref ? { auto_ref: e.ref } : {}),
+        note: "Ordre déposé chez " + tentative.fournisseur + " — en cours d'acheminement",
+      }).eq("id", id).eq("status", "pending");
+      return json({ etat: "depose", ref: e.ref || ligne.auto_ref || null,
+        message: "Lasa any amin'ny PayPal ny baiko. Hampandrenesina ianao rehefa tonga ny vola." });
+    }
+
+    if (e.etat === "refuse") {
+      await admin.from("wallet_payouts").update({
+        auto_provider: tentative.fournisseur,
+        auto_attempts: essais,
+        auto_raw: e.brut ?? null,
+        status: "refused",
+        note: "Refusé par " + tentative.fournisseur + " : " + e.raison,
+        settled_at: maintenant,
+      }).eq("id", id).eq("status", "pending");
+      return json({ etat: "refuse", message: e.raison });
+    }
+
+    // On ne sait pas. On ne décide rien.
+    await admin.from("wallet_payouts").update({
+      auto_provider: tentative.fournisseur,
+      auto_attempts: essais,
+      auto_raw: e.brut ?? null,
+      note: "À vérifier chez " + tentative.fournisseur + " : " + e.raison,
+    }).eq("id", id).eq("status", "pending");
+    return json({ etat: "incertain", message: e.raison });
+  }
+
+  // ---- L'argent est-il arrivé ? ----
+  // Le dépôt de l'ordre ne le disait pas : PayPal le traite ensuite. On le
+  // lui redemande pour chaque ligne déposée et encore en attente.
+  //
+  // Appelée à l'ouverture de l'application. Chacun demande pour ses propres
+  // lignes ; le propriétaire, pour toutes.
+  if (action === "verifier") {
+    let requete = admin.from("wallet_payouts")
+      .select("id,email,amount_ar,auto_provider,auto_ref")
+      .eq("status", "pending").not("auto_ref", "is", null).limit(25);
+    if (!isOwner) requete = requete.eq("email", email);
+
+    const { data: lignes, error: erreurLecture } = await requete;
+    if (erreurLecture) return json({ error: erreurLecture.message }, 500);
+
+    const arrivees: string[] = [];
+    const echecs: string[] = [];
+    for (const l of lignes ?? []) {
+      if (String(l.auto_provider ?? "") !== "paypal") continue;
+      const etat = await paypalEtat(String(l.auto_ref));
+      if (etat.etat === "arrive") {
+        await admin.from("wallet_payouts").update({
+          status: "sent",
+          note: "Arrivé chez le destinataire (paypal) — réf. " + l.auto_ref,
+          settled_at: new Date().toISOString(),
+          auto_raw: etat.brut ?? null,
+        }).eq("id", l.id).eq("status", "pending");
+        arrivees.push(String(l.id));
+      } else if (etat.etat === "echoue") {
+        // Il ne partira pas : la somme revient au solde, et l'on dit pourquoi.
+        await admin.from("wallet_payouts").update({
+          status: "refused",
+          note: "Non abouti chez paypal : " + etat.detail + " — solde rendu",
+          settled_at: new Date().toISOString(),
+          auto_raw: etat.brut ?? null,
+        }).eq("id", l.id).eq("status", "pending");
+        echecs.push(String(l.id));
+      }
+      // « en_cours » : on ne touche à rien, on redemandera.
+    }
+
+    return json({ verifies: (lignes ?? []).length, arrivees: arrivees.length, echecs: echecs.length });
   }
 
   // ---- Reprendre une demande qui n'est jamais partie ----

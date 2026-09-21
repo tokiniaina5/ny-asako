@@ -769,3 +769,41 @@ vidéos encore affichées, ou l'on garde pour rien.
 
 Sans le secret, la fonction refuse tout et n'efface rien : un
 secret vide accepterait le monde entier, et celle-ci supprime.
+
+
+« DÉPOSÉ » N'EST PAS « ARRIVÉ »
+------------------------------
+PayPal répond 201 quand il PREND l'ordre, pas quand l'argent est
+chez le destinataire. Il le traite ensuite, et cela peut échouer :
+adresse inconnue, versement retourné, compte bloqué.
+
+Le code disait "envoyé" sur ce 201. C'était trop tôt, et le client
+recevait un avis pour un argent qui pouvait ne jamais arriver.
+
+Maintenant :
+  — le dépôt laisse la ligne EN ATTENTE, avec la référence du lot
+    et la note "Ordre déposé — en cours d'acheminement" ;
+  — l'action "verifier" redemande à PayPal où en est chaque lot
+    déposé, à chaque ouverture de l'application ;
+  — SUCCESS fait passer la ligne à "envoyé", et c'est là que l'avis
+    part : "✅ Tonga ny vola" ;
+  — FAILED, RETURNED, BLOCKED, REFUNDED, REVERSED rendent la somme
+    au solde, avec le motif ;
+  — UNCLAIMED n'est pas un échec : le destinataire n'a pas encore
+    de compte PayPal et a trente jours pour en ouvrir un. On
+    attend, on ne rend rien.
+
+DEUX BOUTONS, dans "Mes retraits", pour le propriétaire seul :
+  "📤 Alefa amin'ny PayPal izao"  dépose l'ordre maintenant
+  "🔁 Andramo indray ny PayPal"   le rejoue
+
+Rejouer est sans danger : la clef présentée à PayPal est
+l'identifiant de la ligne, et c'est LUI qui refuse le doublon. Un
+ordre déjà déposé revient en "déjà vu", jamais en second versement.
+
+Le bouton n'apparaît que sur les lignes PayPal en attente. Envoyer
+de l'argent est l'acte du propriétaire — son compte marchand se
+vide — et le serveur le refuse à quiconque d'autre.
+
+À FAIRE UNE FOIS :
+     supabase functions deploy wallet

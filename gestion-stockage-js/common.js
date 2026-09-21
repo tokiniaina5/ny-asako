@@ -1124,6 +1124,48 @@
       // parvienne ; la rendre reviendrait à la payer deux fois. Le serveur le
       // refuse aussi de son côté — le bouton n'est que la porte fermée
       // d'avance.
+      // Déposer l'ordre chez le fournisseur, maintenant. C'est l'acte du
+      // propriétaire : son compte marchand se vide. Le serveur le refuse à
+      // quiconque d'autre — le bouton n'est que la porte fermée d'avance.
+      //
+      // Le rejouer est sans danger : la clef présentée au fournisseur est
+      // l'identifiant de la ligne, et c'est lui qui refuse le doublon.
+      // C'est le serveur qui dit qui est le propriétaire — il compare le
+      // jeton, pas un email que la page aurait sous la main.
+      if(r.status === 'pending' && r.method === 'paypal' && walletState.isOwner){
+        const envoi = document.createElement('button');
+        envoi.type = 'button';
+        envoi.className = 'btn btn-primary btn-sm';
+        envoi.style.cssText = 'width:auto; margin-top:0.6rem; margin-right:0.5rem;';
+        envoi.textContent = r.auto_ref ? '🔁 Andramo indray ny PayPal' : '📤 Alefa amin\'ny PayPal izao';
+        const dire = function(texte, couleur){
+          const ligne = document.createElement('div');
+          ligne.style.cssText = 'color:' + couleur + '; margin-top:0.4rem; line-height:1.5;';
+          ligne.textContent = texte;
+          div.appendChild(ligne);
+        };
+        envoi.addEventListener('click', function(){
+          envoi.disabled = true;
+          envoi.textContent = 'Mandefa…';
+          callWallet({ action: 'envoyer', id: r.id }).then(function(res){
+            envoi.disabled = false;
+            envoi.textContent = '🔁 Andramo indray ny PayPal';
+            // « Déposé » n'est pas « arrivé » : PayPal traite ensuite. La
+            // ligne reste en attente, et c'est la vérification qui la fera
+            // passer — avec l'avis qui va avec.
+            dire(res.message || 'Lasa ny baiko.', res.etat === 'refuse' ? 'var(--red, #e66)' : 'var(--cyan)');
+            pushNotification('parrainage', '📤 Nalefa tany amin\'ny PayPal ny baiko : ' +
+              formatWalletAr(r.amount_ar) + '. Andrasana ny fanamarinana.');
+            refreshWalletFromServer();
+          }, function(err){
+            envoi.disabled = false;
+            envoi.textContent = '📤 Alefa amin\'ny PayPal izao';
+            dire(err.message, 'var(--amber)');
+          });
+        });
+        div.appendChild(envoi);
+      }
+
       if(r.status === 'pending' && !r.auto_provider){
         const bouton = document.createElement('button');
         bouton.type = 'button';
@@ -1497,14 +1539,22 @@
   function verifierLePortefeuille(){
     if(!(currentUser && currentUser.email)) return;
     const sub = ensureInstallDate();
-    callWallet({ action: 'state', installId: sub.id }).then(function(state){
-      walletState = state;
-      notifySettledPayouts(state.payouts);
-      if(state.isOwner){
-        annoncerLesVisiteurs(state);
-        notifyNewPayoutRequests(state.queue || []);
-      }
-    }, function(){});
+    // D'abord demander au fournisseur où en sont les ordres déposés. Sans
+    // cela, l'état qu'on lit juste après serait celui d'avant, et l'argent
+    // arrivé cette nuit ne se dirait qu'à la prochaine ouverture.
+    const lireLEtat = function(){
+      callWallet({ action: 'state', installId: sub.id }).then(function(state){
+        walletState = state;
+        notifySettledPayouts(state.payouts);
+        if(state.isOwner){
+          annoncerLesVisiteurs(state);
+          notifyNewPayoutRequests(state.queue || []);
+        }
+      }, function(){});
+    };
+    // Qu'elle aboutisse ou non, on lit l'état ensuite : une vérification
+    // impossible ne doit pas empêcher de voir ce qu'on sait déjà.
+    callWallet({ action: 'verifier' }).then(lireLEtat, lireLEtat);
   }
 
   const PAYOUT_SEEN_KEY = 'stockmanager_payouts_seen';
@@ -1525,9 +1575,12 @@
     // tout premier — celui qui compte.
     if(amorce){
       fresh.forEach(function(r){
+        // « sent » ne veut plus dire « l'ordre est parti » mais « la somme est
+        // arrivée » : c'est la vérification chez le fournisseur qui le pose.
+        // Le mot doit dire cela, et pas autre chose.
         pushNotification('parrainage', r.status === 'sent'
-          ? '💸 Lasa ny retrait nataonao : ' + formatWalletAr(r.amount_ar) +
-            ' nalefa tany amin\'ny ' + r.destination + '.'
+          ? '✅ Tonga ny vola : ' + formatWalletAr(r.amount_ar) +
+            ' tafapetraka tao amin\'ny ' + r.destination + '.'
           : '💸 Tsy lasa ny retrait nataonao : ' + formatWalletAr(r.amount_ar) +
             (r.note ? ' — ' + r.note : '') + '. Naverina ny solde.');
       });
