@@ -483,6 +483,16 @@
   // Les commentaires ne sont chargés qu'à l'ouverture : une trentaine de
   // publications qui iraient toutes chercher leur fil à l'affichage feraient
   // trente requêtes pour un fil que personne n'a demandé à lire.
+  //
+  // Une fois ouvert, en revanche, il se relit tout seul. Il ne le faisait pas,
+  // et un commentaire écrit par quelqu'un d'autre n'arrivait qu'à la
+  // prochaine ouverture de la boîte — c'est-à-dire beaucoup trop tard, et
+  // sans que rien ne dise qu'il y en avait un.
+  //
+  // Fermé, il ne demande plus rien : c'est la boîte ouverte qui coûte, et
+  // personne ne lit un fil replié.
+  const COMMENTAIRES_RAFRAICHI_MS = 4000;
+
   function openComments(newsId, box){
     if(!newsId || !window.__sb){
       box.innerHTML = '<div class="fb-comment-empty">Tsy misy fifandraisana amin\'ny serveur.</div>';
@@ -497,7 +507,39 @@
       '<input type="text" class="fb-comment-input" placeholder="Soraty ny hevitrao…">' +
       '<button type="button" class="btn btn-sm fb-comment-send" style="width:auto;">Alefa</button>';
 
-    function charger(){
+    // Ce qui est déjà à l'écran, en une ligne. Redessiner à l'identique
+    // toutes les quatre secondes ferait sauter la sélection de qui relit, et
+    // clignoter la liste pour rien.
+    let empreinte = null;
+
+    function signature(rows){
+      return rows.map(function(c){
+        return (c.created_at || '') + '|' + (c.author_name || '') + '|' + (c.message || '');
+      }).join('\n');
+    }
+
+    function dessiner(rows){
+      liste.innerHTML = '';
+      if(!rows.length){
+        liste.innerHTML = '<div class="fb-comment-empty">Tsy mbola misy hevitra. Ianao no voalohany.</div>';
+        return;
+      }
+      rows.forEach(function(c){
+        const ligne = document.createElement('div');
+        ligne.className = 'fb-comment';
+        ligne.innerHTML =
+          '<strong>' + escapeHtml(c.author_name || 'Client') + '</strong> ' +
+          escapeHtml(c.message || '') +
+          '<span class="fb-comment-date">' +
+            (c.created_at ? new Date(c.created_at).toLocaleString('fr-FR') : '') +
+          '</span>';
+        liste.appendChild(ligne);
+      });
+    }
+
+    // « discret » : c'est la relecture automatique qui appelle. Une panne de
+    // réseau passagère ne doit pas effacer ce qui est lisible à l'écran.
+    function charger(discret){
       window.__sb.from('client_news_comments')
         .select('author_name,message,created_at')
         .eq('news_id', newsId)
@@ -505,27 +547,17 @@
         .limit(100)
         .then(function(res){
           if(res && res.error){
+            if(discret) return;
             liste.innerHTML = '<div class="fb-comment-empty">' + escapeHtml(feedErrorText(res.error)) + '</div>';
             return;
           }
           const rows = (res && res.data) || [];
-          liste.innerHTML = '';
-          if(!rows.length){
-            liste.innerHTML = '<div class="fb-comment-empty">Tsy mbola misy hevitra. Ianao no voalohany.</div>';
-            return;
-          }
-          rows.forEach(function(c){
-            const ligne = document.createElement('div');
-            ligne.className = 'fb-comment';
-            ligne.innerHTML =
-              '<strong>' + escapeHtml(c.author_name || 'Client') + '</strong> ' +
-              escapeHtml(c.message || '') +
-              '<span class="fb-comment-date">' +
-                (c.created_at ? new Date(c.created_at).toLocaleString('fr-FR') : '') +
-              '</span>';
-            liste.appendChild(ligne);
-          });
+          const sig = signature(rows);
+          if(sig === empreinte) return;
+          empreinte = sig;
+          dessiner(rows);
         }, function(err){
+          if(discret) return;
           liste.innerHTML = '<div class="fb-comment-empty">' + escapeHtml(feedErrorText(err)) + '</div>';
         });
     }
@@ -533,7 +565,22 @@
     box.innerHTML = '';
     box.appendChild(liste);
     box.appendChild(saisie);
-    charger();
+    charger(false);
+
+    // Un seul minuteur par boîte : rouvrir n'en empile pas un second.
+    if(box.__minuteurCommentaires) clearInterval(box.__minuteurCommentaires);
+    box.__minuteurCommentaires = setInterval(function(){
+      // Refermée, ou le fil entier redessiné sous elle : dans les deux cas
+      // plus personne ne regarde, et l'on s'arrête. Sans ce garde-fou, chaque
+      // ouverture laisserait derrière elle un minuteur qui interroge le
+      // serveur pour une boîte qui n'existe plus.
+      if(!box.isConnected || box.style.display === 'none'){
+        clearInterval(box.__minuteurCommentaires);
+        box.__minuteurCommentaires = null;
+        return;
+      }
+      charger(true);
+    }, COMMENTAIRES_RAFRAICHI_MS);
 
     const champ = saisie.querySelector('.fb-comment-input');
     const bouton = saisie.querySelector('.fb-comment-send');
@@ -542,6 +589,22 @@
       const texte = champ.value.trim();
       if(!texte) return;
       bouton.disabled = true;
+
+      // Le sien s'affiche tout de suite, en pâle. Attendre l'aller-retour
+      // pour voir ce qu'on vient d'écrire donne l'impression que rien n'est
+      // parti — et l'on écrit deux fois.
+      const vide = liste.querySelector('.fb-comment-empty');
+      if(vide) vide.remove();
+      const provisoire = document.createElement('div');
+      provisoire.className = 'fb-comment';
+      provisoire.style.opacity = '0.55';
+      provisoire.innerHTML =
+        '<strong>' + escapeHtml((currentUser && currentUser.name) || 'Client') + '</strong> ' +
+        escapeHtml(texte) +
+        '<span class="fb-comment-date">Mandefa…</span>';
+      liste.appendChild(provisoire);
+      champ.value = '';
+
       window.__sb.from('client_news_comments').insert({
         news_id: newsId,
         author_name: (currentUser && currentUser.name) || 'Client',
@@ -549,11 +612,21 @@
         message: texte
       }).then(function(res){
         bouton.disabled = false;
-        if(res && res.error){ montrerErreur(res.error); return; }
-        champ.value = '';
-        charger();
+        if(res && res.error){
+          // Rendu à son auteur : le texte revient dans le champ plutôt que
+          // de disparaître avec le message d'erreur.
+          provisoire.remove();
+          champ.value = texte;
+          montrerErreur(res.error);
+          return;
+        }
+        // La relecture remplace le pâle par le vrai, daté par le serveur.
+        empreinte = null;
+        charger(true);
       }, function(err){
         bouton.disabled = false;
+        provisoire.remove();
+        champ.value = texte;
         montrerErreur(err);
       });
     }
@@ -700,7 +773,16 @@
             commentEl.addEventListener('click', function(){
               const ouvert = commentsBox.style.display === 'block';
               commentsBox.style.display = ouvert ? 'none' : 'block';
-              if(!ouvert) openComments(n.id, commentsBox);
+              if(ouvert){
+                // Refermée : on coupe la relecture tout de suite, sans
+                // attendre que le minuteur s'en aperçoive de lui-même.
+                if(commentsBox.__minuteurCommentaires){
+                  clearInterval(commentsBox.__minuteurCommentaires);
+                  commentsBox.__minuteurCommentaires = null;
+                }
+                return;
+              }
+              openComments(n.id, commentsBox);
             });
           }
           list.appendChild(div);
