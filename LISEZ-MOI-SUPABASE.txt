@@ -584,3 +584,53 @@ Le ménage (effacer une vidéo) se fait depuis le tableau de bord
 Supabase : le navigateur n'a le droit ni d'effacer ni de remplacer,
 sans quoi il suffirait de connaître une adresse pour supprimer la
 vidéo de quelqu'un d'autre.
+
+
+LE RETRAIT ENVOYÉ PAR LA MACHINE
+------------------------------
+Un retrait était une demande : la ligne entrait en attente, vous
+alliez envoyer l'argent vous-même, puis vous la marquiez "envoyé".
+
+Un canal dont les clefs sont posées en secrets s'exécute maintenant
+tout seul, à la seconde où la demande est faite. Un canal SANS
+clefs ne change pas d'un iota : il reste une demande que vous
+exécutez. C'est le défaut, et il le reste.
+
+Ce qui est fait : PayPal (Payouts).
+Ce qui ne l'est pas : MVola, Orange Money, Airtel Money. Leurs
+interfaces existent, mais elles répondent "reçu" et se concluent
+plus tard, par une seconde question. Les écrire sans pouvoir les
+éprouver sur un compte marchand réel reviendrait à confier de
+l'argent à du code que personne n'a jamais vu fonctionner. Elles
+restent manuelles.
+
+À FAIRE UNE FOIS :
+1. Dans Supabase (SQL Editor) :
+     "supabase/sql/supabase-retrait-automatique.sql"
+2. Les clefs, en SANDBOX d'abord — jamais dans le code :
+     supabase secrets set PAYPAL_CLIENT_ID=...
+     supabase secrets set PAYPAL_SECRET=...
+     supabase secrets set PAYPAL_ENV=sandbox
+3. Dans le Terminal :
+     supabase functions deploy wallet
+   (AVEC vérification du jeton, comme avant : pas de --no-verify-jwt)
+
+ÉPROUVEZ-LE EN SANDBOX AVANT TOUT. Créez un compte marchand et un
+compte client sur developer.paypal.com, faites un retrait de
+quelques euros, et vérifiez qu'il arrive. Ce n'est qu'ensuite que
+PAYPAL_ENV=live a un sens.
+
+PayPal n'accepte pas l'ariary : le retrait doit choisir une devise
+d'arrivée (EUR, USD…), sans quoi il est refusé avec ce motif.
+
+TROIS RÈGLES, ÉCRITES DANS LE CODE :
+  1. On n'invente jamais un succès. Si la réponse ne dit pas
+     clairement que l'argent est parti, la ligne reste EN ATTENTE
+     et c'est vous qui tranchez. Marquer "envoyé" à tort, c'est
+     perdre la somme ; marquer "refusé" à tort, c'est la rendre
+     deux fois.
+  2. L'identifiant de la ligne sert de clef chez PayPal
+     (sender_batch_id). Rejouer le même retrait lui présente la
+     même clef, et c'est LUI qui refuse le doublon.
+  3. La ligne existe en base AVANT tout envoi. Si l'argent part et
+     que la réponse se perd, la trace est déjà là.

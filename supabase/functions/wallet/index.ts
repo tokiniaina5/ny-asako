@@ -72,6 +72,192 @@ async function rateFromAr(currency: string): Promise<number> {
   }
 }
 
+// ============================================================
+// L'ENVOI AUTOMATIQUE
+//
+// Un retrait était une demande : la ligne entrait en « pending », le
+// propriétaire allait envoyer l'argent lui-même, puis la marquait « sent ».
+// Un canal dont les clefs sont posées en secrets s'exécute maintenant tout
+// seul, à la seconde où la demande est faite.
+//
+// Un canal sans clefs ne change pas d'un iota : il reste une demande que
+// quelqu'un exécute. C'est le défaut, et il le reste.
+//
+// Trois règles, et elles ne se négocient pas :
+//
+//   1. On n'invente jamais un succès. Si la réponse du fournisseur ne dit
+//      pas clairement que l'argent est parti, la ligne reste « pending » et
+//      un humain tranche. Marquer « sent » à tort, c'est perdre la somme ;
+//      marquer « refused » à tort, c'est la rendre deux fois.
+//
+//   2. L'identifiant de la ligne sert de clef au fournisseur. Rejouer le
+//      même retrait lui présente la même clef, et c'est LUI qui refuse le
+//      doublon — une garantie qui ne dépend pas de notre code.
+//
+//   3. La ligne existe en base AVANT qu'on tente quoi que ce soit. Si
+//      l'envoi part et que notre réponse se perd, la trace est déjà là :
+//      c'est ce qui permet de retrouver l'argent plutôt que de le chercher.
+// ============================================================
+
+type Envoi =
+  | { etat: "envoye"; ref: string; brut: unknown }
+  | { etat: "refuse"; raison: string; brut: unknown }
+  | { etat: "incertain"; raison: string; brut: unknown };
+
+// ---- PayPal Payouts ----
+// Secrets attendus, et rien dans le code :
+//   PAYPAL_CLIENT_ID, PAYPAL_SECRET, PAYPAL_ENV ("sandbox" ou "live").
+// Sans les deux premiers, le canal reste manuel.
+function paypalConfigure(): boolean {
+  return !!(Deno.env.get("PAYPAL_CLIENT_ID") && Deno.env.get("PAYPAL_SECRET"));
+}
+
+function paypalBase(): string {
+  return (Deno.env.get("PAYPAL_ENV") ?? "sandbox").toLowerCase() === "live"
+    ? "https://api-m.paypal.com"
+    : "https://api-m.sandbox.paypal.com";
+}
+
+async function paypalJeton(): Promise<string | null> {
+  const cle = btoa(
+    (Deno.env.get("PAYPAL_CLIENT_ID") ?? "") + ":" + (Deno.env.get("PAYPAL_SECRET") ?? ""),
+  );
+  try {
+    const res = await fetch(paypalBase() + "/v1/oauth2/token", {
+      method: "POST",
+      headers: {
+        "Authorization": "Basic " + cle,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "grant_type=client_credentials",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function paypalEnvoyer(
+  idLigne: string,
+  destination: string,
+  montant: number,
+  devise: string,
+): Promise<Envoi> {
+  // PayPal ne connaît pas l'ariary. Partir dans une devise qu'il refuse,
+  // c'est un retrait qui échoue à l'arrivée sans qu'on sache pourquoi.
+  if (!devise || devise === "MGA") {
+    return {
+      etat: "refuse",
+      raison: "PayPal n'accepte pas l'ariary : choisissez une devise d'arrivée (EUR, USD…).",
+      brut: null,
+    };
+  }
+  if (!(montant > 0)) {
+    return {
+      etat: "refuse",
+      raison: "conversion indisponible : le taux du jour n'a pas été trouvé.",
+      brut: null,
+    };
+  }
+
+  const jeton = await paypalJeton();
+  if (!jeton) {
+    return { etat: "incertain", raison: "PayPal n'a pas rendu de jeton.", brut: null };
+  }
+
+  // « sender_batch_id » est la clef : PayPal refuse deux fois la même. C'est
+  // ce qui empêche un même retrait de partir deux fois, même si notre appel
+  // est rejoué.
+  const corps = {
+    sender_batch_header: {
+      sender_batch_id: idLigne,
+      email_subject: "Ny asako — retrait",
+      email_message: "Votre retrait depuis Ny asako.",
+    },
+    items: [{
+      recipient_type: "EMAIL",
+      amount: { value: montant.toFixed(2), currency: devise },
+      receiver: destination,
+      sender_item_id: idLigne,
+    }],
+  };
+
+  let res: Response;
+  try {
+    res = await fetch(paypalBase() + "/v1/payments/payouts", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + jeton,
+        "Content-Type": "application/json",
+        // Deuxième garde-fou, du côté de la requête cette fois.
+        "PayPal-Request-Id": idLigne,
+      },
+      body: JSON.stringify(corps),
+    });
+  } catch (e) {
+    // Le réseau a lâché : on ne sait pas si PayPal a reçu la demande. C'est
+    // exactement le cas où l'on ne décide rien.
+    return { etat: "incertain", raison: "réseau : " + String(e), brut: null };
+  }
+
+  let brut: unknown = null;
+  try {
+    brut = await res.json();
+  } catch {
+    brut = null;
+  }
+  const rep = brut as Record<string, unknown> | null;
+
+  if (res.status === 201 || res.status === 200) {
+    const entete = (rep?.batch_header ?? {}) as Record<string, unknown>;
+    const ref = String(entete.payout_batch_id ?? "");
+    if (!ref) {
+      return { etat: "incertain", raison: "PayPal a répondu sans référence.", brut };
+    }
+    return { etat: "envoye", ref, brut };
+  }
+
+  // Clef déjà vue : le retrait est DÉJÀ parti lors d'une tentative
+  // précédente. Ce n'est pas un échec — c'est la preuve que la règle 2 a
+  // joué, et il ne faut surtout pas renvoyer.
+  const nom = String(rep?.name ?? "");
+  if (res.status === 400 && nom.indexOf("DUPLICATE") >= 0) {
+    return { etat: "envoye", ref: idLigne, brut };
+  }
+
+  // 4xx : PayPal a compris et refuse (adresse invalide, solde marchand
+  // insuffisant…). 5xx : c'est chez lui que ça cloche, on ne conclut pas.
+  const raison = String(rep?.message ?? rep?.name ?? ("HTTP " + res.status));
+  if (res.status >= 500) return { etat: "incertain", raison, brut };
+  return { etat: "refuse", raison, brut };
+}
+
+// ---- L'aiguillage ----
+// Rendre null, c'est dire « ce canal n'est pas automatique » : la demande
+// suit alors l'ancien chemin, sans rien tenter.
+async function executerLeRetrait(
+  methode: string,
+  idLigne: string,
+  destination: string,
+  montantSortie: number | null,
+  devise: string,
+): Promise<{ fournisseur: string; envoi: Envoi } | null> {
+  if (methode === "paypal" && paypalConfigure()) {
+    return {
+      fournisseur: "paypal",
+      envoi: await paypalEnvoyer(idLigne, destination, Number(montantSortie ?? 0), devise),
+    };
+  }
+  // MVola, Orange Money, Airtel Money : leurs interfaces existent, mais
+  // elles répondent « reçu » et se concluent plus tard, par une seconde
+  // question. Les écrire sans pouvoir les éprouver sur un compte marchand
+  // réel reviendrait à confier de l'argent à du code que personne n'a jamais
+  // vu fonctionner. Elles restent manuelles jusque-là.
+  return null;
+}
+
 type Admin = ReturnType<typeof createClient>;
 
 // ---- Le solde, déduit de la base ----
@@ -258,9 +444,74 @@ Deno.serve(async (req: Request) => {
     }).select("id,amount_ar,currency,amount_out").single();
 
     if (error) return json({ error: error.message }, 500);
+
+    // La ligne existe avant qu'on tente quoi que ce soit : si l'envoi part et
+    // que notre réponse se perd, la trace est déjà en base.
+    const tentative = await executerLeRetrait(
+      method,
+      String(data.id),
+      destination,
+      amountOut,
+      currency,
+    );
+
+    let etatFinal = "pending";
+    let motAuClient = "";
+
+    if (tentative) {
+      const e = tentative.envoi;
+      const commun = {
+        auto_provider: tentative.fournisseur,
+        auto_attempts: 1,
+        auto_raw: e.brut ?? null,
+      };
+      const maintenant = new Date().toISOString();
+
+      if (e.etat === "envoye") {
+        etatFinal = "sent";
+        // Le filtre sur 'pending' rend l'écriture sans effet si la ligne a
+        // déjà été tranchée entre-temps : deux chemins ne la marquent pas deux fois.
+        await admin.from("wallet_payouts").update({
+          ...commun,
+          auto_ref: e.ref,
+          status: "sent",
+          note: "Envoyé automatiquement (" + tentative.fournisseur + ") — réf. " + e.ref,
+          settled_at: maintenant,
+        }).eq("id", data.id).eq("status", "pending");
+        motAuClient = "Lasa ho azy ny vola.";
+      } else if (e.etat === "refuse") {
+        // Refusé pour une raison comprise : le solde revient, et on dit
+        // laquelle — un refus sans motif ne se corrige pas.
+        etatFinal = "refused";
+        await admin.from("wallet_payouts").update({
+          ...commun,
+          status: "refused",
+          note: "Refusé par " + tentative.fournisseur + " : " + e.raison,
+          settled_at: maintenant,
+        }).eq("id", data.id).eq("status", "pending");
+        motAuClient = "Tsy lasa : " + e.raison;
+      } else {
+        // On ne sait pas. On ne décide donc rien : la ligne reste en attente,
+        // avec ce qu'on sait écrit dessus, et le propriétaire tranche.
+        await admin.from("wallet_payouts").update({
+          ...commun,
+          note: "À vérifier chez " + tentative.fournisseur + " : " + e.raison,
+        }).eq("id", data.id).eq("status", "pending");
+        motAuClient = "Mbola tsy voamarina : hojeren'ny tompon'ny appli.";
+      }
+    }
+
     // Le solde est déjà amputé : un retrait en attente compte comme parti,
-    // sinon la même somme pourrait être demandée deux fois.
-    return json({ payout: data, balanceAr: balance - amount });
+    // sinon la même somme pourrait être demandée deux fois. Un refus, lui,
+    // la rend — « balanceFor » ne compte que 'pending' et 'sent'.
+    const soldeApres = etatFinal === "refused" ? balance : balance - amount;
+    return json({
+      payout: data,
+      balanceAr: soldeApres,
+      etat: etatFinal,
+      message: motAuClient,
+      auto: tentative ? { fournisseur: tentative.fournisseur, etat: tentative.envoi.etat } : null,
+    });
   }
 
   // ---- Le propriétaire a envoyé l'argent, ou refuse ----
