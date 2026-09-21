@@ -1181,13 +1181,22 @@
         // Le serveur dit ce qu'il est advenu : un canal automatique a pu
         // envoyer l'argent sur-le-champ, ou le refuser avec son motif. Sans
         // clefs, rien ne change — c'est une demande, et le mot le dit.
+        // Le propriétaire est celui qui exécute les retraits. Quand c'est lui
+        // qui en demande un, lui annoncer qu'il sera prévenu revient à lui
+        // dire qu'il s'écrira à lui-même : la demande l'attend, lui, dans sa
+        // propre file.
+        const cestMoiQuiEnvoie = !!(currentUser && currentUser.email && isOwnerEmail(currentUser.email));
         const suite = res.etat === 'sent'
           ? '. ' + (res.message || 'Lasa ho azy ny vola.') +
             ' Ho hitanao ao amin\'ny lisitry ny retraits ny référence.'
           : (res.etat === 'refused'
             ? '. ' + (res.message || 'Tsy lasa.') + ' Naverina ny solde.'
-            : '. Le propriétaire est prévenu ; vous le serez dès que l\'argent est parti.');
-        statusEl.textContent = (res.etat === 'sent' ? 'Retrait envoyé : ' : 'Demande enregistrée : ') +
+            : (cestMoiQuiEnvoie
+              ? '. Anao ny mandefa azy : miandry anao ao amin\'ny « Retraits à envoyer » etsy ambany izy.'
+              : '. Le propriétaire est prévenu ; vous le serez dès que l\'argent est parti.'));
+        statusEl.textContent = (res.etat === 'sent'
+            ? 'Retrait envoyé : '
+            : (cestMoiQuiEnvoie ? 'Retrait à envoyer : ' : 'Demande enregistrée : ')) +
           formatWalletAr(amount) + arrivee + suite;
         pushNotification('parrainage', (res.etat === 'sent' ? 'Retrait envoyé : ' : 'Retrait demandé : ') +
           formatWalletAr(amount) + ' · ' + payoutMethodLabel(method) + '.');
