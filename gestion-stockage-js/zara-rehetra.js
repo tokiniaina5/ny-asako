@@ -12,12 +12,21 @@
 // déjà écrit. Il reste à appuyer sur « Envoyer » dans l'application —
 // envoyer à la place de quelqu'un ne se fait pas depuis une page web.
 //
-// Tout part d'un seul appui : les fenêtres s'ouvrent à la file, dans le geste
-// qui les demande. Le navigateur n'en autorise que pendant ce geste-là — d'où
-// aucune attente entre deux ouvertures. Il peut tout de même en refuser : la
-// file compte alors ce qui n'est pas passé, le laisse coché, et le dit. Un
-// second appui reprend exactement celles-là, une fois les « pop-up »
-// autorisées pour le site.
+// Deux façons d'ouvrir, parce qu'une seule ne suffit pas :
+//
+//   — le bouton les tente TOUTES d'un appui. C'est ce qu'on veut, et ça
+//     marche quand les « pop-up » sont autorisées pour le site. Sinon le
+//     navigateur n'en laisse passer qu'une — la première — et refuse le
+//     reste : une fenêtre qu'un script demande n'est pas une fenêtre qu'on
+//     a demandée.
+//
+//   — chaque ligne de la liste EST un lien. Touché du doigt, il ouvre son
+//     onglet et rien ne le refuse jamais : ce n'est plus un script qui
+//     demande, c'est la personne qui clique. Neuf appuis au lieu d'un, mais
+//     neuf qui passent.
+//
+// Ce qui n'a pas pu s'ouvrir reste coché et se voit : on le touche, ou bien
+// on autorise les « pop-up » et on retente le tout d'un appui.
 //
 // L'email fait exception et garde son appui à lui : il part du serveur, chez
 // tous les clients, et ne se rattrape pas. On ne le glisse pas dans un envoi
@@ -197,6 +206,10 @@
             '<button type="button" class="btn btn-sm" data-ajanona style="width:auto;">✖ Ajanony</button>' +
           '</div>' +
           '<p data-file-vita style="font-size:0.78rem; color:var(--muted); margin:0.9rem 0 0;"></p>' +
+          '<p style="font-size:0.74rem; color:var(--muted); margin:0.5rem 0 0; line-height:1.5;">' +
+            'Ny bokotra manokatra izay voamarika rehetra miaraka. Raha misy tsy nisokatra, ' +
+            '<strong>tsindrio ny anarany eo ambany</strong> : rohy izy ireo, tsy sakanan\'ny navigateur mihitsy.' +
+          '</p>' +
           // Tout ce qui a été coché reste écrit : on voit d'où l'on vient,
           // où l'on est, et ce qui attend encore — et chaque ligne se décoche,
           // d'avance, autant qu'on veut.
@@ -376,31 +389,68 @@
     function couleurDe(e) {
       return e.reseau ? e.reseau.couleur : 'var(--text)';
     }
+    // L'adresse qu'ouvre une ligne, ou rien du tout : l'email part du serveur,
+    // et WeChat n'a pas de page où déposer le message — on le copie.
+    function adresseDe(e) {
+      if (e.mail) return '';
+      if (e.client) return 'https://wa.me/' + e.client.numero + '?text=' + encodeURIComponent(hafatra);
+      if (e.reseau.copie) return e.reseau.ouvrir || '';
+      return e.reseau.url(texte, rohy);
+    }
     // ✓ fait · ▶ celui-ci · les autres attendent, et chacun se décoche. Une
     // ligne ouverte garde sa case : ce qui est parti ne se reprend pas.
     function dessinerLaFile() {
       fileListe.innerHTML = attente.map(function (e, i) {
         var ici = i === rang;
         var marque = e.fait ? '✓' : (ici ? '▶' : (e.coche ? '·' : '—'));
-        return '<label class="list-row" data-i="' + i + '" style="cursor:' +
-            (e.fait ? 'default' : 'pointer') + ';' +
-            (ici ? ' background:var(--panel-2); border-radius:8px;' : '') +
+        var style = 'color:' + couleurDe(e) + ';' + (ici ? ' font-weight:700;' : '') +
+          (e.coche ? '' : ' text-decoration:line-through;');
+        var adresse = adresseDe(e);
+        // Le nom est un vrai lien quand il y a une adresse : c'est le doigt
+        // qui l'ouvre, et rien ne refuse jamais cela. Sans adresse (l'email,
+        // WeChat), un bouton, qui a la même allure.
+        var nom = e.fait
+          ? '<span style="' + style + '">' + nomDe(e) + '</span>'
+          : (adresse
+            ? '<a href="' + echap(adresse) + '" target="_blank" rel="noopener" data-lien ' +
+              'style="' + style + ' text-decoration:none;">' + nomDe(e) + '</a>'
+            : '<button type="button" data-lien style="' + style +
+              ' background:none; border:none; padding:0; font:inherit; cursor:pointer; text-align:left;">' +
+              nomDe(e) + '</button>');
+        return '<div class="list-row" data-i="' + i + '" style="' +
+            (ici ? 'background:var(--panel-2); border-radius:8px;' : '') +
             (e.fait ? ' opacity:0.55;' : (e.coche ? '' : ' opacity:0.45;')) + '">' +
-          '<span style="display:flex; align-items:center; gap:0.5rem;">' +
+          '<span style="display:flex; align-items:center; gap:0.5rem; min-width:0;">' +
             '<input type="checkbox" data-ligne' + (e.coche ? ' checked' : '') +
-              (e.fait ? ' disabled' : '') + '>' +
-            '<span style="width:1em; color:var(--muted);">' + marque + '</span>' +
-            '<span style="color:' + couleurDe(e) + ';' + (ici ? ' font-weight:700;' : '') +
-              (e.coche ? '' : ' text-decoration:line-through;') + '">' +
-              nomDe(e) + '</span></span>' +
+              (e.fait ? ' disabled' : '') + ' style="cursor:pointer; flex:none;">' +
+            '<span style="width:1em; color:var(--muted); flex:none;">' + marque + '</span>' +
+            nom + '</span>' +
           '<span style="color:var(--muted); font-size:0.72rem; white-space:nowrap;">' +
             (i + 1) + ' / ' + attente.length + '</span>' +
-        '</label>';
+        '</div>';
       }).join('');
       var actif = fileListe.children[rang];
       if (actif && actif.scrollIntoView) actif.scrollIntoView({ block: 'nearest' });
       majBoutonRehetra();
     }
+
+    fileListe.addEventListener('click', function (ev) {
+      var lien = ev.target.closest && ev.target.closest('[data-lien]');
+      if (!lien) return;
+      var ligne = lien.closest('[data-i]');
+      if (!ligne) return;
+      var e = attente[Number(ligne.getAttribute('data-i'))];
+      if (!e || e.fait) return;
+      if (e.mail) { ev.preventDefault(); envoyerLeMail(e); return; }
+      if (e.reseau && e.reseau.copie) copier(hafatra);
+      // Surtout pas de preventDefault : c'est le lien lui-même qui ouvre
+      // l'onglet. Et pas de redessin dans la foulée non plus — remplacer le
+      // lien pendant qu'on clique dessus annulerait l'ouverture. Au tour
+      // d'après, donc.
+      e.fait = true;
+      nalefa++;
+      setTimeout(function () { recalculerLeRang(); montrerLeRang(); }, 0);
+    });
 
     fileListe.addEventListener('change', function (ev) {
       var c = ev.target;
@@ -465,39 +515,41 @@
       file.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 
+    // Une annonce envoyée à tout le carnet ne se rattrape pas : on demande
+    // avant. Le bouton et la ligne y mènent tous deux — d'où cette fonction
+    // à part, plutôt que deux copies qui finiraient par diverger.
+    function envoyerLeMail(e) {
+      if (!confirm('Halefa any amin\'ny client rehetra manana email ny hafatra. Tsy azo averina. Hitohy?')) return;
+      if (!window.__sb || !window.__sb.functions) {
+        fileVita.textContent = 'Tsy tafiditra ny serveur.';
+        return;
+      }
+      bSokafy.disabled = true;
+      fileVita.textContent = 'Mandefa…';
+      window.__sb.functions.invoke('annonce-mailaka', {
+        body: { texte: texte, rohy: rohy, sujet: (texte.split('\n')[0] || '').slice(0, 80) }
+      }).then(function (res) {
+        var d = (res && res.data) || {};
+        if (d.sent) {
+          nalefa++;
+          e.fait = true;
+          recalculerLeRang();
+          montrerLeRang();
+          fileVita.textContent = '✓ ' + d.sent + ' mailaka lasa' + (d.error ? ' (' + d.error + ')' : '') + '.';
+          return;
+        }
+        bSokafy.disabled = false;
+        fileVita.textContent = 'Tsy lasa : ' + (d.error || (res && res.error && res.error.message) || 'antony tsy fantatra');
+      }, function (err) {
+        bSokafy.disabled = false;
+        fileVita.textContent = 'Tsy tratra ny fonction : ' + ((err && err.message) || 'réseau');
+      });
+    }
+
     bSokafy.addEventListener('click', function () {
       var e = attente[rang];
       if (!e) return;
-      // Une annonce envoyée à tout le carnet ne se rattrape pas : on
-      // demande, et on dit combien de personnes la recevront.
-      if (e.mail) {
-        if (!confirm('Halefa any amin\'ny client rehetra manana email ny hafatra. Tsy azo averina. Hitohy?')) return;
-        if (!window.__sb || !window.__sb.functions) {
-          fileVita.textContent = 'Tsy tafiditra ny serveur.';
-          return;
-        }
-        bSokafy.disabled = true;
-        fileVita.textContent = 'Mandefa…';
-        window.__sb.functions.invoke('annonce-mailaka', {
-          body: { texte: texte, rohy: rohy, sujet: (texte.split('\n')[0] || '').slice(0, 80) }
-        }).then(function (res) {
-          var d = (res && res.data) || {};
-          if (d.sent) {
-            nalefa++;
-            e.fait = true;
-            recalculerLeRang();
-            montrerLeRang();
-            fileVita.textContent = '✓ ' + d.sent + ' mailaka lasa' + (d.error ? ' (' + d.error + ')' : '') + '.';
-            return;
-          }
-          bSokafy.disabled = false;
-          fileVita.textContent = 'Tsy lasa : ' + (d.error || (res && res.error && res.error.message) || 'antony tsy fantatra');
-        }, function (err) {
-          bSokafy.disabled = false;
-          fileVita.textContent = 'Tsy tratra ny fonction : ' + ((err && err.message) || 'réseau');
-        });
-        return;
-      }
+      if (e.mail) { envoyerLeMail(e); return; }
       // Tout ce qui est coché s'ouvre ici, à la file et sans rien attendre
       // entre deux : le navigateur n'autorise les fenêtres que pendant le
       // geste qui les demande, et une seule attente suffirait à faire
@@ -526,7 +578,8 @@
       montrerLeRang();
       if (bloques) {
         fileVita.innerHTML = '⚠ ' + bloques + ' tsy nisokatra — nosakanan\'ny navigateur. ' +
-          'Ekeo ny « pop-up » ho an\'ity pejy ity, dia tsindrio indray : ireo ihany no halehany.';
+          '<strong>Tsindrio tsirairay eo ambany ny anarany</strong> : rohy izy ireo, ' +
+          'ka tsy misy sakana. Na ekeo ny « pop-up » ho an\'ity pejy ity, dia tsindrio indray ity bokotra ity.';
       }
     });
     bRehetra.addEventListener('click', function () {
