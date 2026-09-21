@@ -491,7 +491,11 @@
   //
   // Fermé, il ne demande plus rien : c'est la boîte ouverte qui coûte, et
   // personne ne lit un fil replié.
+  // Sans temps réel, c'est cette relecture qui porte tout : quatre secondes.
+  // Avec lui, elle n'est plus qu'un filet — le canal fait le travail, et elle
+  // rattrape ce qu'il aurait laissé passer.
   const COMMENTAIRES_RAFRAICHI_MS = 4000;
+  const COMMENTAIRES_FILET_MS = 25000;
 
   function openComments(newsId, box){
     if(!newsId || !window.__sb){
@@ -567,20 +571,68 @@
     box.appendChild(saisie);
     charger(false);
 
-    // Un seul minuteur par boîte : rouvrir n'en empile pas un second.
-    if(box.__minuteurCommentaires) clearInterval(box.__minuteurCommentaires);
-    box.__minuteurCommentaires = setInterval(function(){
-      // Refermée, ou le fil entier redessiné sous elle : dans les deux cas
-      // plus personne ne regarde, et l'on s'arrête. Sans ce garde-fou, chaque
-      // ouverture laisserait derrière elle un minuteur qui interroge le
-      // serveur pour une boîte qui n'existe plus.
-      if(!box.isConnected || box.style.display === 'none'){
+    // Tout s'arrête ensemble : le minuteur et le canal. Une boîte refermée
+    // qui laisserait l'un ou l'autre derrière elle continuerait d'interroger
+    // le serveur pour personne.
+    function arreter(){
+      if(box.__minuteurCommentaires){
         clearInterval(box.__minuteurCommentaires);
         box.__minuteurCommentaires = null;
-        return;
       }
-      charger(true);
-    }, COMMENTAIRES_RAFRAICHI_MS);
+      if(box.__canalCommentaires){
+        try { window.__sb.removeChannel(box.__canalCommentaires); } catch(e){}
+        box.__canalCommentaires = null;
+      }
+    }
+    box.__arreterCommentaires = arreter;
+
+    // Un seul minuteur par boîte : rouvrir n'en empile pas un second.
+    function poserLeMinuteur(periode){
+      if(box.__minuteurCommentaires) clearInterval(box.__minuteurCommentaires);
+      box.__minuteurCommentaires = setInterval(function(){
+        // Refermée, ou le fil entier redessiné sous elle : dans les deux cas
+        // plus personne ne regarde. Sans ce garde-fou, chaque ouverture
+        // laisserait derrière elle une interrogation régulière pour une boîte
+        // qui n'existe plus.
+        if(!box.isConnected || box.style.display === 'none'){ arreter(); return; }
+        charger(true);
+      }, periode);
+    }
+
+    arreter();
+    poserLeMinuteur(COMMENTAIRES_RAFRAICHI_MS);
+
+    // Le temps réel : le serveur prévient dès que la ligne entre, et le
+    // commentaire paraît à la seconde.
+    //
+    // La relecture régulière ne disparaît pas pour autant — elle ralentit,
+    // mais seulement quand le canal a FAIT SES PREUVES. Être abonné ne prouve
+    // rien : le canal s'ouvre très bien sur une table absente de la
+    // publication, dit « SUBSCRIBED », et ne délivre jamais rien. Ralentir
+    // sur cette promesse-là rendrait le fil plus lent qu'avant.
+    //
+    // C'est donc le premier message reçu qui l'autorise. Tant qu'il n'arrive
+    // pas, les quatre secondes tiennent — et si la publication n'est pas
+    // faite, elles tiendront toujours. Personne n'y perd.
+    if(window.__sb.channel){
+      try {
+        box.__canalCommentaires = window.__sb
+          .channel('commentaires-' + newsId)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'client_news_comments',
+            filter: 'news_id=eq.' + newsId
+          }, function(){
+            if(!box.__realtimeProuve){
+              box.__realtimeProuve = true;
+              poserLeMinuteur(COMMENTAIRES_FILET_MS);
+            }
+            charger(true);
+          })
+          .subscribe(function(){});
+      } catch(e){ box.__canalCommentaires = null; }
+    }
 
     const champ = saisie.querySelector('.fb-comment-input');
     const bouton = saisie.querySelector('.fb-comment-send');
@@ -774,12 +826,9 @@
               const ouvert = commentsBox.style.display === 'block';
               commentsBox.style.display = ouvert ? 'none' : 'block';
               if(ouvert){
-                // Refermée : on coupe la relecture tout de suite, sans
-                // attendre que le minuteur s'en aperçoive de lui-même.
-                if(commentsBox.__minuteurCommentaires){
-                  clearInterval(commentsBox.__minuteurCommentaires);
-                  commentsBox.__minuteurCommentaires = null;
-                }
+                // Refermée : on coupe la relecture et le canal tout de suite,
+                // sans attendre que le minuteur s'en aperçoive de lui-même.
+                if(commentsBox.__arreterCommentaires) commentsBox.__arreterCommentaires();
                 return;
               }
               openComments(n.id, commentsBox);

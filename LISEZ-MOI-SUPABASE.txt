@@ -665,3 +665,39 @@ Pour changer les montants sans toucher au code :
 (AVEC vérification du jeton, comme toujours pour "wallet".)
 
 Sans ce déploiement, tout reste à 1 000 Ar.
+
+
+LE COMMENTAIRE QUI ARRIVE TOUT DE SUITE
+------------------------------
+Un fil de commentaires ouvert se relit tout seul toutes les quatre
+secondes. C'est déjà autre chose que de ne rien voir arriver — le
+fil n'était lu qu'à l'ouverture de la boîte — mais ce sont quand
+même quatre secondes, et une requête par personne qui lit.
+
+Le temps réel remplace les deux : le serveur prévient les pages
+ouvertes dès que la ligne entre. Il faut pour cela que la table
+soit dans la publication que Supabase écoute.
+
+À FAIRE UNE FOIS :
+1. Dans Supabase (SQL Editor) :
+     "supabase/sql/supabase-commentaires-realtime.sql"
+Rien d'autre : aucune fonction à déployer.
+
+SI VOUS NE LE FAITES PAS, rien ne se casse et rien ne ralentit : la
+page garde ses quatre secondes. C'est voulu — et c'est plus subtil
+qu'il n'y paraît.
+
+Un canal s'ouvre très bien sur une table ABSENTE de la publication.
+Il dit "SUBSCRIBED", tout a l'air de marcher, et il ne délivre
+jamais rien. Une page qui ralentirait sa relecture sur cette
+promesse-là rendrait le fil PLUS LENT qu'avant, en silence.
+
+C'est donc le premier message REÇU qui autorise le ralentissement,
+et non l'abonnement. Tant qu'aucun n'arrive, les quatre secondes
+tiennent. Une fois la preuve faite, la relecture passe à vingt-cinq
+secondes et ne sert plus que de filet, au cas où le canal tombe.
+
+Le temps réel passe par les mêmes règles de lecture (RLS) que le
+reste : ce que quelqu'un n'a pas le droit de lire, il ne le reçoit
+pas davantage par ce chemin. Les commentaires, eux, sont lisibles
+de tous — c'est un fil public.
