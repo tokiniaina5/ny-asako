@@ -1861,6 +1861,19 @@
 
               <div id="liveIdleControls">
                 <div id="liveJoinChoices" style="display:none;"></div>
+                <!-- Coché par défaut : un direct que personne ne voit passer
+                     ne sert à rien. Mais c'est un choix — on peut vouloir
+                     n'être vu que de ceux qui sont déjà là. -->
+                <label class="list-row" style="cursor:pointer; margin-bottom:0.7rem;">
+                  <span style="display:flex; align-items:center; gap:0.6rem;">
+                    <input type="checkbox" id="livePublier" checked>
+                    <span><strong>Ataovy fanambarana ao amin'ny Botika</strong>
+                      <span style="display:block; color:var(--muted); font-size:0.72rem; line-height:1.4;">
+                        Hipetraka ao amin'ny fil ny rohy, ka ho hitan'izay tsy eo amin'ny appli
+                        amin'izao fotoana izao. Esory ny marika raha ny olona efa eo ihany no tianao hahalala.
+                      </span></span>
+                  </span>
+                </label>
                 <button type="button" class="btn btn-red" id="startLiveBtn">🔴 Manomboka Live</button>
                 <div class="actions-row" style="flex-wrap:wrap; gap:0.5rem; margin-top:0.7rem;">
                   <button type="button" class="btn btn-sm" id="shareLiveBeforeBtn" style="width:auto;">↗️ Zarao mialoha ny rohy</button>

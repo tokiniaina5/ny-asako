@@ -603,13 +603,22 @@
         rows.forEach(function(n){
           const div = document.createElement('div');
           const type = n.type || 'vaovao';
-          div.className = 'fb-post' + (type === 'live' ? ' fb-post-live' : type === 'entana' ? ' fb-post-entana' : '');
+          // Un direct ne dure pas, et personne ne peut effacer son billet
+          // depuis le navigateur. Passé deux heures il reste — c'est la trace
+          // de ce qui a eu lieu — mais il cesse de dire « en ce moment », et
+          // perd son rouge : le lien, lui, ne mène plus à rien.
+          const liveFini = type === 'live' && n.created_at &&
+            (Date.now() - new Date(n.created_at).getTime()) > 2 * 60 * 60 * 1000;
+          div.className = 'fb-post' +
+            (type === 'live' && !liveFini ? ' fb-post-live' : type === 'entana' ? ' fb-post-entana' : '');
           // Le décompte des « j'aime » arrive après le fil : c'est par cet
           // identifiant qu'il retrouve la publication à laquelle il appartient.
           if(n.id) div.dataset.newsId = n.id;
           const d = n.created_at ? new Date(n.created_at).toLocaleString('fr-FR') : '';
           const typeBadge = type === 'live'
-            ? '<span class="fb-type-badge live">🔴 LIVE DIRECT</span>'
+            ? (liveFini
+              ? '<span class="fb-type-badge">⚫ Live tapitra</span>'
+              : '<span class="fb-type-badge live">🔴 LIVE DIRECT</span>')
             : (type === 'entana' ? '<span class="fb-type-badge entana">🛒 Entana amidy</span>' : '');
           const medias = parseNewsImages(n.image);
           // « preload=metadata » : de quoi montrer la première image, et rien

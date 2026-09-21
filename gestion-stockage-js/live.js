@@ -528,9 +528,59 @@
       // ivelan'ny appli koa. Menu no aseho fa tsy tabilao maro misokatra ho azy :
       // sakanan'ny navigateur rehetra ny popup marobe tsy notsindrian'olona.
       announceLiveOnNetworks(me.name);
+      // (3) Le billet dans le fil de la Botika, si la case est cochée. Les
+      // deux avis ci-dessus ne touchent que ceux dont l'application est
+      // ouverte maintenant ; celui-ci attend dans le fil ceux qui l'ouvriront
+      // tout à l'heure, avec le lien qui les fait entrer.
+      publierLeLive(me.name);
     }).catch(function(err){
       alert("Tsy afaka mampiasa ny kamera/mikrofonao: " + err.message);
     });
+  }
+
+  // Le direct posé dans le fil, comme une annonce ordinaire — le fil sait
+  // déjà l'afficher en rouge, il ne lui manquait que d'être écrit.
+  //
+  // Décochée, la case ne publie rien : le direct reste entre ceux qui sont
+  // déjà là. C'est un choix, et le défaut est de publier — un direct que
+  // personne ne voit passer ne sert à rien.
+  function publierLeLive(name){
+    const choix = document.getElementById('livePublier');
+    if(choix && !choix.checked) return;
+    if(!window.__sb) return;
+
+    const billet = {
+      client_name: name || 'Client',
+      network: 'Live',
+      type: 'live',
+      message: '🔴 ' + (name || 'Izahay') + ' dia manao LIVE DIRECT ankehitriny.',
+      link: liveJoinLink(),
+      price: null,
+      image: null
+    };
+
+    const envoyer = function(photo){
+      const avecAuteur = Object.assign({}, billet, {
+        author_email: (currentUser && currentUser.email) || null,
+        author_photo: photo || null
+      });
+      // Tant que le script des deux colonnes n'a pas été passé, elles
+      // n'existent pas et l'envoi entier serait refusé : le billet doit
+      // partir quand même, sans le visage.
+      window.__sb.from('client_news').insert(avecAuteur)
+        .then(function(res){
+          return (res && res.error) ? window.__sb.from('client_news').insert(billet) : res;
+        })
+        .then(function(){
+          if(typeof renderCommunityNews === 'function') renderCommunityNews();
+        }, function(){});
+    };
+
+    if(typeof vignette === 'function'){
+      vignette(currentUser && currentUser.logo).then(envoyer, function(){ envoyer(null); });
+    } else {
+      envoyer(null);
+    }
   }
 
   // Rohy mampiditra mivantana amin'ny Live : ny mpanjifa manokatra azy dia
