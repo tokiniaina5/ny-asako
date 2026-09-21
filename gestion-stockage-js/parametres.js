@@ -242,6 +242,14 @@
     return chars.toUpperCase();
   }
 
+  // Une vidéo ne se devine qu'à son adresse : « data:video/… » pour ce qui
+  // vit dans la ligne, une extension pour ce qui vit au bucket. Les photos,
+  // elles, restent des « data:image/… ».
+  function estVideo(src){
+    var s = String(src || '');
+    return /^data:video\//i.test(s) || /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(s);
+  }
+
   function parseNewsImages(raw){
     if(!raw) return [];
     try {
@@ -603,15 +611,24 @@
           const typeBadge = type === 'live'
             ? '<span class="fb-type-badge live">🔴 LIVE DIRECT</span>'
             : (type === 'entana' ? '<span class="fb-type-badge entana">🛒 Entana amidy</span>' : '');
-          const images = parseNewsImages(n.image);
+          const medias = parseNewsImages(n.image);
+          // « preload=metadata » : de quoi montrer la première image, et rien
+          // de plus. Trente billets qui se chargeraient en entier, c'est le
+          // fil qui ne s'ouvre plus.
+          const baliseMedia = function(src, style){
+            return estVideo(src)
+              ? '<video src="' + escapeHtml(src) + '" controls preload="metadata" playsinline ' +
+                'style="' + style + '"></video>'
+              : '<img src="' + escapeHtml(src) + '" alt="" style="' + style + '">';
+          };
           let imagesHtml = '';
-          if(images.length === 1){
-            imagesHtml = '<img src="' + images[0] + '" alt="" style="max-width:100%; border-radius:10px; margin-top:0.6rem; display:block;">';
-          } else if(images.length > 1){
-            const cols = images.length === 2 ? '1fr 1fr' : (images.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr');
+          if(medias.length === 1){
+            imagesHtml = baliseMedia(medias[0], 'max-width:100%; border-radius:10px; margin-top:0.6rem; display:block;');
+          } else if(medias.length > 1){
+            const cols = medias.length === 2 ? '1fr 1fr' : (medias.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr');
             imagesHtml = '<div style="display:grid; grid-template-columns:' + cols + '; gap:4px; margin-top:0.6rem;">' +
-              images.map(function(src){
-                return '<img src="' + src + '" alt="" style="width:100%; height:140px; object-fit:cover; border-radius:8px; display:block;">';
+              medias.map(function(src){
+                return baliseMedia(src, 'width:100%; height:140px; object-fit:cover; border-radius:8px; display:block;');
               }).join('') +
               '</div>';
           }
@@ -687,6 +704,12 @@
 
   let pendingNewsImages = [];
   const MAX_NEWS_IMAGES = 6;
+  // La vidéo ne se réduit pas dans le navigateur comme une photo : on ne peut
+  // que refuser ce qui est trop lourd. Le bucket refuse la même chose de son
+  // côté — c'est lui qui fait foi, la page ne fait qu'éviter un envoi perdu.
+  const BUCKET_VIDEO = 'annonce-video';
+  const MAX_VIDEO_MO = 25;
+  let videoEnCours = false;
 
   const newsImageInput = document.getElementById('newsImage');
   const newsImagePreviewWrap = document.getElementById('newsImagePreviewWrap');
@@ -694,7 +717,7 @@
   function renderNewsImagePreviews(){
     if(!newsImagePreviewWrap) return;
     newsImagePreviewWrap.innerHTML = '';
-    if(!pendingNewsImages.length){
+    if(!pendingNewsImages.length && !videoEnCours){
       newsImagePreviewWrap.style.display = 'none';
       return;
     }
@@ -702,12 +725,29 @@
     pendingNewsImages.forEach(function(src, idx){
       const thumb = document.createElement('div');
       thumb.style.cssText = 'position:relative; width:100px; height:100px;';
-      thumb.innerHTML =
-        '<img src="' + src + '" style="width:100%; height:100%; object-fit:cover; border-radius:10px; display:block; border:1px solid var(--line);">' +
-        '<button type="button" data-idx="' + idx + '" title="Esory ny sary" ' +
+      const cadre = 'width:100%; height:100%; object-fit:cover; border-radius:10px; display:block; border:1px solid var(--line);';
+      // La vignette d'une vidéo, c'est sa première image — et un repère pour
+      // qu'on ne la prenne pas pour une photo.
+      const apercu = estVideo(src)
+        ? '<video src="' + src + '" muted playsinline preload="metadata" style="' + cadre + '"></video>' +
+          '<span style="position:absolute; left:6px; bottom:4px; color:#fff; font-size:0.8rem; ' +
+          'text-shadow:0 1px 3px rgba(0,0,0,0.8);">\u25b6 video</span>'
+        : '<img src="' + src + '" style="' + cadre + '">';
+      thumb.innerHTML = apercu +
+        '<button type="button" data-idx="' + idx + '" title="Esory" ' +
         'style="position:absolute; top:-8px; right:-8px; background:#e5484d; color:#fff; border:none; border-radius:50%; width:22px; height:22px; cursor:pointer; line-height:1;">\u2715</button>';
       newsImagePreviewWrap.appendChild(thumb);
     });
+    // L'envoi d'une vidéo prend le temps qu'il prend : sans rien à l'écran,
+    // on croit que le bouton n'a pas répondu et on recommence.
+    if(videoEnCours){
+      const attente = document.createElement('div');
+      attente.style.cssText = 'width:100px; height:100px; border:1px dashed var(--line); border-radius:10px; ' +
+        'display:flex; align-items:center; justify-content:center; text-align:center; ' +
+        'font-size:0.68rem; color:var(--muted); padding:0.3rem; box-sizing:border-box;';
+      attente.textContent = 'Mandefa ny video\u2026';
+      newsImagePreviewWrap.appendChild(attente);
+    }
     newsImagePreviewWrap.querySelectorAll('button[data-idx]').forEach(function(btn){
       btn.addEventListener('click', function(){
         pendingNewsImages.splice(Number(btn.getAttribute('data-idx')), 1);
@@ -764,6 +804,68 @@
     });
   }
 
+  // La vidéo ne voyage pas dans la ligne : elle part au bucket, et l'annonce
+  // ne garde que son adresse. Une seule par annonce — c'est déjà beaucoup à
+  // charger pour qui lit le fil sur son téléphone.
+  const newsVideoInput = document.getElementById('newsVideo');
+  if(newsVideoInput){
+    newsVideoInput.addEventListener('change', function(){
+      const file = (newsVideoInput.files || [])[0];
+      newsVideoInput.value = '';
+      if(!file) return;
+      if(videoEnCours){ alert('Miandrasa : mbola mandeha ny video teo aloha.'); return; }
+      if(pendingNewsImages.some(estVideo)){
+        alert('Video iray ihany isaky ny fanambarana. Esory aloha ilay teo aloha.');
+        return;
+      }
+      if(pendingNewsImages.length >= MAX_NEWS_IMAGES){
+        alert('Feno ' + MAX_NEWS_IMAGES + ' ny isan-tokony.');
+        return;
+      }
+      const mo = file.size / 1048576;
+      if(mo > MAX_VIDEO_MO){
+        alert('Lehibe loatra ny video : ' + mo.toFixed(1) + ' Mo. ' +
+          MAX_VIDEO_MO + ' Mo no farany ambony. Fohezo na ahenao ny hatsarany.');
+        return;
+      }
+      if(!window.__sb || !window.__sb.storage){
+        alert('Tsy tafiditra ny serveur : tsy afaka mandefa video.');
+        return;
+      }
+      videoEnCours = true;
+      renderNewsImagePreviews();
+
+      const ext = (String(file.name || '').split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp4';
+      const nom = (window.crypto && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Date.now() + '-' + Math.random().toString(36).slice(2)) + '.' + ext;
+
+      const fini = function(message){
+        videoEnCours = false;
+        renderNewsImagePreviews();
+        if(message) alert(message);
+      };
+
+      window.__sb.storage.from(BUCKET_VIDEO)
+        .upload(nom, file, { contentType: file.type || 'video/mp4', upsert: false })
+        .then(function(res){
+          if(res && res.error){
+            fini('Tsy lasa ny video : ' + (res.error.message || 'tsy fantatra') +
+              '\n\nRaha « Bucket not found » no hitanao, dia mbola tsy nalefa ny ' +
+              '« supabase-annonce-video.sql ».');
+            return;
+          }
+          const pub = window.__sb.storage.from(BUCKET_VIDEO).getPublicUrl(nom);
+          const url = pub && pub.data && pub.data.publicUrl;
+          if(!url){ fini('Tsy hita ny adiresin\'ny video.'); return; }
+          pendingNewsImages.push(url);
+          fini('');
+        }, function(err){
+          fini('Tsy lasa ny video : ' + ((err && err.message) || 'réseau'));
+        });
+    });
+  }
+
   // Le champ du prix n'apparaît que si l'on annonce une marchandise : il n'a
   // rien à faire devant quelqu'un qui écrit une nouvelle ordinaire.
   const newsIsGoods = document.getElementById('newsIsGoods');
@@ -783,6 +885,8 @@
   if(postNewsBtn){
     postNewsBtn.addEventListener('click', function(){
       const message = document.getElementById('newsMessage').value.trim();
+      // Publier maintenant, c'est publier sans la vidéo qui est en route.
+      if(videoEnCours){ alert('Miandrasa kely : mbola mandeha ny video.'); return; }
       if(!message && !pendingNewsImages.length){ alert('Soraty ny vaovao na alao sary aloha.'); return; }
       if(!window.__sb){ alert('Tsy misy fifandraisana amin\'ny serveur.'); return; }
       const clientName = (currentUser && currentUser.name) || 'Client';

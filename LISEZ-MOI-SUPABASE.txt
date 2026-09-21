@@ -547,3 +547,40 @@ Pour changer le montant sans toucher au code :
 
 Sans l'étape 2, le panneau reste vide avec un message qui le dit,
 et aucun versement n'a lieu.
+
+
+LA VIDÉO D'UNE ANNONCE
+------------------------------
+Le composeur du fil accepte maintenant une vidéo (bouton 🎬), en
+plus des photos.
+
+Les photos voyagent DANS la ligne de l'annonce, en "data:" :
+réduites à 900 px, elles pèsent cent kilo-octets. Une vidéo, non.
+Dix secondes filmées au téléphone font quinze méga-octets, vingt en
+base64 — et le fil charge trente billets d'un coup. Il ne
+s'ouvrirait plus.
+
+La vidéo va donc dans un bucket, et l'annonce ne garde que son
+adresse. Le navigateur ne la télécharge que si on la regarde.
+
+Une seule vidéo par annonce, 25 Mo au plus. Ce plafond est tenu par
+le bucket lui-même, et pas seulement par la page : une page peut
+être modifiée par celui qui la regarde. Le bucket n'accepte en plus
+que des types vidéo.
+
+Il est public : une annonce est faite pour être vue, et ses
+lecteurs n'ont pas tous un compte — celui qui essaie l'application
+les premiers jours n'en a pas encore.
+
+À FAIRE UNE FOIS :
+1. Dans Supabase (SQL Editor) : "supabase/sql/supabase-annonce-video.sql".
+Rien d'autre : aucune fonction à déployer.
+
+Sans cette étape, le bouton 🎬 répond "Bucket not found" et le dit
+en clair, avec le nom du fichier à passer. Les photos, elles,
+continuent comme avant.
+
+Le ménage (effacer une vidéo) se fait depuis le tableau de bord
+Supabase : le navigateur n'a le droit ni d'effacer ni de remplacer,
+sans quoi il suffirait de connaître une adresse pour supprimer la
+vidéo de quelqu'un d'autre.
