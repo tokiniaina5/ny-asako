@@ -74,8 +74,14 @@
   var RESEAUX = [
     { cle: 'whatsapp', nom: 'WhatsApp (groupe/status)', couleur: '#25D366', url: function (t, l) {
       return 'https://wa.me/?text=' + encodeURIComponent(t + '\n' + l); } },
-    { cle: 'telegram', nom: 'Telegram', couleur: '#29A9EB', url: function (t, l) {
-      return 'https://t.me/share/url?url=' + encodeURIComponent(l) + '&text=' + encodeURIComponent(t); } },
+    // La page de Telegram montre le message, puis son bouton « Share » pointe
+    // sur « tg://msg_url » — l'application, et elle seule. Sans elle installée,
+    // rien ne répond à cette adresse et le bouton ne fait rien. Aucune adresse
+    // ne contourne cela : on le dit, et le message est dans le presse-papier.
+    { cle: 'telegram', nom: 'Telegram', couleur: '#29A9EB',
+      remarque: 'mila ny application Telegram — raha tsy izany, apetaho ny hafatra voadika',
+      url: function (t, l) {
+        return 'https://t.me/share/url?url=' + encodeURIComponent(l) + '&text=' + encodeURIComponent(t); } },
     { cle: 'facebook', nom: 'Facebook', couleur: '#1877F2', url: function (t, l) {
       return 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(l); } },
     { cle: 'threads', nom: 'Threads', couleur: '#e7e9ea', url: function (t, l) {
@@ -423,6 +429,11 @@
             : '<button type="button" data-lien style="' + style +
               ' background:none; border:none; padding:0; font:inherit; cursor:pointer; text-align:left;">' +
               nomDe(e) + '</button>');
+        // Ce qu'il faut savoir avant de toucher la ligne, et non après.
+        var remarque = (!e.fait && e.reseau && e.reseau.remarque)
+          ? '<span style="color:var(--muted); font-size:0.7rem; display:block; line-height:1.4;">' +
+            echap(e.reseau.remarque) + '</span>'
+          : '';
         return '<div class="list-row" data-i="' + i + '" style="' +
             (ici ? 'background:var(--panel-2); border-radius:8px;' : '') +
             (e.fait ? ' opacity:0.55;' : (e.coche ? '' : ' opacity:0.45;')) + '">' +
@@ -430,7 +441,7 @@
             '<input type="checkbox" data-ligne' + (e.coche ? ' checked' : '') +
               (e.fait ? ' disabled' : '') + ' style="cursor:pointer; flex:none;">' +
             '<span style="width:1em; color:var(--muted); flex:none;">' + marque + '</span>' +
-            nom + '</span>' +
+            '<span style="min-width:0;">' + nom + remarque + '</span></span>' +
           '<span style="color:var(--muted); font-size:0.72rem; white-space:nowrap;">' +
             (i + 1) + ' / ' + attente.length + '</span>' +
         '</div>';
