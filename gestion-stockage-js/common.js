@@ -36,8 +36,22 @@
     });
   }
   renderOwnerIdentity();
-  const TRIAL_DAYS = 7;
-  const REFERRALS_PER_BONUS_DAY = 10; // 10 olona nampiasa ny lien = +1 andro essai gratuit
+  const TRIAL_DAYS = 15;
+  // ---- LES PREMIERS JOURS, SANS COMPTE ----
+  // On n'ouvre pas un compte pour essayer un outil qu'on ne connaît pas encore.
+  // Les FREE_ENTRY_DAYS premiers jours, l'application s'ouvre telle quelle : ni
+  // nom, ni email, ni mot de passe — on entre. Le compte n'est réclamé qu'après,
+  // et rien n'est perdu : ce qui a été saisi pendant ces jours-là est rangé sous
+  // les mêmes clés que le reste, sur le même navigateur.
+  const FREE_ENTRY_DAYS = 7;
+  // ---- CE QUE RAPPORTE UNE INVITATION ----
+  // Chaque personne qui ouvre l'application avec le lien verse 1 000 Ar au
+  // portefeuille de celui qui l'a invitée : quinze invitations font le mois
+  // d'abonnement, cent cinquante font l'année. Le chiffre ne fait pas foi ici —
+  // c'est AR_PER_REFERRAL, dans la fonction « wallet », qui calcule le solde,
+  // parce qu'une page peut être modifiée par celui qui la regarde. Celui-ci ne
+  // sert qu'à écrire des sommes lisibles, et doit lui rester égal.
+  const AR_PER_CREDIT = 1000;
 
   function genInstallId(){
     if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -262,6 +276,51 @@
       return { status: 'trial', daysLeft: daysLeft, bonusDays: bonusDays };
     }
     return { status: 'expired', daysLeft: 0, bonusDays: bonusDays };
+  }
+
+  // Jours restants avant que le compte soit réclamé. Les jours offerts par le
+  // parrainage allongent l'essai, pas cette fenêtre-ci : ils repoussent le
+  // paiement, pas le moment de se présenter.
+  function freeEntryDaysLeft(){
+    if(MODE_MPIASA) return 0;
+    const sub = ensureInstallDate();
+    const fin = new Date(new Date(sub.installDate).getTime() + FREE_ENTRY_DAYS * 24 * 60 * 60 * 1000);
+    const reste = Math.ceil((fin - new Date()) / (24 * 60 * 60 * 1000));
+    return reste > 0 ? reste : 0;
+  }
+  function inFreeEntryWindow(){ return freeEntryDaysLeft() > 0; }
+
+  // ---------------- QUI A OUVERT L'APPLICATION ----------------
+  // Une ligne par personne côté serveur, et un versement au portefeuille du
+  // propriétaire la première fois qu'on la voit. Le navigateur ne décide de
+  // rien : il dit « me voici », et la fonction « visiteur » fait le reste —
+  // c'est elle qui tient le montant, et elle qui refuse de compter deux fois
+  // la même personne.
+  //
+  // L'employé entré par le lien de son patron ne compte pas : il n'est pas
+  // venu au site, il travaille dans celui d'un autre.
+  //
+  // Rien n'est retiré à personne : ce versement et celui du parrainage sont
+  // deux écritures distinctes. Quelqu'un arrivé par un lien d'invitation les
+  // produit toutes les deux.
+  let visiteSignalee = null;
+  function signalerLaVisite(){
+    if(MODE_MPIASA) return;
+    if(!window.__sb || !window.__sb.functions || !window.__sb.functions.invoke) return;
+    const qui = (currentUser && currentUser.email) || '';
+    // Une fois par ouverture, et une fois de plus si la personne se présente
+    // entre-temps : c'est ce second appel qui pose son nom sur sa ligne.
+    if(visiteSignalee === qui) return;
+    visiteSignalee = qui;
+    const sub = ensureInstallDate();
+    window.__sb.functions.invoke('visiteur', { body: {
+      action: 'vu',
+      installId: sub.id,
+      nom: (currentUser && currentUser.name) || null,
+      email: qui || null,
+      invitePar: sub.referredBy || null,
+      appareil: typeof shortUserAgent === 'function' ? shortUserAgent(navigator.userAgent) : null
+    } }).then(function(){}, function(){});
   }
 
   // ---------------- PARRAINAGE (fizarana lien) ----------------
@@ -554,6 +613,10 @@
 
   let movements = loadMovements();
   let currentUser = null;
+  // Vrai quand l'application a été ouverte sans compte, pendant la fenêtre
+  // d'entrée libre. Personne n'est connecté : il n'y a rien dont se déconnecter,
+  // et le menu propose de créer le compte plutôt que de le quitter.
+  let modeVisiteur = false;
 
   // ---------------- SESSION (rester connecté après actualisation) ----------------
   // La session et la vue en cours sont mémorisées : actualiser la page ne
@@ -685,9 +748,15 @@
     if(!MODE_MPIASA && typeof requireIdentity === 'function') requireIdentity();
     // le propriétaire est prévenu des alertes enregistrées depuis sa dernière visite
     if(typeof notifyOwnerOfNewAlerts === 'function') notifyOwnerOfNewAlerts();
+    // Le propriétaire voit passer tout le monde : celui qui essaie sans compte
+    // les premiers jours comme celui qui revient depuis deux ans.
+    signalerLaVisite();
   }
 
   function openPaywall(){
+    // Sans compte, il n'y a personne à qui envoyer le code de déverrouillage :
+    // le paiement commence par la création du compte.
+    if(modeVisiteur){ quitterLEssaiLibre(); return; }
     closeWelcome(false);
     loginScreen.style.display = 'none';
     appScreen.style.display = 'none';
@@ -716,7 +785,7 @@
     if(st.status === 'trial'){
       ligne.textContent = 'Essai gratuit : ' + st.daysLeft + ' jour' + (st.daysLeft > 1 ? 's' : '') + ' restant' +
         (st.daysLeft > 1 ? 's' : '') +
-        (st.bonusDays > 0 ? ' (dont ' + st.bonusDays + ' offert' + (st.bonusDays > 1 ? 's' : '') + ' par le parrainage).' : '.');
+        (st.bonusDays > 0 ? ' (dont ' + st.bonusDays + ' payé' + (st.bonusDays > 1 ? 's' : '') + ' avec le portefeuille).' : '.');
       return;
     }
     ligne.textContent = 'Essai terminé. Un abonnement est nécessaire pour continuer.';
@@ -726,11 +795,31 @@
     syncReferralBonus(function(sub){
       majPageAbonnement();
       const countEl = document.getElementById('referralCount');
-      const availEl = document.getElementById('referralBonusDays');
-      const spentEl = document.getElementById('referralNextIn');
-      if(countEl) countEl.textContent = sub.referralCount || 0;
-      if(availEl) availEl.textContent = getAvailableCredits(sub);
-      if(spentEl) spentEl.textContent = sub.creditsSpent || 0;
+      const gagneEl = document.getElementById('referralBonusDays');
+      const soldeEl = document.getElementById('referralNextIn');
+      const invitations = sub.referralCount || 0;
+      if(countEl) countEl.textContent = invitations;
+      // Ce que les invitations ont rapporté : le nombre de personnes, au tarif
+      // de l'invitation. C'est un gain cumulé et non un solde — ce qui a déjà
+      // servi à payer n'en est pas retranché.
+      if(gagneEl) gagneEl.textContent = formatWalletAr(invitations * AR_PER_CREDIT);
+      // Le solde, lui, vient du serveur : lui seul tient compte des versements
+      // et de ce qui a déjà été dépensé. L'appel rattache au passage cette
+      // installation au compte — c'est ce qui fait que les invitations
+      // partagées avant qu'il existe rejoignent le portefeuille.
+      if(soldeEl){
+        if(!currentUser){
+          // Sans compte, il n'y a pas encore de portefeuille où verser. Le
+          // gain, lui, est déjà compté : il attend.
+          soldeEl.textContent = '—';
+        } else {
+          soldeEl.textContent = '…';
+          callWallet({ action: 'state', installId: sub.id }).then(function(state){
+            walletState = state;
+            soldeEl.textContent = formatWalletAr(state.balanceAr);
+          }, function(){ soldeEl.textContent = '—'; });
+        }
+      }
       renderWallet();
     });
   }
@@ -1961,22 +2050,18 @@
   // Pour un compte fermé (abonnement à régler ou compte suspendu), pas pour un
   // mot de passe perdu : celui-ci se règle seul avec le lien envoyé par email.
   //
-  // Le déblocage se paie avec les crédits de parrainage du portefeuille. Rien
-  // ne sort de l'application : les crédits passent du portefeuille du client à
-  // celui du propriétaire, et l'accès se rouvre dans la foulée. Plus de somme
-  // à envoyer au dehors, plus de référence à recopier, plus d'attente qu'un
-  // humain constate l'arrivée de l'argent.
+  // Le déblocage se paie sur le solde du portefeuille — celui que les
+  // invitations remplissent. Rien ne sort de l'application : la somme passe du
+  // portefeuille du client à celui du propriétaire, et l'accès se rouvre dans
+  // la foulée. Plus de somme à envoyer au dehors, plus de référence à
+  // recopier, plus d'attente qu'un humain constate l'arrivée de l'argent.
+  // Vingt invitations, et le compte se rouvre tout seul.
   const UNLOCK_COST_CREDITS = 20;
-  // Valeur d'un parrainage en ariary. Le serveur a la sienne (AR_PER_REFERRAL) :
-  // c'est celle-là qui fait foi pour le portefeuille. Ici, elle ne sert qu'à
-  // écrire des sommes lisibles sur l'écran de connexion, où l'on ne peut pas
-  // interroger le serveur — la personne n'est pas encore connectée.
-  const AR_PER_CREDIT = 1000;
 
   // Les demandes d'avant ce changement portent encore leur ancien moyen de
   // paiement : le propriétaire doit pouvoir relire son historique.
   function paymentMethodLabel(method){
-    if(method === 'wallet') return 'Crédits du portefeuille';
+    if(method === 'wallet') return 'Solde du portefeuille';
     if(method === 'card') return 'Carte Visa / Mastercard';
     if(method === 'bank') return 'Virement bancaire';
     if(method === 'mobile') return 'Mobile Money';
@@ -2013,7 +2098,7 @@
   function recordWalletUnlock(name, email){
     if(!window.__sb) return;
     window.__sb.from('unlock_requests').insert({
-      name: name, email: normEmail(email), phone: '', message: 'Payé avec les crédits du portefeuille',
+      name: name, email: normEmail(email), phone: '', message: 'Payé avec le solde du portefeuille',
       amount: UNLOCK_COST_CREDITS, paypal_reference: '', payment_method: 'wallet',
       status: 'confirmed', auto_confirmed: true,
       confirmed_at: new Date().toISOString()
@@ -2367,8 +2452,69 @@
     if(!welcomeOpen) return;
     welcomeOpen = false;
     const pending = noticeWaitsForWelcome;
+    const entree = entreeLibreAttendBienvenue;
     noticeWaitsForWelcome = false;
+    entreeLibreAttendBienvenue = false;
+    // « Entrer » entre vraiment : pendant la fenêtre d'entrée libre, c'est
+    // l'application qui s'ouvre derrière, et non l'écran de connexion.
+    if(entree && showPending){ ouvrirEnVisiteur(); return; }
     if(pending && showPending) showAutoNotice();
+  }
+
+  // ---------------- L'ENTRÉE LIBRE (sans compte) ----------------
+  // Comme l'avis d'abonnement, l'ouverture attend que le mot de bienvenue soit
+  // refermé : openApp() le referme au passage, et l'emporterait avant qu'il ait
+  // été lu.
+  let entreeLibreAttendBienvenue = false;
+
+  function ouvrirEnVisiteur(){
+    // Il n'y a rien à remplir : l'écran de connexion s'efface tout de suite,
+    // même s'il faut encore attendre que le mot de bienvenue soit lu. Sinon on
+    // le devine derrière, et il dit le contraire de ce qu'on est en train de
+    // lire.
+    loginScreen.style.display = 'none';
+    if(welcomeOpen){ entreeLibreAttendBienvenue = true; return; }
+    modeVisiteur = true;
+    document.body.classList.add('mode-visiteur');
+    // La place du menu où s'affiche d'habitude le titulaire du compte dit ici
+    // ce qui en tient lieu, et pour combien de temps encore.
+    const reste = freeEntryDaysLeft();
+    document.getElementById('currentUserName').textContent = 'Essai libre';
+    document.getElementById('currentUserEmail').textContent =
+      'Sans compte — encore ' + reste + ' jour' + (reste > 1 ? 's' : '');
+    const ouvrir = function(){
+      openApp();
+      ouvrirSurLAccueil();
+      // L'avis dit la règle : ce qui est offert, jusqu'à quand, et à partir de
+      // quand il faudra un compte puis un abonnement.
+      showAutoNotice();
+    };
+    // les autres fichiers (stock.js, ventes-achats.js...) ne sont chargés
+    // qu'après common.js : on attend qu'ils le soient pour ouvrir l'appli.
+    if(document.readyState === 'loading'){
+      window.addEventListener('DOMContentLoaded', ouvrir);
+    } else {
+      setTimeout(ouvrir, 0);
+    }
+  }
+
+  // Personne n'est connecté : on entre sans compte tant que la fenêtre est
+  // ouverte ; après, l'écran de connexion reprend sa place.
+  function entrerSansCompte(){
+    if(inFreeEntryWindow()){ ouvrirEnVisiteur(); return; }
+    showAutoNotice();
+  }
+
+  // Quitter l'essai libre pour créer le compte. Rien n'est effacé : le stock,
+  // les mouvements et les factures saisis sans compte sont rangés sous les
+  // mêmes clés, et se retrouvent tels quels une fois le compte créé ici.
+  function quitterLEssaiLibre(){
+    modeVisiteur = false;
+    document.body.classList.remove('mode-visiteur');
+    appScreen.style.display = 'none';
+    paywallScreen.style.display = 'none';
+    loginScreen.style.display = 'flex';
+    showLoginMode('full');
   }
 
   ['welcomeClose', 'welcomeEnterBtn'].forEach(function(id){
@@ -2394,14 +2540,22 @@
 
     if(st.status === 'expired'){
       title.textContent = 'Abonnement requis';
-      text.innerHTML = 'Votre essai gratuit de <strong>7 jours</strong> est terminé. L\'accès est <strong>bloqué</strong> ' +
+      text.innerHTML = 'Votre essai gratuit de <strong>15 jours</strong> est terminé. L\'accès est <strong>bloqué</strong> ' +
         'tant que le paiement (mensuel ou annuel) n\'est pas confirmé par le <strong>code de déverrouillage</strong> ' +
         'envoyé par email. Connectez-vous pour recevoir votre code.';
       closeBtn.style.display = 'none';
       loginBtn.style.display = 'block';
     } else {
       title.textContent = 'Essai gratuit & abonnement';
-      text.innerHTML = 'L\'application est <strong>gratuite pendant 7 jours</strong>. Passé ce délai, un abonnement ' +
+      // Tant que la fenêtre est ouverte, l'avis commence par ce qui vient de se
+      // passer sous les yeux : on est entré sans rien remplir, et voilà pourquoi.
+      const sansCompte = inFreeEntryWindow()
+        ? 'Les <strong>' + FREE_ENTRY_DAYS + ' premiers jours</strong>, l\'application s\'ouvre ' +
+          '<strong>sans compte</strong> : rien à remplir, on entre. Passé ce délai, un ' +
+          '<strong>compte</strong> est demandé — l\'essai, lui, continue jusqu\'au 15<sup>e</sup> jour, ' +
+          'et ce qui a été saisi reste en place. '
+        : '';
+      text.innerHTML = sansCompte + 'L\'application est <strong>gratuite pendant 15 jours</strong>. Passé ce délai, un abonnement ' +
         '<strong>mensuel</strong> ou <strong>annuel</strong> sera demandé pour continuer à l\'utiliser. ' +
         'En cas de non-paiement, l\'accès sera bloqué ; un <strong>code de déverrouillage</strong> vous sera ' +
         'alors envoyé par email pour réactiver votre compte.';
@@ -2420,6 +2574,9 @@
     const firstField = document.getElementById(quickVisible ? 'quickEmail' : 'loginName');
     if(firstField) firstField.focus();
   });
+
+  const creerCompteBtn = document.getElementById('creerCompteBtn');
+  if(creerCompteBtn) creerCompteBtn.addEventListener('click', function(){ quitterLEssaiLibre(); });
 
   document.getElementById('logoutBtn').addEventListener('click', function(){
     teardownRealtimeFeatures();
@@ -2497,12 +2654,11 @@
           if(notice) notice.style.display = 'none';
           openAppForAuthUser(session.user, { restoreView: true });
         } else {
-          showAutoNotice();
+          entrerSansCompte();
         }
-      }, function(){ showAutoNotice(); });
+      }, function(){ entrerSansCompte(); });
     } else {
-      // affichage automatique dès l'ouverture de la page (écran de connexion)
-      showAutoNotice();
+      entrerSansCompte();
     }
   }
   // Un lien de réinitialisation l'emporte sur tout le reste : la personne

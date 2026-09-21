@@ -733,6 +733,12 @@
   body.mode-mpiasa [data-epingle="section:mpiasa"],
   body.mode-mpiasa .icone-bureau[data-cle="section:mpiasa"]{ display:none !important; }
 
+  /* ---- Entré sans compte, les premiers jours ----
+     Même place dans le menu, l'autre sens : on ne quitte pas un compte qu'on
+     n'a pas ouvert, on l'ouvre. */
+  body.mode-visiteur #logoutBtn{ display:none !important; }
+  body:not(.mode-visiteur) #creerCompteBtn{ display:none !important; }
+
   /* ---------- L'écran « edge », pour les petites fenêtres aussi ----------
      Le menu et les panneaux qu'on ouvre par-dessus — notifications, achats
      internationaux, réglages de la rangée, mode jour et nuit, boîte d'écriture —

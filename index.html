@@ -334,7 +334,10 @@
     <div class="eyebrow">Ny asako</div>
     <h1 id="autoNoticeTitle" style="font-size:1.15rem;">Essai gratuit &amp; abonnement</h1>
     <p class="sub" id="autoNoticeText">
-      L'application est <strong>gratuite pendant 7 jours</strong>. Passé ce délai, un abonnement
+      Les <strong>7 premiers jours</strong>, l'application s'ouvre <strong>sans compte</strong> : rien à
+      remplir, on entre. Passé ce délai, un <strong>compte</strong> est demandé — l'essai, lui, continue
+      jusqu'au 15<sup>e</sup> jour, et ce qui a été saisi reste en place.
+      L'application est <strong>gratuite pendant 15 jours</strong>. Passé ce délai, un abonnement
       <strong>mensuel</strong> ou <strong>annuel</strong> sera demandé pour continuer à l'utiliser.
       En cas de non-paiement, l'accès sera bloqué ; un <strong>code de déverrouillage</strong> vous sera
       alors envoyé par email pour réactiver votre compte.
@@ -403,7 +406,7 @@
   <div class="login-card" style="max-width:420px;">
     <div class="eyebrow">Ny asako</div>
     <h1>Abonnement requis</h1>
-    <p class="sub">Votre essai gratuit de 7 jours est terminé. Choisissez une formule pour continuer à utiliser l'application.</p>
+    <p class="sub">Votre essai gratuit de 15 jours est terminé. Choisissez une formule pour continuer à utiliser l'application.</p>
 
     <div class="paywall-plans">
       <div class="plan-card selected" data-plan="mensuel" id="planMensuel">
@@ -622,6 +625,9 @@
           <span id="currentUserEmail">—</span>
         </div>
         <button class="btn btn-red btn-sm" id="logoutBtn" style="margin-top:0.8rem;">Se déconnecter</button>
+        <!-- Entré sans compte : à cette place, il n'y a pas de quoi se
+             déconnecter — mais de quoi s'inscrire. -->
+        <button class="btn btn-primary btn-sm" id="creerCompteBtn" style="margin-top:0.8rem;">Créer mon compte</button>
         <!-- L'empreinte de la version installée. Sans elle, « c'est encore
              l'ancienne » et « c'est la nouvelle » se ressemblent trop. -->
         <div class="menu-version" id="menuVersion">version —</div>
@@ -1655,9 +1661,12 @@
           <p class="local-link-warning" id="localLinkWarning" style="display:none;"></p>
           <p style="font-size:0.78rem; color:var(--muted); margin-top:0.6rem; line-height:1.5;">
             Chaque personne qui ouvre l'application via ce lien vous rapporte
-            <strong style="color:var(--text);">1 crédit</strong> dans votre
-            <strong style="color:var(--text);">Portefeuille électronique</strong>. Vous choisissez
-            ensuite quoi en faire : essai gratuit, booster, ou réduction sur l'abonnement.
+            <strong style="color:var(--text);">1 000 Ar</strong> dans votre
+            <strong style="color:var(--text);">Portefeuille électronique</strong> — de quoi payer
+            l'abonnement quand l'essai s'achève : <strong style="color:var(--text);">15 invitations
+            font le mois</strong>, 150 font l'année. Rien ne presse et rien ne se perd : les
+            invitations partagées avant la création du compte rejoignent le portefeuille dès qu'il
+            existe.
           </p>
         </div>
 
@@ -1669,12 +1678,12 @@
               <div class="plan-price" id="referralCount" style="font-size:1.4rem;">0</div>
             </div>
             <div>
-              <div class="plan-note">Solde disponible</div>
-              <div class="plan-price" id="referralBonusDays" style="font-size:1.4rem; color:var(--cyan);">0</div>
+              <div class="plan-note">Gagné par vos invitations</div>
+              <div class="plan-price" id="referralBonusDays" style="font-size:1.4rem; color:var(--cyan);">0 Ar</div>
             </div>
             <div>
-              <div class="plan-note">Déjà dépensé</div>
-              <div class="plan-price" id="referralNextIn" style="font-size:1.4rem;">0</div>
+              <div class="plan-note">Solde du portefeuille</div>
+              <div class="plan-price" id="referralNextIn" style="font-size:1.4rem;">—</div>
             </div>
           </div>
         </div>
@@ -2195,10 +2204,29 @@
         </div>
 
         <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-label">Personnes venues</div><div class="kpi-value" id="adminKpiVisiteurs">0</div></div>
           <div class="kpi-card"><div class="kpi-label">Clients inscrits</div><div class="kpi-value" id="adminKpiClients">0</div></div>
           <div class="kpi-card"><div class="kpi-label">Argent déclaré</div><div class="kpi-value" id="adminKpiMoney">0 Ar</div></div>
           <div class="kpi-card"><div class="kpi-label">Codes changés / déblocages</div><div class="kpi-value" id="adminKpiUnlocks">0</div></div>
           <div class="kpi-card"><div class="kpi-label">Alertes de sécurité</div><div class="kpi-value" id="adminKpiAlerts">0</div></div>
+        </div>
+
+        <div class="panel">
+          <h3>👣 Tout le monde qui a ouvert le site</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem; line-height:1.6;">
+            Une ligne par personne, inscrite ou non : celle qui essaie l'application sans compte les
+            premiers jours y figure comme celle qui revient depuis deux ans. Chacune a versé
+            <strong style="color:var(--text);">1 000 Ar</strong> à votre portefeuille, une seule fois,
+            le jour où elle est venue — soit
+            <strong style="color:var(--cyan);" id="adminVisiteursGain">0 Ar</strong> en tout.
+          </p>
+          <div class="table-scroll">
+            <table id="adminVisiteursTable">
+              <thead><tr><th>Dernière visite</th><th>Nom</th><th>Email</th><th>Arrivée</th><th>Appareil</th><th>Visites</th></tr></thead>
+              <tbody id="adminVisiteursBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-hint" id="adminVisiteursEmpty" style="display:none;">Personne n'est encore venu.</p>
         </div>
 
         <div class="panel">

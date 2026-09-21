@@ -509,3 +509,41 @@ de lui. Sinon, l'application le dit au bout de 45 secondes.
 2. Dans le Terminal :
      supabase functions deploy mpiasa --no-verify-jwt
      supabase functions deploy suivi --no-verify-jwt
+
+
+QUI A OUVERT LE SITE — ET CE QUE CHACUN RAPPORTE
+------------------------------
+L'espace admin montrait les clients INSCRITS. Depuis que
+l'application s'ouvre sans compte les premiers jours, la plupart
+des gens n'y figuraient nulle part : ils essayaient l'outil sans
+laisser de trace que vous puissiez lire.
+
+Le panneau "👣 Tout le monde qui a ouvert le site" les montre
+tous — celui qui essaie sans compte comme celui qui revient
+depuis deux ans — et chaque personne verse 1 000 Ar à votre
+portefeuille, UNE SEULE FOIS, le jour où elle vient.
+
+Ce versement ne retire rien à personne. L'argent qu'une
+invitation rapporte à celui qui a invité reste le sien : une
+personne arrivée par un lien produit les deux écritures.
+
+La table ne se lit pas depuis le navigateur — elle porte les noms
+et les emails de tous vos clients. C'est la fonction qui vérifie
+que celui qui demande la liste est bien vous.
+
+À FAIRE UNE FOIS :
+1. Dans Supabase (SQL Editor) : "supabase/sql/supabase-visiteurs.sql".
+2. Dans le Terminal :
+     supabase functions deploy visiteur --no-verify-jwt
+Le --no-verify-jwt n'est PAS un oubli : quelqu'un qui découvre
+l'application le premier jour n'a pas encore de compte, et c'est
+justement lui qu'il s'agit de compter. L'action qui rend la liste
+vérifie le jeton elle-même.
+
+Secrets attendus (déjà posés si le portefeuille fonctionne) :
+SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OWNER_EMAIL.
+Pour changer le montant sans toucher au code :
+     supabase secrets set AR_PER_VISITEUR=1000
+
+Sans l'étape 2, le panneau reste vide avec un message qui le dit,
+et aucun versement n'a lieu.
