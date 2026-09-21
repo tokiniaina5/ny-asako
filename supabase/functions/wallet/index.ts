@@ -549,13 +549,22 @@ Deno.serve(async (req: Request) => {
   // on va voir chez le fournisseur, et c'est le propriétaire qui tranche.
   if (action === "annuler") {
     const id = String(body.id ?? "").trim();
-    if (!id) return json({ error: "demande introuvable" }, 400);
+    if (!id) return json({ error: "la page n'a pas dit quelle demande annuler" }, 400);
 
-    const { data: ligne } = await admin.from("wallet_payouts")
+    // L'erreur de la requête ne se jette pas : une colonne absente, une base
+    // injoignable, et la ligne serait « introuvable » alors qu'elle existe.
+    // Trois causes, trois mots — sans quoi on cherche la mauvaise.
+    const { data: ligne, error: erreurLecture } = await admin.from("wallet_payouts")
       .select("id,email,status,auto_provider,auto_attempts,amount_ar")
       .eq("id", id).maybeSingle();
 
-    if (!ligne) return json({ error: "demande introuvable" }, 404);
+    if (erreurLecture) {
+      return json({
+        error: "La demande n'a pas pu être lue : " + erreurLecture.message +
+          " — si une colonne manque, c'est que « supabase-retrait-automatique.sql » n'a pas été passé.",
+      }, 500);
+    }
+    if (!ligne) return json({ error: "demande introuvable (" + id + ")" }, 404);
 
     // La sienne, ou n'importe laquelle si l'on est le propriétaire.
     const aLui = norm(ligne.email) === email;
