@@ -727,3 +727,45 @@ est partie, puis trancher depuis la file des retraits.
 À FAIRE UNE FOIS :
      supabase functions deploy wallet
 (AVEC vérification du jeton, comme toujours pour "wallet".)
+
+
+LE MÉNAGE DES VIDÉOS, CHAQUE NUIT
+------------------------------
+Le fil ne montre que les sept derniers jours. Une vidéo plus
+vieille que cela n'est affichée nulle part : elle occupe de la
+place et ne sert plus à personne. Rien ne l'effaçait — le
+navigateur n'a pas le droit de supprimer dans ce bucket, et c'est
+voulu : connaître une adresse ne doit pas donner le droit
+d'effacer la vidéo d'un autre.
+
+La fonction "menage-video" l'a, ce droit, parce qu'elle tient la
+clef de service et qu'elle ne s'appelle pas depuis une page.
+
+LE CHIFFRE EST LE MÊME QUE CELUI DU FIL. Sept jours ici, sept
+jours dans le fil : si l'un change et pas l'autre, on efface des
+vidéos encore affichées, ou l'on garde pour rien.
+
+À FAIRE UNE FOIS :
+1. Choisissez un mot de passe pour la porte, et posez-le :
+     supabase secrets set MENAGE_SECRET=<un long mot au hasard>
+   (RETENTION_JOURS=7 par défaut ; posez-le pour changer.)
+
+2. Déployez, SANS vérification du jeton — c'est une machine qui
+   appelle, jamais une personne connectée :
+     supabase functions deploy menage-video --no-verify-jwt
+   C'est le secret partagé qui tient la porte, pas le jeton.
+
+3. ESSAYEZ À BLANC avant de la laisser courir. "essai: true" dit
+   ce qu'elle effacerait, sans rien effacer :
+     curl -X POST \
+       https://ezpsapvthujkhttbfhlr.supabase.co/functions/v1/menage-video \
+       -H "Content-Type: application/json" \
+       -H "x-secret-menage: <votre secret>" \
+       -d '{"essai":true}'
+
+4. Quand le compte vous paraît juste, posez la tâche de nuit :
+   "supabase/sql/supabase-menage-video.sql" (remplacez d'abord
+   VOTRE_SECRET_ICI dedans).
+
+Sans le secret, la fonction refuse tout et n'efface rien : un
+secret vide accepterait le monde entier, et celle-ci supprime.
