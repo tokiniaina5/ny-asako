@@ -804,6 +804,19 @@
     ligne.textContent = 'Essai terminé. Un abonnement est nécessaire pour continuer.';
   }
 
+  // La page « Inviter des amis » annonce un tarif et ce qu'il paie. Les deux
+  // changent avec la personne : le propriétaire n'a pas le même que ses
+  // clients, et il ne doit pas lire le leur.
+  function majTarifInvitation(tarif){
+    const par = Number(tarif) || AR_PER_CREDIT;
+    const el = document.getElementById('inviteTarif');
+    if(el) el.textContent = formatWalletAr(par);
+    const mois = document.getElementById('inviteMois');
+    if(mois) mois.textContent = Math.ceil(15000 / par);
+    const an = document.getElementById('inviteAn');
+    if(an) an.textContent = Math.ceil(150000 / par);
+  }
+
   function refreshReferralProgress(){
     syncReferralBonus(function(sub){
       majPageAbonnement();
@@ -812,10 +825,14 @@
       const soldeEl = document.getElementById('referralNextIn');
       const invitations = sub.referralCount || 0;
       if(countEl) countEl.textContent = invitations;
+      // Le tarif n'est pas le même pour tout le monde : celui du propriétaire
+      // vaut davantage. C'est le serveur qui le dit — la page ne fait que
+      // l'écrire, et retombe sur le tarif ordinaire tant qu'elle l'ignore.
+      const tarif = (walletState && walletState.arPerReferral) || AR_PER_CREDIT;
       // Ce que les invitations ont rapporté : le nombre de personnes, au tarif
       // de l'invitation. C'est un gain cumulé et non un solde — ce qui a déjà
       // servi à payer n'en est pas retranché.
-      if(gagneEl) gagneEl.textContent = formatWalletAr(invitations * AR_PER_CREDIT);
+      if(gagneEl) gagneEl.textContent = formatWalletAr(invitations * tarif);
       // Le solde, lui, vient du serveur : lui seul tient compte des versements
       // et de ce qui a déjà été dépensé. L'appel rattache au passage cette
       // installation au compte — c'est ce qui fait que les invitations
@@ -830,6 +847,12 @@
           callWallet({ action: 'state', installId: sub.id }).then(function(state){
             walletState = state;
             soldeEl.textContent = formatWalletAr(state.balanceAr);
+            // Le serveur vient de dire le tarif : on réécrit le gain avec, au
+            // cas où l'on avait affiché celui d'avant.
+            if(gagneEl && state.arPerReferral){
+              gagneEl.textContent = formatWalletAr(invitations * state.arPerReferral);
+            }
+            majTarifInvitation(state.arPerReferral);
           }, function(){ soldeEl.textContent = '—'; });
         }
       }

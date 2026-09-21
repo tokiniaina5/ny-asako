@@ -634,3 +634,34 @@ TROIS RÈGLES, ÉCRITES DANS LE CODE :
      même clef, et c'est LUI qui refuse le doublon.
   3. La ligne existe en base AVANT tout envoi. Si l'argent part et
      que la réponse se perd, la trace est déjà là.
+
+
+DEUX TARIFS POUR LE PARRAINAGE
+------------------------------
+Une invitation rapportait 1 000 Ar à tout le monde. Celles du
+propriétaire en rapportent maintenant 5 000 : il invite pour faire
+venir des clients à l'application entière, pas pour se faire un
+pécule. Les clients restent à 1 000 Ar.
+
+C'est l'email qui départage, et c'est OWNER_EMAIL — le même secret
+qui sert déjà partout ailleurs. Rien à configurer de plus.
+
+Le tarif ne sert QU'À CE QUE LES INVITATIONS RAPPORTENT. Un
+déblocage, lui, coûte toujours 20 000 Ar : il se compte en crédits
+au tarif de BASE, sans quoi il coûterait cent mille ariary au seul
+qui n'en paie jamais.
+
+La page « Inviter des amis » écrit le tarif que le serveur lui
+donne, et ce qu'il paie avec : 3 invitations font le mois chez le
+propriétaire, 15 chez un client. Elle ne décide de rien — le
+chiffre vient du serveur, comme le solde.
+
+Pour changer les montants sans toucher au code :
+     supabase secrets set AR_PER_REFERRAL=1000
+     supabase secrets set AR_PER_REFERRAL_OWNER=5000
+
+À FAIRE UNE FOIS :
+     supabase functions deploy wallet
+(AVEC vérification du jeton, comme toujours pour "wallet".)
+
+Sans ce déploiement, tout reste à 1 000 Ar.

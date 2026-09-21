@@ -30,7 +30,21 @@ function json(body: unknown, status = 200): Response {
 
 // Ce que rapporte un parrainage. Une seule définition, côté serveur : si
 // elle vivait dans la page, chacun pourrait décider de sa propre valeur.
+//
+// Deux tarifs. Le propriétaire invite pour faire venir des clients à
+// l'application entière, pas pour se faire un pécule : ses invitations
+// valent davantage. Celles d'un client valent le tarif ordinaire.
+//
+// Ce chiffre-là ne sert QU'À CE QUE LES INVITATIONS RAPPORTENT. Il ne doit
+// jamais servir à chiffrer une dépense — voir « spent » plus bas, qui garde
+// exprès le tarif de base.
 const AR_PER_REFERRAL = Number(Deno.env.get("AR_PER_REFERRAL") ?? "1000");
+const AR_PER_REFERRAL_OWNER = Number(Deno.env.get("AR_PER_REFERRAL_OWNER") ?? "5000");
+
+function tarifParrainage(email: string): number {
+  const proprio = (Deno.env.get("OWNER_EMAIL") ?? "").trim().toLowerCase();
+  return proprio && email === proprio ? AR_PER_REFERRAL_OWNER : AR_PER_REFERRAL;
+}
 const MIN_PAYOUT_AR = Number(Deno.env.get("MIN_PAYOUT_AR") ?? "10000");
 
 // L'argent sort par le canal que la personne indique. La liste n'a pas à être
@@ -273,7 +287,7 @@ async function balanceFor(admin: Admin, email: string): Promise<number> {
     const { count } = await admin.from("referrals")
       .select("id", { count: "exact", head: true })
       .in("inviter_id", installs);
-    earned = (count ?? 0) * AR_PER_REFERRAL;
+    earned = (count ?? 0) * tarifParrainage(email);
   }
 
   // 2) ce qui est parti ou est réservé pour partir
@@ -282,7 +296,11 @@ async function balanceFor(admin: Admin, email: string): Promise<number> {
   const withdrawn = (payouts ?? []).reduce(
     (sum: number, p: { amount_ar: number }) => sum + (Number(p.amount_ar) || 0), 0);
 
-  // 3) ce qui a servi à rouvrir un accès
+  // 3) ce qui a servi à rouvrir un accès. « amount » y est compté en
+  //    crédits, et un crédit vaut AR_PER_REFERRAL — le tarif de BASE, pas
+  //    celui de celui qui regarde. Un déblocage coûte vingt mille ariary à
+  //    tout le monde ; le passer au tarif du propriétaire le ferait coûter
+  //    cent mille au seul qui n'en paie jamais.
   const { data: unlocks } = await admin.from("unlock_requests")
     .select("amount").eq("email", email).eq("payment_method", "wallet");
   const spent = (unlocks ?? []).reduce(
@@ -361,7 +379,7 @@ Deno.serve(async (req: Request) => {
       .eq("email", email).order("created_at", { ascending: false }).limit(20);
 
     return json({
-      balanceAr: balance, arPerReferral: AR_PER_REFERRAL, minPayoutAr: MIN_PAYOUT_AR,
+      balanceAr: balance, arPerReferral: tarifParrainage(email), minPayoutAr: MIN_PAYOUT_AR,
       payouts: mine ?? [], deposits: depots ?? [], queue, isOwner, items: SITE_ITEMS,
     });
   }
