@@ -731,9 +731,9 @@ est partie, puis trancher depuis la file des retraits.
 
 LE MÉNAGE DES VIDÉOS, CHAQUE NUIT
 ------------------------------
-Le fil ne montre que les sept derniers jours. Une vidéo plus
-vieille que cela n'est affichée nulle part : elle occupe de la
-place et ne sert plus à personne. Rien ne l'effaçait — le
+Le billet qui porte une vidéo vit trente jours, puis s'efface. Une
+vidéo plus vieille que cela n'est affichée nulle part : elle occupe
+de la place et ne sert plus à personne. Rien ne l'effaçait — le
 navigateur n'a pas le droit de supprimer dans ce bucket, et c'est
 voulu : connaître une adresse ne doit pas donner le droit
 d'effacer la vidéo d'un autre.
@@ -741,14 +741,17 @@ d'effacer la vidéo d'un autre.
 La fonction "menage-video" l'a, ce droit, parce qu'elle tient la
 clef de service et qu'elle ne s'appelle pas depuis une page.
 
-LE CHIFFRE EST LE MÊME QUE CELUI DU FIL. Sept jours ici, sept
-jours dans le fil : si l'un change et pas l'autre, on efface des
-vidéos encore affichées, ou l'on garde pour rien.
+LE MÊME ÂGE QUE LE BILLET, et non celui du fil. Trente jours ici,
+trente jours pour la publication : si la vidéo part la première,
+l'annonce reste affichée avec une vidéo qui ne charge plus ; si
+elle part la dernière, on garde pour rien.
 
 À FAIRE UNE FOIS :
 1. Choisissez un mot de passe pour la porte, et posez-le :
      supabase secrets set MENAGE_SECRET=<un long mot au hasard>
-   (RETENTION_JOURS=7 par défaut ; posez-le pour changer.)
+   (RETENTION_JOURS=30 par défaut ; posez-le pour changer. S'il a
+   été posé à 7 du temps où le fil ne gardait qu'une semaine,
+   reposez-le à 30 : le secret prime sur le défaut.)
 
 2. Déployez, SANS vérification du jeton — c'est une machine qui
    appelle, jamais une personne connectée :
@@ -769,6 +772,60 @@ vidéos encore affichées, ou l'on garde pour rien.
 
 Sans le secret, la fonction refuse tout et n'efface rien : un
 secret vide accepterait le monde entier, et celle-ci supprime.
+
+
+LES PUBLICATIONS S'EFFACENT AU BOUT D'UN MOIS
+------------------------------
+Rien n'effaçait les billets du fil. Ils restaient en base pour
+toujours, avec leurs commentaires et leurs « j'aime », longtemps
+après que plus personne ne les regarde — la page « botika » n'en
+montre que le dernier mois, l'Accueil que la dernière semaine.
+Ils s'entassaient sans fin.
+
+Maintenant ils s'en vont pour de bon au bout de trente jours : ce
+qui n'est plus montré n'est plus gardé.
+
+CE QUI PART AVEC LE BILLET : ses commentaires et ses « j'aime »
+suivent tout seuls (« on delete cascade »), et sa vidéo est
+emportée au même âge par le ménage des vidéos, juste au-dessus.
+
+UN MOIS COMPTÉ EN TRENTE JOURS, et non en mois du calendrier :
+c'est la fenêtre exacte que demande la page « botika ». Un mois
+« vrai » durerait 31 jours en janvier et 28 en février, et la page
+réclamerait alors des billets déjà effacés — des trous dans le fil.
+
+PAS DE FONCTION NI DE SECRET ICI : c'est la base qui efface
+elle-même, la nuit. Il n'y a qu'un script à passer.
+
+À FAIRE UNE FOIS :
+1. Collez "supabase/sql/supabase-menage-publications.sql" dans
+   SQL Editor et exécutez-le. Il pose la fonction
+   "menage_publications" et la tâche de nuit qui l'appelle, chaque
+   nuit à 3 h 10 UTC (6 h 10 à Antananarivo), dix minutes après le
+   ménage des vidéos.
+
+2. Redéployez le ménage des vidéos pour qu'il connaisse les trente
+   jours (le défaut a changé) :
+     supabase functions deploy menage-video --no-verify-jwt
+
+3. AVANT DE LE LAISSER COURIR, regardez ce qui partirait. Le
+   fichier porte la requête en commentaire ; elle compte sans rien
+   effacer. Pour passer le ménage tout de suite :
+     select public.menage_publications();
+   Elle renvoie le nombre de billets effacés.
+
+La fonction n'est ouverte à personne depuis le navigateur : son
+droit d'exécution est retiré à "anon" et à "authenticated". Elle
+efface, et la table refuse par ailleurs toute suppression venue
+d'une page — personne ne doit pouvoir effacer le billet d'un autre.
+
+Un billet sans date (created_at vide) n'est jamais effacé : on ne
+supprime pas ce qu'on ne sait pas dater. Le fichier dit comment
+les retrouver, s'il en existe ; cela se regarde à la main.
+
+Pour changer la durée, le chiffre est en trois endroits, et les
+trois vont ensemble : la fonction du script SQL,
+"botika/index.html", et RETENTION_JOURS du ménage des vidéos.
 
 
 « DÉPOSÉ » N'EST PAS « ARRIVÉ »

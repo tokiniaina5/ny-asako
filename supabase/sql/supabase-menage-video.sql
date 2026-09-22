@@ -5,10 +5,14 @@
 -- À passer APRÈS avoir déployé la fonction "menage-video" et posé son
 -- secret. Se relance sans risque.
 --
--- Le fil ne montre que les sept derniers jours. Une vidéo plus vieille
--- n'est affichée nulle part : elle occupe de la place et ne sert plus à
--- personne. La fonction "menage-video" les efface ; il reste à la faire
--- passer régulièrement.
+-- Le billet qui porte une vidéo vit trente jours, puis s'efface. Une vidéo
+-- plus vieille n'est affichée nulle part : elle occupe de la place et ne
+-- sert plus à personne. La fonction "menage-video" les efface ; il reste à
+-- la faire passer régulièrement.
+--
+-- LE MÊME ÂGE QUE LE BILLET : trente jours ici comme dans
+-- "supabase-menage-publications.sql". Si la vidéo part la première,
+-- l'annonce reste affichée avec une vidéo qui ne charge plus.
 --
 -- AVANT DE COLLER, remplacez VOTRE_SECRET_ICI par le secret que vous avez
 -- posé dans MENAGE_SECRET. Il vit ensuite dans la définition de la tâche,

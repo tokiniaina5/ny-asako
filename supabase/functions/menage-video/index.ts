@@ -1,18 +1,25 @@
 // Le ménage des vidéos d'annonces.
 //
-// Le fil ne montre que les sept derniers jours. Une vidéo plus vieille que
-// cela n'est plus affichée nulle part : elle occupe de la place et ne sert
-// plus à personne. Personne ne l'efface pour autant — le navigateur n'a pas
-// le droit de supprimer dans ce bucket, et c'est voulu : connaître une
-// adresse ne doit pas donner le droit d'effacer la vidéo d'un autre.
+// Le billet qui porte une vidéo vit trente jours, puis s'efface. Une vidéo
+// plus vieille que cela n'est plus affichée nulle part : elle occupe de la
+// place et ne sert plus à personne. Personne ne l'efface pour autant — le
+// navigateur n'a pas le droit de supprimer dans ce bucket, et c'est voulu :
+// connaître une adresse ne doit pas donner le droit d'effacer la vidéo d'un
+// autre.
 //
 // Cette fonction-ci l'a, ce droit, parce qu'elle tient la clef de service et
 // qu'elle ne s'appelle pas depuis une page.
 //
-// LE CHIFFRE EST LE MÊME QUE CELUI DU FIL. Sept jours ici, sept jours dans
-// « renderCommunityNews » : si l'un change et pas l'autre, on efface des
-// vidéos encore affichées, ou l'on garde pour rien. RETENTION_JOURS le tient
-// d'un seul endroit, et se règle par secret.
+// LE CHIFFRE EST CELUI DE LA VIE DU BILLET, et non celui du fil. Trente
+// jours ici, trente jours dans "supabase-menage-publications.sql" : si la
+// vidéo part avant le billet, l'annonce reste affichée avec une vidéo qui ne
+// charge plus ; si elle part après, on garde pour rien.
+//
+// Sept jours, c'était la fenêtre de l'Accueil. Mais la page « botika », elle,
+// montre le mois entier : une vidéo de dix jours y était encore réclamée, et
+// n'existait déjà plus.
+//
+// RETENTION_JOURS le tient d'un seul endroit, et se règle par secret.
 //
 // Déploiement : c'est une machine qui l'appelle, jamais une personne
 // connectée. Donc
@@ -22,7 +29,7 @@
 // Secrets attendus :
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (déjà posés)
 //   MENAGE_SECRET        le mot de passe de la porte
-//   RETENTION_JOURS      facultatif, 7 par défaut
+//   RETENTION_JOURS      facultatif, 30 par défaut
 //
 // « essai: true » dans le corps : elle dit ce qu'elle effacerait, sans rien
 // effacer. À essayer avant de la laisser courir toute seule.
@@ -52,7 +59,7 @@ function memeSecret(a: string, b: string): boolean {
 }
 
 const BUCKET = "annonce-video";
-const RETENTION_JOURS = Number(Deno.env.get("RETENTION_JOURS") ?? "7");
+const RETENTION_JOURS = Number(Deno.env.get("RETENTION_JOURS") ?? "30");
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });

@@ -1309,6 +1309,12 @@
     const emptyHint = document.getElementById('communityNewsEmpty');
     if(!list) return;
     if(!window.__sb){ list.innerHTML=''; emptyHint.style.display = 'block'; return; }
+    // Une semaine à l'Accueil, alors que la base garde le billet un mois
+    // (supabase-menage-publications.sql) et que la page « botika » montre ce
+    // mois entier. C'est voulu : l'Accueil est ce qui se passe maintenant.
+    // Montrer MOINS que ce qu'on garde ne laisse aucun trou ; l'inverse en
+    // laisserait — ne montez donc jamais ce chiffre au-dessus de trente sans
+    // monter aussi la durée de garde.
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     // Les colonnes author_photo et author_email peuvent ne pas exister encore
     // — le même script SQL les pose toutes deux. Tant qu'il n'est pas passé,

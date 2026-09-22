@@ -151,6 +151,10 @@
   // La colonne author_photo peut manquer tant que le SQL n'est pas passé :
   // la demander ferait échouer la lecture entière (parametres.js fait de même).
   var COLONNES = 'id,client_name,message,link,type,price,image,created_at';
+  // Trente jours, et c'est aussi toute la vie d'un billet : passé ce délai la
+  // base l'efface d'elle-même, chaque nuit (supabase-menage-publications.sql).
+  // Demander plus ne donnerait rien de plus ; demander moins cacherait ce qui
+  // existe encore. Les deux chiffres changent ensemble, ou aucun.
   var depuis = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   function lire() {
