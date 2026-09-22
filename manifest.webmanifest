@@ -11,6 +11,19 @@
   "background_color": "#0a0d10",
   "theme_color": "#0a0d10",
   "categories": ["business", "productivity"],
+  "share_target": {
+    "action": "/zara-miditra",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "titre",
+      "text": "texte",
+      "url": "lien",
+      "files": [
+        { "name": "fichiers", "accept": ["image/*", "video/*"] }
+      ]
+    }
+  },
   "icons": [
     {
       "src": "/icone-192.png",

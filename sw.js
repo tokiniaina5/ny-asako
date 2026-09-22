@@ -9,7 +9,20 @@
 // Le nom porte l'empreinte du dernier envoi : outils/versionner.mjs le réécrit.
 // Chaque mise en ligne repart donc d'un cache neuf, et l'ancien est effacé —
 // sans quoi les fichiers de toutes les versions passées s'y empileraient.
-const CACHE = 'nyasako-275ba2c2';
+const CACHE = 'nyasako-8680cd45';
+
+// Le partage reçu des autres applications (manifest.webmanifest, « share_target »).
+// Le téléphone ouvre cette adresse en POST, avec le texte et les fichiers
+// choisis ailleurs — dans le navigateur, la galerie, WhatsApp. Une page ne
+// peut pas lire un POST qu'elle n'a pas envoyé : c'est le worker qui le
+// reçoit, le met de côté, puis renvoie vers l'accueil. zara-miditra.js va
+// l'y chercher et remplit la boîte « Écrire ».
+//
+// Ce cache-là ne porte pas la version du site : il tient d'un envoi à l'autre,
+// et l'activation plus bas se garde bien de l'effacer — un partage reçu
+// pendant une mise à jour se perdrait.
+const PARTAGE = 'nyasako-partage-entrant';
+const CHEMIN_PARTAGE = '/zara-miditra';
 
 // Fichiers demandés avant toute chose, pour que la première ouverture hors
 // réseau trouve déjà de quoi s'afficher.
@@ -53,7 +66,7 @@ self.addEventListener('activate', function(e){
   e.waitUntil(
     caches.keys().then(function(noms){
       return Promise.all(noms.map(function(n){
-        return n === CACHE ? null : caches.delete(n);
+        return (n === CACHE || n === PARTAGE) ? null : caches.delete(n);
       }));
     }).then(function(){ return self.clients.claim(); })
   );
@@ -92,8 +105,69 @@ function pageHorsLigne(){
   return new Response(html, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
 
+// Met le partage de côté, puis renvoie la page vers l'accueil.
+//
+// Une réponse à un POST ne doit pas rester dans l'historique : le « 303 »
+// dit au navigateur de refaire une visite ordinaire à l'adresse indiquée,
+// sans quoi un retour en arrière renverrait le partage une seconde fois.
+function recevoirLePartage(req){
+  return req.formData().then(function(form){
+    const fichiers = form.getAll('fichiers').filter(function(f){
+      return f && typeof f === 'object' && f.size;
+    });
+    return caches.open(PARTAGE).then(function(cache){
+      // Ce qu'un partage précédent a laissé — jamais repris, ou repris à
+      // moitié — n'a plus à traîner ici.
+      return cache.keys().then(function(vieux){
+        return Promise.all(vieux.map(function(k){ return cache.delete(k); }));
+      }).then(function(){
+        const notes = {
+          titre: form.get('titre') || '',
+          texte: form.get('texte') || '',
+          lien: form.get('lien') || '',
+          recu: Date.now(),
+          fichiers: fichiers.map(function(f, i){
+            return {
+              adresse: '/__zara/' + i,
+              nom: String(f.name || ('zara-' + i)),
+              type: String(f.type || '')
+            };
+          })
+        };
+        const mises = fichiers.map(function(f, i){
+          return cache.put('/__zara/' + i, new Response(f, {
+            headers: { 'Content-Type': f.type || 'application/octet-stream' }
+          }));
+        });
+        // Les notes en dernier : c'est elles que la page cherche, et elles ne
+        // doivent pas annoncer des fichiers qui ne sont pas encore rangés.
+        return Promise.all(mises).then(function(){
+          return cache.put('/__zara/notes', new Response(JSON.stringify(notes), {
+            headers: { 'Content-Type': 'application/json' }
+          }));
+        });
+      });
+    });
+  }).then(function(){
+    return Response.redirect(new URL('/?zara=1', self.location.origin).href, 303);
+  }).catch(function(){
+    // Le partage est perdu, mais l'application s'ouvre quand même : un écran
+    // d'erreur du navigateur ne dirait rien à personne.
+    return Response.redirect(new URL('/?zara=raty', self.location.origin).href, 303);
+  });
+}
+
 self.addEventListener('fetch', function(e){
   const req = e.request;
+
+  // Le partage entrant arrive en POST, et lui seul : il se traite avant la
+  // règle qui laisse passer tout ce qui n'est pas une lecture.
+  if(req.method === 'POST' && memeOrigine(req.url) &&
+     new URL(req.url).pathname === CHEMIN_PARTAGE){
+    e.respondWith(recevoirLePartage(req));
+    return;
+  }
+
   if(req.method !== 'GET') return;
 
   // Les bibliothèques : le cache d'abord, pour s'ouvrir vite et sans réseau ;

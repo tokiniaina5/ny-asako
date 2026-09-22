@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="0ec9465a">
+<meta name="ny-asako-version" content="530c68a9">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -136,7 +136,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=821571f5">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=fab31c48">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=89f28c69">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
@@ -2818,17 +2818,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=f4cc9135"></script>
+<script src="gestion-stockage-js/common.js?v=10f68a1b"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
 <script src="gestion-stockage-js/factures.js?v=3c5eba5b"></script>
 <script src="gestion-stockage-js/inviter.js?v=437d899c"></script>
 <script src="gestion-stockage-js/contact.js?v=2f6072eb"></script>
-<script src="gestion-stockage-js/zara-rehetra.js?v=4034c1a7"></script>
-<script src="gestion-stockage-js/live.js?v=4462758b"></script>
+<script src="gestion-stockage-js/zara-rehetra.js?v=dfde1af2"></script>
+<script src="gestion-stockage-js/live.js?v=e9a02f99"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=bafee475"></script>
+<script src="gestion-stockage-js/parametres.js?v=07e81975"></script>
+<!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
+     tient : il se charge après elle. -->
+<script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>
 <script src="gestion-stockage-js/identite.js?v=32177fac"></script>
 <script src="gestion-stockage-js/fond.js?v=66e9ffc6"></script>
 <script src="gestion-stockage-js/carte-libre.js?v=732ab00c"></script>
@@ -2843,7 +2846,7 @@
 <script src="gestion-stockage-js/validation-install.js?v=2e1540c4"></script>
 <script src="gestion-stockage-js/adidy.js?v=7925663f"></script>
 <script src="gestion-stockage-js/theme.js?v=096262fd"></script>
-<script src="gestion-stockage-js/securite.js?v=0b6c6542"></script>
+<script src="gestion-stockage-js/securite.js?v=e38535e6"></script>
 
 
 
