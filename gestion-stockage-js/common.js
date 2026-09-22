@@ -2715,6 +2715,13 @@
       'Sans compte — encore ' + reste + ' jour' + (reste > 1 ? 's' : '');
     const ouvrir = function(){
       openApp();
+      // Arrivé par un lien de direct ou d'appel (live.js), on n'a rien à faire
+      // sur l'Accueil : openApp vient d'ouvrir la page qu'il fallait, et
+      // l'Accueil la refermerait aussitôt. L'avis d'essai libre attend aussi
+      // son tour — il recouvrirait le direct pour lequel on vient d'entrer, et
+      // il se redira à la prochaine ouverture.
+      const parUnLien = (typeof pendingLinkAction === 'function') && pendingLinkAction();
+      if(parUnLien) return;
       ouvrirSurLAccueil();
       // L'avis dit la règle : ce qui est offert, jusqu'à quand, et à partir de
       // quand il faudra un compte puis un abonnement.

@@ -700,6 +700,52 @@
     champ.focus();
   }
 
+  // ---------------- LE DIRECT DANS LE FIL ----------------
+  //
+  // Le billet d'un direct porte l'adresse de celui qui diffuse, au bout de
+  // son lien : « …?live=<email>&name=<nom> ». Ce lien ouvrait l'application
+  // dans un second onglet, qui se chargeait en entier pour aboutir au même
+  // endroit — alors qu'on y était déjà. On entre maintenant d'ici, d'un
+  // bouton : c'est la même fonction que le bandeau rouge appelle (joinLive).
+  function lireLeLienDuLive(lien){
+    if(!lien) return null;
+    try {
+      const u = new URL(lien, window.location.href);
+      const email = u.searchParams.get('live');
+      if(!email) return null;
+      return { email: email.trim().toLowerCase(), name: u.searchParams.get('name') || '' };
+    } catch(e){ return null; }
+  }
+
+  // Celui qui diffusait est-il encore là ? La présence le dit tout de suite ;
+  // tant qu'elle n'a rien chargé — et elle porte toujours au moins nous-même
+  // — on s'en remet à l'heure du billet.
+  function leLiveEstEnCours(email){
+    if(typeof presenceState !== 'object' || !presenceState) return true;
+    if(!Object.keys(presenceState).length) return true;
+    const p = presenceState[email];
+    return !!(p && p.live);
+  }
+
+  // Un direct s'arrête sans prévenir le fil : le billet reste, et continue de
+  // dire « en ce moment ». On repasse donc sur les billets déjà affichés à
+  // chaque changement de présence, plutôt que de recharger tout le fil.
+  function majBilletsLive(){
+    document.querySelectorAll('#communityNewsList [data-live-email]').forEach(function(div){
+      const encore = leLiveEstEnCours(div.getAttribute('data-live-email')) &&
+        div.getAttribute('data-live-fini') !== '1';
+      const badge = div.querySelector('.fb-type-badge');
+      if(badge){
+        badge.className = 'fb-type-badge' + (encore ? ' live' : '');
+        badge.textContent = encore ? '🔴 LIVE DIRECT' : '⚫ Live tapitra';
+      }
+      div.classList.toggle('fb-post-live', encore);
+      const bouton = div.querySelector('[data-live-join]');
+      if(bouton) bouton.style.display = encore ? '' : 'none';
+    });
+  }
+  window.__majBilletsLive = majBilletsLive;
+
   function renderCommunityNews(){
     const list = document.getElementById('communityNewsList');
     const emptyHint = document.getElementById('communityNewsEmpty');
@@ -734,16 +780,26 @@
           // perd son rouge : le lien, lui, ne mène plus à rien.
           const liveFini = type === 'live' && n.created_at &&
             (Date.now() - new Date(n.created_at).getTime()) > 2 * 60 * 60 * 1000;
+          // Le direct de quelqu'un qui n'est plus en train de diffuser est
+          // fini, quelle que soit l'heure du billet : deux heures, c'était
+          // faute de savoir. La présence le sait.
+          const leLive = type === 'live' ? lireLeLienDuLive(n.link) : null;
+          const liveEnCours = type === 'live' && !liveFini &&
+            (!leLive || leLiveEstEnCours(leLive.email));
           div.className = 'fb-post' +
-            (type === 'live' && !liveFini ? ' fb-post-live' : type === 'entana' ? ' fb-post-entana' : '');
+            (liveEnCours ? ' fb-post-live' : type === 'entana' ? ' fb-post-entana' : '');
+          if(leLive){
+            div.setAttribute('data-live-email', leLive.email);
+            if(liveFini) div.setAttribute('data-live-fini', '1');
+          }
           // Le décompte des « j'aime » arrive après le fil : c'est par cet
           // identifiant qu'il retrouve la publication à laquelle il appartient.
           if(n.id) div.dataset.newsId = n.id;
           const d = n.created_at ? new Date(n.created_at).toLocaleString('fr-FR') : '';
           const typeBadge = type === 'live'
-            ? (liveFini
-              ? '<span class="fb-type-badge">⚫ Live tapitra</span>'
-              : '<span class="fb-type-badge live">🔴 LIVE DIRECT</span>')
+            ? (liveEnCours
+              ? '<span class="fb-type-badge live">🔴 LIVE DIRECT</span>'
+              : '<span class="fb-type-badge">⚫ Live tapitra</span>')
             : (type === 'entana' ? '<span class="fb-type-badge entana">🛒 Entana amidy</span>' : '');
           const medias = parseNewsImages(n.image);
           // « preload=metadata » : de quoi montrer la première image, et rien
@@ -782,7 +838,14 @@
             '<div class="fb-post-body">' + escapeHtml(n.message || '') + '</div>' +
             imagesHtml +
             (n.price ? '<div class="fb-post-price">' + formatAr(n.price) + '</div>' : '') +
-            (n.link ? '<a href="' + escapeHtml(n.link) + '" target="_blank" rel="noopener" class="fb-post-link">🔗 ' + escapeHtml(n.link) + '</a>' : '') +
+            // Un direct n'affiche pas son adresse : elle est longue, illisible,
+            // et ne sert qu'à la machine. À sa place, le bouton qui entre —
+            // caché dès que le direct s'arrête, car il ne mènerait à rien.
+            (leLive
+              ? '<button type="button" class="btn btn-red btn-sm" data-live-join ' +
+                'style="width:auto; margin-top:0.6rem;' + (liveEnCours ? '' : ' display:none;') +
+                '">▶️ Miditra amin\'ny Live</button>'
+              : (n.link ? '<a href="' + escapeHtml(n.link) + '" target="_blank" rel="noopener" class="fb-post-link">🔗 ' + escapeHtml(n.link) + '</a>' : '')) +
             '<div class="fb-post-actions">' +
             '<span class="fb-like-action" data-like style="cursor:pointer;">👍 J\'aime</span>' +
             '<span class="fb-comment-action" data-comment style="cursor:pointer;">💬 Commenter</span>' +
@@ -816,6 +879,21 @@
           const buyEl = div.querySelector('[data-buy]');
           if(buyEl){
             buyEl.addEventListener('click', function(){ buyFromPost(n); });
+          }
+          // On entre dans le direct sans quitter la page : la section Live
+          // s'ouvre, et la vidéo arrive là. Sans joinLive — la page publique
+          // de la Botika n'a pas le WebRTC — il reste le lien d'origine.
+          const liveEl = div.querySelector('[data-live-join]');
+          if(liveEl && leLive){
+            liveEl.addEventListener('click', function(){
+              if(typeof joinLive !== 'function'){
+                if(n.link) window.open(n.link, '_blank');
+                return;
+              }
+              const nav = document.querySelector('.nav-item[data-section="live"]');
+              if(nav && !nav.classList.contains('active')) nav.click();
+              joinLive(leLive.email, leLive.name || n.client_name || '');
+            });
           }
           const likeEl = div.querySelector('[data-like]');
           if(likeEl) setupLike(likeEl, n.id);

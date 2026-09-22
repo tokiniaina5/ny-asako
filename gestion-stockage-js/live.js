@@ -81,6 +81,7 @@
       renderOnlineClientsForCall();
       renderLiveList();
       updateLiveReachInfo();
+      veillerSurLesLives();
       if(typeof updateOwnerPresenceLabel === 'function') updateOwnerPresenceLabel();
     });
     presenceChannel.subscribe(function(status){
@@ -622,25 +623,70 @@
   // ---------------- FAMPANDRENESANA LIVE (ho an'ny rehetra) ----------------
   // Bandeau mihantona eo ambony, hita na aiza na aiza ao amin'ny appli, miaraka
   // amin'ny fampandrenesana ao amin'ny lakolosy.
-  function onSomeoneWentLive(payload){
-    const name = payload.name || payload.broadcaster || 'Mpanjifa';
+  // Ce qu'on a déjà annoncé, par diffuseur. Deux chemins mènent ici — le
+  // signal « live-started » et la présence — et il ne faut qu'un bandeau.
+  const livesAnnonces = {};
+
+  // Le signal ne prévient que ceux dont l'application est ouverte À L'INSTANT
+  // où le direct commence. Celui qui l'ouvre cinq minutes plus tard n'en
+  // savait rien : il entrait dans une boutique où quelqu'un parlait dans la
+  // pièce d'à côté, sans que rien ne le lui dise. La présence, elle, dit qui
+  // diffuse en ce moment — c'est elle qui rattrape les arrivants.
+  function annoncerLeLive(email, name){
+    if(!email) return;
+    const me = myIdentity();
+    if(email === me.email) return;
+    if(livesAnnonces[email]) return;
+    livesAnnonces[email] = true;
+
+    const qui = name || email || 'Mpanjifa';
     if(typeof pushNotification === 'function'){
-      pushNotification('live', '🔴 ' + name + ' dia manomboka LIVE DIRECT ankehitriny.');
+      pushNotification('live', '🔴 ' + qui + ' dia manomboka LIVE DIRECT ankehitriny.');
     }
-    showLiveToast(payload.broadcaster, name);
+    showLiveToast(email, qui);
     playLiveChime();
     // Fampandrenesana an'ny navigateur : tsindriana dia miditra mivantana amin'ny Live.
     showSystemNotification(
-      '🔴 ' + name + ' dia manao Live direct',
+      '🔴 ' + qui + ' dia manao Live direct',
       'Tsindrio ity mba hiditra hijery avy hatrany.',
-      'live-' + payload.broadcaster,
+      'live-' + email,
       function(){
         const nav = document.querySelector('.nav-item[data-section="live"]');
         if(nav && !nav.classList.contains('active')) nav.click();
-        joinLive(payload.broadcaster, name);
-        removeLiveToast(payload.broadcaster);
+        joinLive(email, qui);
+        removeLiveToast(email);
       }
     );
+  }
+
+  // Le direct s'est arrêté : le bandeau s'en va, et l'on oublie l'avoir
+  // annoncé — sans quoi le prochain direct de la même personne passerait
+  // sous silence.
+  function oublierLeLive(email){
+    if(!email) return;
+    delete livesAnnonces[email];
+    removeLiveToast(email);
+  }
+
+  function onSomeoneWentLive(payload){
+    annoncerLeLive(payload.broadcaster, payload.name || payload.broadcaster);
+  }
+
+  // Passe en revue qui diffuse en ce moment, d'après la présence. Appelée à
+  // chaque synchronisation : la première a lieu à l'ouverture de
+  // l'application, et c'est là que tout se joue pour celui qui arrive.
+  function veillerSurLesLives(){
+    Object.keys(presenceState).forEach(function(email){
+      const p = presenceState[email];
+      if(p && p.live) annoncerLeLive(email, p.name);
+    });
+    Object.keys(livesAnnonces).forEach(function(email){
+      const p = presenceState[email];
+      if(!(p && p.live)) oublierLeLive(email);
+    });
+    // Les billets du fil disent « en ce moment » tant que personne ne les
+    // détrompe : c'est le même changement de présence qui les met à jour.
+    if(typeof window.__majBilletsLive === 'function') window.__majBilletsLive();
   }
 
   function liveToastContainer(){
@@ -795,7 +841,7 @@
       return;
     }
     if(payload.kind === 'live-stopped'){
-      if(payload.broadcaster !== me.email) removeLiveToast(payload.broadcaster);
+      if(payload.broadcaster !== me.email) oublierLeLive(payload.broadcaster);
       return;
     }
     if(myLive && payload.broadcaster === myLive.broadcaster){
@@ -933,6 +979,107 @@
         joinLive(email, p.name || name);
       }
     }, 1500);
+  }
+
+  // ---------------- LE DIRECT ANNONCÉ AILLEURS ----------------
+  //
+  // Le lien parti sur WhatsApp, Facebook ou Telegram (announceLiveOnNetworks)
+  // tombe chez quelqu'un dont l'application n'est pas ouverte — souvent chez
+  // quelqu'un qui n'a pas de compte du tout. Il touche le lien, et voit
+  // l'écran de connexion, comme n'importe quel jour : rien ne dit qu'un direct
+  // l'attend derrière, ni que le lien a fait ce qu'il devait faire. On
+  // referme, et le direct se passe sans lui.
+  //
+  // Le bandeau le dit, par-dessus tout le reste — le mot de bienvenue compris,
+  // qui recouvrait la page entière — et fait entrer d'un bouton : l'essai
+  // libre tant qu'il dure, l'écran de connexion sinon. Une fois dedans,
+  // runPendingLinkAction fait le reste : le direct s'ouvre tout seul, et si
+  // l'hôte n'a pas encore commencé, l'entrée se fera à la seconde où il
+  // commencera.
+  function annoncerLeLiveALaPorte(){
+    const action = pendingLinkAction();
+    if(!action) return;
+    // Déjà entré : openApp s'en occupe, le bandeau ferait double emploi.
+    const ecran = document.getElementById('appScreen');
+    if(ecran && getComputedStyle(ecran).display !== 'none') return;
+    if(document.getElementById('liveALaPorte')) return;
+
+    const direct = action.kind === 'live';
+    const bandeau = document.createElement('div');
+    bandeau.id = 'liveALaPorte';
+    bandeau.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:9500; ' +
+      'background:#e5484d; color:#fff; padding:0.7rem 1rem; display:flex; gap:0.7rem; ' +
+      'align-items:center; justify-content:center; flex-wrap:wrap; text-align:center; ' +
+      'font-size:0.9rem; line-height:1.4; box-shadow:0 2px 12px rgba(0,0,0,0.35);';
+
+    const mot = document.createElement('span');
+    mot.innerHTML = direct
+      ? '🔴 <strong>' + escapeHtml(action.name) + '</strong> dia manao Live direct — nasaina ianao.'
+      : '📞 <strong>' + escapeHtml(action.name) + '</strong> dia miandry antso avy aminao.';
+    bandeau.appendChild(mot);
+
+    const bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'btn btn-sm';
+    bouton.style.cssText = 'width:auto; background:#fff; color:#e5484d; border:none; font-weight:700;';
+    bouton.textContent = direct ? '▶️ Miditra hijery izao' : '📞 Miditra hiantso';
+    bouton.addEventListener('click', function(){
+      if(typeof closeWelcome === 'function') closeWelcome(false);
+      // L'essai libre ouvre sans compte : c'est le plus court chemin entre le
+      // lien reçu et le direct.
+      if(typeof inFreeEntryWindow === 'function' && inFreeEntryWindow() &&
+         typeof entrerSansCompte === 'function'){
+        entrerSansCompte();
+        return;
+      }
+      // Passé l'essai libre, il faut un compte. On ne peut pas entrer à sa
+      // place — on lui ouvre la porte et on lui dit ce qui arrivera ensuite.
+      // L'écran de connexion est remis en place sans condition : l'essai libre
+      // l'efface au démarrage, et il serait resté caché derrière rien.
+      const porte = document.getElementById('loginScreen');
+      if(porte) porte.style.display = 'flex';
+      if(typeof showLoginMode === 'function') showLoginMode('quick');
+      mot.innerHTML = (direct ? '🔴 ' : '📞 ') + 'Midira eto ambany — ' +
+        'tafiditra ho azy ianao avy eo.';
+      bouton.style.display = 'none';
+      // « Bon retour » a son propre champ : loginEmail est celui de la
+      // première inscription, et il est caché dans ce mode-là.
+      const champ = document.getElementById('quickEmail') || document.getElementById('loginEmail');
+      if(champ) champ.focus();
+    });
+    bandeau.appendChild(bouton);
+
+    const fermer = document.createElement('button');
+    fermer.type = 'button';
+    fermer.className = 'btn btn-sm';
+    fermer.style.cssText = 'width:auto; background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.6);';
+    fermer.textContent = '✕';
+    fermer.addEventListener('click', function(){ bandeau.remove(); });
+    bandeau.appendChild(fermer);
+
+    document.body.appendChild(bandeau);
+
+    // Entré, le bandeau n'a plus rien à annoncer : ce qui suit se passe dans
+    // l'application elle-même.
+    if(ecran && window.MutationObserver){
+      const oeil = new MutationObserver(function(){
+        if(getComputedStyle(ecran).display !== 'none'){
+          oeil.disconnect();
+          bandeau.remove();
+        }
+      });
+      oeil.observe(ecran, { attributes: true, attributeFilter: ['style', 'class'] });
+    }
+  }
+
+  // Une session déjà ouverte met un instant à se retrouver : sans ce délai, le
+  // bandeau paraîtrait puis disparaîtrait aussitôt, chez quelqu'un qui n'avait
+  // rien à faire de lui.
+  function veillerSurLaPorte(){ setTimeout(annoncerLeLiveALaPorte, 1500); }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', veillerSurLaPorte);
+  } else {
+    veillerSurLaPorte();
   }
 
   // Bandeau kely eo ambonin'ny "Live & Appels" ho an'ny rohy nozaraina.
