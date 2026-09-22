@@ -299,13 +299,128 @@
     veillerSurLeTourDesApercus();
   }
 
+  // ---------------- LIVRAISON INTERNATIONAL ----------------
+  // Acheter à l'étranger est la moitié du chemin. L'autre moitié — faire
+  // venir la marchandise jusqu'ici — n'était écrite nulle part : chacun
+  // cherchait son transporteur de son côté, et recommençait la fois d'après.
+  //
+  // LE RANGEMENT EST LA MOITIÉ DU TRAVAIL, comme pour les boutiques. On ne
+  // cherche pas « un transporteur » : on cherche « faire venir un conteneur »
+  // ou « faire venir un colis de trois kilos », et ce ne sont pas les mêmes
+  // maisons. Le premier groupe est celui du colis, parce que c'est le cas de
+  // presque tout le monde ; le conteneur vient après.
+  //
+  // RIEN N'EST ICI QUI NE SOIT LE SITE DE LA MAISON ELLE-MÊME. Pas de
+  // comparateur, pas d'intermédiaire qui prend une commission pour recopier
+  // un tarif : on va chez le transporteur, et l'on traite avec lui.
+  //
+  // Pas de « Ny anao » ici, contrairement aux boutiques : la liste ne se
+  // complète pas depuis la page, et rien n'est à poser dans la base. Le jour
+  // où il en faudra, c'est "marketplace_links" qu'il faudra imiter.
+  const DEFAULT_TRANSPORTEURS = [
+    {
+      // Le cas de presque tout le monde : un colis, quelques kilos, de porte
+      // à porte, et l'on suit son numéro.
+      groupe: '📦 Kolisy haingana (express)',
+      liens: [
+        { name: 'DHL Express', url: 'https://www.dhl.com' },
+        { name: 'FedEx', url: 'https://www.fedex.com' },
+        { name: 'UPS', url: 'https://www.ups.com' },
+        { name: 'TNT', url: 'https://www.tnt.com' },
+        { name: 'Chronopost', url: 'https://www.chronopost.fr' },
+        { name: 'Colissimo', url: 'https://www.laposte.fr/colissimo' },
+        { name: 'Aramex', url: 'https://www.aramex.com' },
+        { name: 'DPD', url: 'https://www.dpd.com' },
+        { name: 'GLS', url: 'https://gls-group.com' }
+      ]
+    },
+    {
+      // Le conteneur : lent, et sans rival dès que la marchandise pèse.
+      groupe: '🚢 An-dranomasina (maritime)',
+      liens: [
+        { name: 'CMA CGM', url: 'https://www.cma-cgm.com' },
+        { name: 'MSC', url: 'https://www.msc.com' },
+        { name: 'Maersk', url: 'https://www.maersk.com' },
+        { name: 'Hapag-Lloyd', url: 'https://www.hapag-lloyd.com' },
+        { name: 'Evergreen', url: 'https://www.evergreen-line.com' },
+        { name: 'COSCO', url: 'https://lines.coscoshipping.com' },
+        { name: 'ONE', url: 'https://www.one-line.com' },
+        { name: 'PIL', url: 'https://www.pilship.com' },
+        { name: 'ZIM', url: 'https://www.zim.com' },
+        { name: 'Messina Line', url: 'https://www.messinaline.it' }
+      ]
+    },
+    {
+      // Le fret aérien, pour ce qui est cher, fragile ou pressé. Ce sont les
+      // compagnies elles-mêmes : celles qui se posent dans la région d'abord.
+      groupe: '🛫 An\'habakabaka (aérien)',
+      liens: [
+        { name: 'Emirates SkyCargo', url: 'https://www.skycargo.com' },
+        { name: 'Turkish Cargo', url: 'https://www.turkishcargo.com' },
+        { name: 'Qatar Airways Cargo', url: 'https://www.qrcargo.com' },
+        { name: 'Lufthansa Cargo', url: 'https://lufthansa-cargo.com' },
+        { name: 'Ethiopian Airlines', url: 'https://www.ethiopianairlines.com' },
+        { name: 'Kenya Airways', url: 'https://www.kenya-airways.com' },
+        { name: 'Air Austral', url: 'https://www.air-austral.com' },
+        { name: 'Corsair', url: 'https://www.corsair.fr' }
+      ]
+    },
+    {
+      // Celui qui fait le chemin entier à votre place : il groupe, il charge,
+      // il dédouane. C'est à lui qu'on parle quand on ne veut traiter qu'avec
+      // une seule maison.
+      groupe: '🧭 Transitaires (groupage)',
+      liens: [
+        { name: 'Kuehne+Nagel', url: 'https://home.kuehne-nagel.com' },
+        { name: 'DB Schenker', url: 'https://www.dbschenker.com' },
+        { name: 'DSV', url: 'https://www.dsv.com' },
+        { name: 'Geodis', url: 'https://geodis.com' },
+        { name: 'AGL', url: 'https://www.aglgroup.com' }
+      ]
+    },
+    {
+      // Ce qui attend la marchandise au bout du voyage. La douane surtout :
+      // c'est elle qui décide du jour où l'on pourra retirer le colis.
+      groupe: '🇲🇬 Eto Madagasikara',
+      liens: [
+        { name: 'Paositra Malagasy', url: 'https://www.paositramalagasy.mg' },
+        { name: 'Madagascar Airlines', url: 'https://www.madagascarairlines.com' },
+        { name: 'Douanes Malagasy', url: 'https://www.douanes.gov.mg' }
+      ]
+    },
+    {
+      // Le numéro de suivi ne dit rien du transporteur qui le porte quand la
+      // marchandise change de mains en route. Ces deux-là les interrogent
+      // tous à la fois.
+      groupe: '🔎 Fanarahana entana',
+      liens: [
+        { name: '17TRACK', url: 'https://www.17track.net' },
+        { name: 'Parcels App', url: 'https://parcelsapp.com' }
+      ]
+    }
+  ];
+
+  // Les mêmes cartes que les boutiques, et pour la même raison : une maison
+  // de transport ne se reconnaît pas à son nom écrit en petit, mais à sa page.
+  function renderLivraisonLinks(){
+    const boite = document.getElementById('livraisonLinks');
+    if(!boite) return;
+    boite.innerHTML = '';
+    DEFAULT_TRANSPORTEURS.forEach(function(g){ ajouterUnGroupe(boite, g.groupe, g.liens); });
+    chercherLesApercus();
+    veillerSurLeTourDesApercus();
+  }
+
   // La fenêtre des boutiques s'ouvre, ou l'on y descend : les cartes que l'on
-  // découvre vont chercher leurs images à ce moment-là, et pas avant.
+  // découvre vont chercher leurs images à ce moment-là, et pas avant. Celle
+  // des transporteurs se conduit de même.
   (function(){
-    const panneau = document.getElementById('marketPanel');
-    const bouton = document.getElementById('marketToggle');
-    if(bouton) bouton.addEventListener('click', function(){ setTimeout(chercherLesApercus, 50); });
-    if(panneau) panneau.addEventListener('scroll', function(){ chercherLesApercus(); }, { passive: true });
+    [['marketPanel', 'marketToggle'], ['livraisonPanel', 'livraisonToggle']].forEach(function(paire){
+      const panneau = document.getElementById(paire[0]);
+      const bouton = document.getElementById(paire[1]);
+      if(bouton) bouton.addEventListener('click', function(){ setTimeout(chercherLesApercus, 50); });
+      if(panneau) panneau.addEventListener('scroll', function(){ chercherLesApercus(); }, { passive: true });
+    });
   })();
 
   const addMarketBtn = document.getElementById('addMarketBtn');

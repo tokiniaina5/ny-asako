@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="a92c02e0">
+<meta name="ny-asako-version" content="fdf5b63f">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -552,6 +552,20 @@
               </div>
             </div>
           </div>
+
+          <!-- Acheter à l'étranger est la moitié du chemin ; reste à faire venir
+               la marchandise. La fenêtre d'à côté dit où acheter, celle-ci par
+               qui faire porter — et les deux s'ouvrent du même menu, côte à
+               côte, parce qu'on s'y pose la question le même jour. -->
+          <div id="livraisonPanel" style="display:none; position:absolute; top:44px; right:0; width:300px; max-height:360px; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:50;">
+            <div style="padding:0.7rem 0.9rem; border-bottom:1px solid var(--line);">
+              <strong style="font-size:0.85rem;">🚚 Livraison international</strong>
+            </div>
+            <div style="padding:0.8rem 0.9rem;">
+              <p class="community-sub" style="margin-bottom:0.8rem;">Mpitatitra manerantany, voasokajy: an-dranomasina, an'habakabaka, kolisy haingana, transitaire.</p>
+              <div id="livraisonLinks" class="marketplace-groupes"></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="brand-sub">Tanjona · Ny asako</div>
@@ -586,6 +600,9 @@
           <span id="notifBadge" style="display:none; background:#ff6b6b; color:#fff; font-size:0.62rem; font-weight:700; border-radius:999px; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 4px;">0</span>
         </button>
         <button type="button" class="nav-action" id="marketToggle" aria-label="Achats internationaux" aria-expanded="false">🌍 Achats internationaux</button>
+        <!-- Juste sous « Achats internationaux », et non ailleurs dans la liste :
+             les deux entrées sont les deux moitiés d'une même question. -->
+        <button type="button" class="nav-action" id="livraisonToggle" aria-label="Livraison international" aria-expanded="false">🚚 Livraison international</button>
         <!-- « Stock » ne se montre plus : on y entre par Accueil ou Articles,
              qui sont ses deux vues. L'entrée reste pourtant là, masquée : c'est
              par elle que le code ouvre la section — l'Accueil et les Articles
@@ -2818,7 +2835,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=a71be328"></script>
+<script src="gestion-stockage-js/common.js?v=99f94971"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2831,7 +2848,7 @@
 <script src="gestion-stockage-js/zara-rehetra.js?v=dfde1af2"></script>
 <script src="gestion-stockage-js/live.js?v=accde37b"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=74e1960c"></script>
+<script src="gestion-stockage-js/parametres.js?v=6d0aa3bb"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>

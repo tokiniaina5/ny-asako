@@ -3266,7 +3266,7 @@
     const MIN_L = 170, MIN_H = 110;
     const MARGE = 8;
     // Le menu, et les panneaux qu'il ouvre.
-    const IDS = ['navList', 'notifPanel', 'marketPanel', 'barReglages', 'fbComposer'];
+    const IDS = ['navList', 'notifPanel', 'marketPanel', 'livraisonPanel', 'barReglages', 'fbComposer'];
     // Les pages qu'il ouvre. Elles remplaçaient le fil ; elles se posent
     // maintenant par-dessus, dans une fenêtre qu'on tire par les coins. Le fil
     // reste dessous : on n'ouvre pas une page pour perdre de vue d'où l'on
@@ -4184,11 +4184,11 @@
     function fermerLesFenetres(){
       const nav = document.getElementById('navList');
       if(nav) nav.classList.remove('open');
-      ['notifPanel', 'marketPanel', 'fbComposer', 'barReglages'].forEach(function(id){
+      ['notifPanel', 'marketPanel', 'livraisonPanel', 'fbComposer', 'barReglages'].forEach(function(id){
         const el = document.getElementById(id);
         if(el) el.style.display = 'none';
       });
-      ['menuToggle', 'menuFlottant', 'notifToggle', 'marketToggle',
+      ['menuToggle', 'menuFlottant', 'notifToggle', 'marketToggle', 'livraisonToggle',
        'composerToggle', 'barComposer', 'barReglagesBtn'].forEach(function(id){
         const el = document.getElementById(id);
         if(el) el.setAttribute('aria-expanded', 'false');
@@ -4991,12 +4991,14 @@
           if(menuToggle) menuToggle.setAttribute('aria-expanded','false');
         }
         placerNotif();
-        var mp = document.getElementById('marketPanel');
-        if(mp){
+        // Les panneaux du menu se referment : une seule liste à la fois.
+        [['marketPanel', 'marketToggle'], ['livraisonPanel', 'livraisonToggle']].forEach(function(paire){
+          var mp = document.getElementById(paire[0]);
+          if(!mp) return;
           mp.style.display = 'none';
-          var mt = document.getElementById('marketToggle');
+          var mt = document.getElementById(paire[1]);
           if(mt) mt.setAttribute('aria-expanded', 'false');
-        }
+        });
         // marque tout comme lu à l'ouverture
         var list = loadNotifications();
         list.forEach(function(n){ n.read = true; });
@@ -5016,47 +5018,62 @@
       }
     });
   }
-  // Achats internationaux : panneau déroulant de la barre du haut (icône 🌍),
-  // même comportement que la cloche de notifications.
-  var marketToggle = document.getElementById('marketToggle');
-  var marketPanel = document.getElementById('marketPanel');
-  if(marketToggle && marketPanel){
+  // Achats internationaux (🌍) et Livraison international (🚚) : deux panneaux
+  // déroulants du menu, même comportement que la cloche de notifications. Ils
+  // sont écrits une fois pour les deux — c'était déjà deux fois la même chose
+  // quand il n'y en avait qu'un et la cloche, et une troisième copie aurait
+  // fini par diverger sur un détail.
+  var PANNEAUX_DU_MENU = [
+    { bouton: 'marketToggle', panneau: 'marketPanel', remplir: 'renderMarketplaceLinks' },
+    { bouton: 'livraisonToggle', panneau: 'livraisonPanel', remplir: 'renderLivraisonLinks' }
+  ];
+  PANNEAUX_DU_MENU.forEach(function(p){
+    var toggle = document.getElementById(p.bouton);
+    var panel = document.getElementById(p.panneau);
+    if(!toggle || !panel) return;
     // Range dans le menu, le panneau serait rogne par la liste qui defile :
     // il flotte donc lui aussi, a cote du bouton.
-    document.body.appendChild(marketPanel);
-    marketPanel.style.position = 'fixed';
-    marketPanel.style.right = 'auto';
-    marketPanel.style.zIndex = '130';
+    document.body.appendChild(panel);
+    panel.style.position = 'fixed';
+    panel.style.right = 'auto';
+    panel.style.zIndex = '130';
 
-    marketToggle.addEventListener('click', function(e){
+    toggle.addEventListener('click', function(e){
       e.stopPropagation();
-      var isOpen = marketPanel.style.display === 'block';
-      marketPanel.style.display = isOpen ? 'none' : 'block';
-      marketToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      var isOpen = panel.style.display === 'block';
+      panel.style.display = isOpen ? 'none' : 'block';
+      toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
       if(!isOpen){
         // Le menu s'efface : les deux listes se recouvriraient sinon.
         if(navList){
           navList.classList.remove('open');
-          menuToggle.setAttribute('aria-expanded', 'false');
+          if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
         }
-        placerPresDuMenu(marketPanel);
-        // une seule liste ouverte à la fois
+        placerPresDuMenu(panel);
+        // une seule liste ouverte à la fois : la cloche, et l'autre panneau.
         if(notifPanel){
           notifPanel.style.display = 'none';
           if(notifToggle) notifToggle.setAttribute('aria-expanded', 'false');
         }
-        if(typeof renderMarketplaceLinks === 'function') renderMarketplaceLinks();
+        PANNEAUX_DU_MENU.forEach(function(q){
+          if(q.panneau === p.panneau) return;
+          var autre = document.getElementById(q.panneau);
+          var sonBouton = document.getElementById(q.bouton);
+          if(autre) autre.style.display = 'none';
+          if(sonBouton) sonBouton.setAttribute('aria-expanded', 'false');
+        });
+        if(typeof window[p.remplir] === 'function') window[p.remplir]();
       }
     });
     document.addEventListener('click', function(e){
       // .contains et non !== : le bouton porte maintenant un libelle, et
       // c'est lui que le clic designe.
-      if(marketPanel.style.display === 'block' && !marketPanel.contains(e.target) && !marketToggle.contains(e.target)){
-        marketPanel.style.display = 'none';
-        marketToggle.setAttribute('aria-expanded', 'false');
+      if(panel.style.display === 'block' && !panel.contains(e.target) && !toggle.contains(e.target)){
+        panel.style.display = 'none';
+        toggle.setAttribute('aria-expanded', 'false');
       }
     });
-  }
+  });
 
   var notifClearBtn = document.getElementById('notifClearBtn');
   if(notifClearBtn){
