@@ -238,14 +238,27 @@
     }
   ];
 
-  // Le maillon 🔗 devant chaque nom : sur quatre boutiques il décorait, sur
-  // trente il prend la place d'une lettre à chaque fois et l'on n'en lit plus
-  // aucune. Ce sont des boutons, on sait qu'ils s'ouvrent.
+  // Une boutique ne se présente pas par son nom : elle se présente par ce
+  // qu'elle vend. C'est la même carte que dans le fil — trois images qui
+  // tournent, et le nom en dessous —, en plus basse : trente cartes à la
+  // hauteur d'un billet, ce serait un couloir.
+  //
+  // Toutes n'y arriveront pas. Une boutique qui construit sa page dans le
+  // navigateur de son visiteur, ou qui refuse ce qui n'est pas une personne,
+  // ne laisse rien à prendre : sa carte se réduit alors à son nom — ce
+  // qu'était le bouton d'avant. Rien ne se perd.
+  const APERCU_HAUT_BOUTIQUE = 58;
+
   function addMarketplaceBtn(row, name, url){
     const a = document.createElement('a');
     a.href = url; a.target = '_blank'; a.rel = 'noopener';
-    a.className = 'btn btn-sm';
-    a.textContent = name;
+    a.className = 'marketplace-carte';
+    a.setAttribute('data-apercu', url);
+    a.setAttribute('data-apercu-nom', name);
+    a.setAttribute('data-apercu-haut', String(APERCU_HAUT_BOUTIQUE));
+    const garde = apercuGarde(url);
+    dessinerLApercu(a, garde);
+    if(!garde) a.setAttribute('data-apercu-attendu', '');
     row.appendChild(a);
   }
 
@@ -256,7 +269,7 @@
     nom.textContent = titre;
     boite.appendChild(nom);
     const ligne = document.createElement('div');
-    ligne.className = 'marketplace-row';
+    ligne.className = 'marketplace-cartes';
     liens.forEach(function(m){ addMarketplaceBtn(ligne, m.name, m.url); });
     boite.appendChild(ligne);
   }
@@ -273,9 +286,21 @@
           // Sous son propre titre : on doit pouvoir distinguer d'un coup d'œil
           // ce qu'on a ajouté soi-même de ce qui était là.
           ajouterUnGroupe(boite, '⭐ Ny anao', siens.filter(function(m){ return m && m.name && m.url; }));
+          chercherLesApercus();
         }, function(){});
     }
+    chercherLesApercus();
+    veillerSurLeTourDesApercus();
   }
+
+  // La fenêtre des boutiques s'ouvre, ou l'on y descend : les cartes que l'on
+  // découvre vont chercher leurs images à ce moment-là, et pas avant.
+  (function(){
+    const panneau = document.getElementById('marketPanel');
+    const bouton = document.getElementById('marketToggle');
+    if(bouton) bouton.addEventListener('click', function(){ setTimeout(chercherLesApercus, 50); });
+    if(panneau) panneau.addEventListener('scroll', function(){ chercherLesApercus(); }, { passive: true });
+  })();
 
   const addMarketBtn = document.getElementById('addMarketBtn');
   if(addMarketBtn){
@@ -871,7 +896,11 @@
   // Un aperçu VIDE, lui, ne se garde pas la semaine : c'est une page qui
   // s'est refusée un instant, ou la fonction qui n'était pas encore déployée.
   // Gardé sept jours, ce raté-là survivrait au remède.
-  const APERCU_VIDE_DUREE = 60 * 60 * 1000;
+  //
+  // Six heures et non une : la moitié des boutiques de la liste ne donnent
+  // rien et n'en donneront pas davantage demain. Les redemander à chaque
+  // heure, c'est dix-sept appels pour rien, à chaque ouverture de la fenêtre.
+  const APERCU_VIDE_DUREE = 6 * 60 * 60 * 1000;
   let apercusEnCours = 0;
 
   function lireLesApercus(){
@@ -912,9 +941,14 @@
 
   function dessinerLApercu(cadre, apercu){
     const url = cadre.getAttribute('data-apercu');
-    const site = (apercu && apercu.site) || (function(){
+    // Le nom imposé l'emporte : dans la liste des boutiques, on sait comment
+    // elles s'appellent, et « amazon.fr » n'apprend rien à personne.
+    const site = cadre.getAttribute('data-apercu-nom') || (apercu && apercu.site) || (function(){
       try { return new URL(url).hostname.replace(/^www\./, ''); } catch(e){ return url; }
     })();
+    // Les vignettes de la liste des boutiques sont plus basses que celles du
+    // fil : trente cartes à la hauteur d'un billet, c'est un couloir.
+    const haut = Number(cadre.getAttribute('data-apercu-haut')) || 120;
     const toutes = ((apercu && apercu.images) || (apercu && apercu.image ? [apercu.image] : []))
       .filter(Boolean);
     // Toute la réserve reste attachée au cadre : c'est elle qui tourne.
@@ -927,10 +961,11 @@
       (images.length
         ? (images.length === 1
           ? '<img src="' + escapeHtml(images[0]) + '" alt="" loading="lazy" ' +
-            'style="width:100%; max-height:220px; object-fit:cover; display:block; background:var(--panel-2);">'
+            'style="width:100%; max-height:' + Math.round(haut * 1.8) + 'px; object-fit:cover; ' +
+            'display:block; background:var(--panel-2);">'
           : '<div style="display:grid; grid-template-columns:repeat(' + images.length + ', 1fr); gap:2px;">' +
             images.map(function(src, i){
-              return '<div data-rang="' + i + '" style="height:120px;">' +
+              return '<div data-rang="' + i + '" style="height:' + haut + 'px;">' +
                 '<img src="' + escapeHtml(src) + '" alt="" loading="lazy" style="' + cadreImage + '"></div>';
             }).join('') +
             '</div>')
@@ -1013,7 +1048,9 @@
   function veillerSurLeTourDesApercus(){
     if(minuteurApercus) return;
     minuteurApercus = setInterval(function(){
-      const cadres = document.querySelectorAll('#communityNewsList [data-apercu]');
+      // Le fil ET la liste des boutiques : ce sont les mêmes cartes, et un
+      // seul minuteur les fait toutes tourner.
+      const cadres = document.querySelectorAll('[data-apercu]');
       if(!cadres.length){ clearInterval(minuteurApercus); minuteurApercus = null; return; }
       // Onglet caché : personne ne regarde, et une image qui se charge pour
       // personne, c'est le forfait de quelqu'un qui s'en va.
@@ -1027,9 +1064,17 @@
   // Les aperçus manquants, un à la fois : trente appels lancés ensemble
   // feraient attendre les trente.
   function chercherLesApercus(){
-    const cadre = document.querySelector('#communityNewsList [data-apercu][data-apercu-attendu]');
-    if(!cadre) return;
     if(apercusEnCours) return;
+    // Celle qu'on regarde d'abord. La liste des boutiques en compte trente,
+    // et aller les chercher toutes dès l'ouverture, ce sont trente appels
+    // pour quatre cartes visibles — le reste attend qu'on descende jusqu'à
+    // lui. Un cadre caché n'a pas d'« offsetParent ».
+    let cadre = null;
+    const enAttente = document.querySelectorAll('[data-apercu][data-apercu-attendu]');
+    for(let i = 0; i < enAttente.length && !cadre; i++){
+      if(enAttente[i].offsetParent) cadre = enAttente[i];
+    }
+    if(!cadre) return;
     const url = cadre.getAttribute('data-apercu');
     cadre.removeAttribute('data-apercu-attendu');
 
@@ -1038,7 +1083,7 @@
       // Le fil a pu être redessiné entre-temps : on sert tous les cadres qui
       // portent cette adresse, et non celui d'avant, qui n'existe plus.
       const vise = (window.CSS && CSS.escape) ? CSS.escape(url) : url.replace(/["\\]/g, '\\$&');
-      document.querySelectorAll('#communityNewsList [data-apercu="' + vise + '"]')
+      document.querySelectorAll('[data-apercu="' + vise + '"]')
         .forEach(function(c){ dessinerLApercu(c, apercu); });
       chercherLesApercus();
     };

@@ -533,6 +533,11 @@
   .marketplace-groupes{ display:flex; flex-direction:column; gap:0.75rem; }
   .marketplace-titre{ font-size:0.7rem; color:var(--muted); text-transform:uppercase;
     letter-spacing:0.04em; margin-bottom:-0.35rem; }
+  /* Les boutiques : une carte par ligne, comme un billet du fil en plus bas. */
+  .marketplace-cartes{ display:flex; flex-direction:column; gap:0.5rem; }
+  .marketplace-carte{ display:block; border:1px solid var(--line); border-radius:10px;
+    overflow:hidden; text-decoration:none; color:inherit; background:var(--panel-2); }
+  .marketplace-carte:hover{ border-color:var(--cyan); }
   .marketplace-row{ display:flex; flex-wrap:wrap; gap:0.6rem; }
   .marketplace-row a.btn{ display:inline-block; text-align:center; width:auto; }
 
