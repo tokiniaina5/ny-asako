@@ -64,7 +64,14 @@
       });
     }
 
-    var fb = String(ch.facebook || '').trim();
+    // Une adresse qui n'est pas un profil ne mène pas au propriétaire mais au
+    // compte de celui qui clique : contact.js l'écarte, et ce panneau ne peut
+    // pas être plus complaisant que « Nous contacter ».
+    var propre = (typeof adresseDeProfil === 'function')
+      ? function (cle, v) { return adresseDeProfil(cle, v); }
+      : function (cle, v) { return String(v || '').trim(); };
+
+    var fb = propre('facebook', ch.facebook);
     if (fb) {
       // La page Facebook se change en conversation Messenger quand elle le
       // peut : le client arrive dans le fil de discussion, et non devant une
@@ -82,7 +89,7 @@
       { cle: 'threads', nom: '🧵 Threads', couleur: '#e7e9ea' },
       { cle: 'twitter', nom: '✖️ X (Twitter)', couleur: '#e7e9ea' }
     ].forEach(function (f) {
-      var url = String(ch[f.cle] || '').trim();
+      var url = propre(f.cle, ch[f.cle]);
       if (url) lignes.push({ nom: f.nom, couleur: f.couleur, adresse: url });
     });
 
@@ -97,7 +104,8 @@
       if (!item || !item.name) return;
       var valeur = String(item.url || '').trim();
       if (/^https?:\/\//i.test(valeur)) {
-        lignes.push({ nom: item.name, couleur: 'var(--cyan)', adresse: valeur });
+        var lien = propre('', valeur);
+        if (lien) lignes.push({ nom: item.name, couleur: 'var(--cyan)', adresse: lien });
         return;
       }
       var chiffres = valeur.replace(/[^\d]/g, '');
