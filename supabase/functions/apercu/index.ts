@@ -79,16 +79,67 @@ function meta(html: string, noms: string[]): string {
   return "";
 }
 
+// Ce qui n'est pas une marchandise : le logo du site, les icônes de son menu,
+// le point transparent qui sert à compter les visiteurs. On les reconnaît à
+// leur nom, et à la taille que ce nom annonce — « …-tps-84-84.png », c'est une
+// vignette d'interface, jamais une photo d'article.
+const REJET = /(logo|sprite|icon|avatar|blank|placeholder|pixel|spacer|loading|transparent)/i;
+const TAILLE = /(?:^|[^0-9])([0-9]{1,4})[x_-]([0-9]{1,4})(?:[^0-9]|$)/;
+
+function imageAcceptable(u: string): boolean {
+  if (!u || /^data:/i.test(u)) return false;
+  if (/\.(svg|gif|ico)(\?|$)/i.test(u)) return false;
+  if (REJET.test(u)) return false;
+  const nom = u.split("/").pop() || "";
+  const m = nom.match(TAILLE);
+  if (m && Number(m[1]) <= 150 && Number(m[2]) <= 150) return false;
+  return true;
+}
+
+// Les images de la page, dans l'ordre où elles comptent : celle que le site
+// désigne lui-même pour le partage d'abord, puis celles qu'il affiche, puis
+// celles que son code porte en réserve (les grandes boutiques déposent leur
+// catalogue dans un JSON au milieu de la page).
+//
+// Ce ne sont pas « les articles en vente » — rien ne dit qu'une image est un
+// article, et aucun de ces sites ne publie son catalogue. Ce sont les images
+// de la page, celles qu'on verrait en l'ouvrant.
+function imagesDeLaPage(html: string, base: URL, max: number): string[] {
+  const vus = new Set<string>();
+  const sortie: string[] = [];
+  const sources = [
+    /<meta[^>]+(?:property|name)\s*=\s*["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*content\s*=\s*["']([^"']+)["']/gi,
+    /<img[^>]+\b(?:data-(?:src|lazy-src|original)|src)\s*=\s*["']([^"']+)["']/gi,
+    /"(?:image|imageUrl|imgUrl|picUrl|mainImage|thumbUrl)"\s*:\s*"((?:https?:)?[^"]+?\.(?:jpg|jpeg|png|webp)[^"]*)"/gi,
+  ];
+  for (const motif of sources) {
+    for (const m of html.matchAll(motif)) {
+      const u = adresseEntiere(m[1], base);
+      if (!imageAcceptable(u)) continue;
+      const clef = u.split("?")[0];
+      if (vus.has(clef)) continue;
+      vus.add(clef);
+      sortie.push(u);
+      if (sortie.length >= max) return sortie;
+    }
+  }
+  return sortie;
+}
+
 function titreDeLaPage(html: string): string {
   const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   return m ? decode(m[1].replace(/<[^>]*>/g, "")) : "";
 }
 
 // Une image annoncée « /img/x.jpg » ne s'affiche nulle part ailleurs que chez
-// elle : on la ramène à son adresse entière.
+// elle : on la ramène à son adresse entière. « //cdn.site/x.jpg » vaut pour
+// les deux protocoles, et les adresses tirées d'un JSON portent des barres
+// obliques échappées.
 function adresseEntiere(valeur: string, base: URL): string {
   if (!valeur) return "";
-  try { return new URL(valeur, base).href; } catch { return ""; }
+  let u = String(valeur).trim().replace(/\\\//g, "/");
+  if (u.startsWith("//")) u = "https:" + u;
+  try { return new URL(u, base).href; } catch { return ""; }
 }
 
 async function lireLeDebut(res: Response): Promise<string> {
@@ -149,20 +200,22 @@ Deno.serve(async (req: Request) => {
 
   const titre = meta(html, ["og:title", "twitter:title"]) || titreDeLaPage(html);
   const description = meta(html, ["og:description", "twitter:description", "description"]);
-  const image = adresseEntiere(
-    meta(html, ["og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"]),
-    finale,
-  );
   const site = meta(html, ["og:site_name"]) || finale.hostname.replace(/^www\./, "");
+  // Six, pour que le fil en garde trois même si deux ne s'affichent pas chez
+  // celui qui regarde — un site peut refuser ses images à qui vient d'ailleurs.
+  const images = imagesDeLaPage(html, finale, 6);
 
   return json({
     url: finale.href,
     site,
     titre: titre.slice(0, 200),
     description: description.slice(0, 300),
-    image,
+    // « image » reste : c'est celle du partage, et les pages qui n'en ont
+    // qu'une ne changent pas de forme.
+    image: images[0] || "",
+    images,
     // Rien n'a été trouvé : la page s'est refusée, ou ne publie pas d'aperçu.
     // Le client le saura et s'en tiendra au nom du site.
-    vide: !titre && !image,
+    vide: !titre && !images.length,
   });
 });

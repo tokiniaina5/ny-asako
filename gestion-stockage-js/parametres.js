@@ -779,7 +779,10 @@
     return m[0].replace(/[),.;:!?]+$/, '');
   }
 
-  const APERCU_CLE = 'stockmanager_apercus';
+  // Le nom porte le numéro de ce qu'on garde : un aperçu d'hier n'avait qu'une
+  // image, et resterait seul sous le billet une semaine durant. Changer de nom
+  // les reprend tous d'un coup.
+  const APERCU_CLE = 'stockmanager_apercus2';
   const APERCU_DUREE = 7 * 24 * 60 * 60 * 1000;
   // Un aperçu VIDE, lui, ne se garde pas la semaine : c'est une page qui
   // s'est refusée un instant, ou la fonction qui n'était pas encore déployée.
@@ -814,6 +817,16 @@
     return a;
   }
 
+  // Trois images, et non une. Une seule ne dit pas grand-chose d'une boutique ;
+  // trois disent ce qu'on y vend. Elles se mettent côte à côte quand il y en a
+  // plusieurs, en grand quand il n'y en a qu'une.
+  //
+  // Celle qui ne s'affiche pas s'efface d'elle-même : un site peut très bien
+  // refuser ses images à qui vient d'ailleurs, et un cadre gris vaut moins que
+  // pas de cadre du tout.
+  const APERCU_IMAGES = 3;
+  const COUPE_2 = 'display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;';
+
   function dessinerLApercu(cadre, apercu){
     const url = cadre.getAttribute('data-apercu');
     const site = (apercu && apercu.site) || (function(){
@@ -821,22 +834,46 @@
     })();
     const titre = (apercu && apercu.titre) || '';
     const texte = (apercu && apercu.description) || '';
-    const image = (apercu && apercu.image) || '';
+    const images = ((apercu && apercu.images) || (apercu && apercu.image ? [apercu.image] : []))
+      .filter(Boolean).slice(0, APERCU_IMAGES);
+    const cadreImage = 'width:100%; height:100%; object-fit:cover; display:block; background:var(--panel-2);';
     cadre.innerHTML =
-      (image
-        ? '<img src="' + escapeHtml(image) + '" alt="" loading="lazy" ' +
-          'style="width:100%; max-height:220px; object-fit:cover; display:block; background:var(--panel-2);">'
+      (images.length
+        ? (images.length === 1
+          ? '<img src="' + escapeHtml(images[0]) + '" alt="" loading="lazy" ' +
+            'style="width:100%; max-height:220px; object-fit:cover; display:block; background:var(--panel-2);">'
+          : '<div style="display:grid; grid-template-columns:repeat(' + images.length + ', 1fr); gap:2px;">' +
+            images.map(function(src){
+              return '<div style="height:120px;"><img src="' + escapeHtml(src) + '" alt="" loading="lazy" ' +
+                'style="' + cadreImage + '"></div>';
+            }).join('') +
+            '</div>')
         : '') +
       '<div style="padding:0.6rem 0.7rem;">' +
         '<div style="font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em;">' +
           escapeHtml(site) + '</div>' +
-        (titre ? '<div style="font-weight:600; line-height:1.3; margin-top:0.15rem;">' + escapeHtml(titre) + '</div>' : '') +
-        (texte ? '<div style="font-size:0.8rem; color:var(--muted); line-height:1.4; margin-top:0.25rem;">' +
-          escapeHtml(texte) + '</div>' : '') +
+        // Deux lignes chacun : le titre d'une grande boutique tient parfois en
+        // quatre lignes, et la carte devient un mur de texte sous les images.
+        (titre ? '<div style="font-weight:600; line-height:1.3; margin-top:0.15rem; ' + COUPE_2 + '">' +
+          escapeHtml(titre) + '</div>' : '') +
+        (texte ? '<div style="font-size:0.8rem; color:var(--muted); line-height:1.4; margin-top:0.25rem; ' +
+          COUPE_2 + '">' + escapeHtml(texte) + '</div>' : '') +
       '</div>';
     // L'image d'un site qui la refuse à l'affichage laisserait un cadre gris.
-    const img = cadre.querySelector('img');
-    if(img) img.addEventListener('error', function(){ img.remove(); });
+    // Elle s'efface, et la grille se resserre sur ce qui reste.
+    cadre.querySelectorAll('img').forEach(function(img){
+      img.addEventListener('error', function(){
+        const case_ = img.parentElement;
+        const grille = case_ && case_.parentElement;
+        img.remove();
+        if(case_ && case_.childElementCount === 0 && grille && grille.style.gridTemplateColumns){
+          case_.remove();
+          const reste = grille.childElementCount;
+          if(!reste) grille.remove();
+          else grille.style.gridTemplateColumns = 'repeat(' + reste + ', 1fr)';
+        }
+      });
+    });
   }
 
   // Les aperçus manquants, un à la fois : trente appels lancés ensemble
