@@ -1850,6 +1850,80 @@
     });
   }
 
+  // ---------------- ANNONCER UN ARTICLE DU STOCK ----------------
+  // Le fil savait annoncer une marchandise, mais jamais LAQUELLE : on tapait
+  // son nom à la main, et l'annonce ne tenait plus à rien. Le jour où
+  // l'article était épuisé, elle restait à vendre ce qu'on n'avait plus, et
+  // le client écrivait pour s'entendre répondre qu'il n'y en avait plus.
+  //
+  // L'annonce part donc maintenant de la marchandise elle-même, par le
+  // bouton « 📢 » de la page des articles. Elle garde son numéro, et s'en va
+  // avec elle.
+  //
+  // CES DEUX PORTES SONT OUVERTES À stock.js, qui est chargé AVANT ce
+  // fichier : il ne peut pas lire ce qui est écrit ici, mais il les appelle
+  // au clic, quand tout est en place.
+  //
+  // IL FAUT UN COMPTE. La base n'accorde d'effacer qu'à l'auteur du billet,
+  // reconnu par l'adresse de son jeton. Une annonce publiée sans compte
+  // n'aurait pas d'auteur, et plus personne ne pourrait la retirer — ni le
+  // jour de la rupture, ni à la main.
+  window.__publierLEntana = function(item){
+    if(!item) return Promise.reject(new Error('Tsy misy entana.'));
+    if(!window.__sb) return Promise.reject(new Error('Tsy misy fifandraisana amin\'ny serveur.'));
+    const moi = (currentUser && currentUser.email) ? currentUser.email.trim() : '';
+    if(!moi) return Promise.reject(new Error('Midira aloha amin\'ny kaontinao.'));
+
+    // Deux annonces pour un même article, ce serait la même marchandise deux
+    // fois dans le fil — et la seconde ne dirait rien de plus que la première.
+    return window.__sb.from('client_news').select('id').eq('item_id', item.id).limit(1)
+      .then(function(res){
+        if(res && res.error) throw new Error('Mbola tsy nalefa ny supabase-entana-lany.sql.');
+        if(res && res.data && res.data.length) return { deja: true };
+
+        const maison = jeSuisLaMaison();
+        const clientName = maison ? MARQUE_NOM : ((currentUser && currentUser.name) || 'Client');
+        // Le nom, et le rayon s'il y en a un. Pas la quantité : elle change à
+        // chaque vente, et le billet, lui, ne se réécrit pas — il dirait au
+        // bout de trois jours un chiffre qui n'est plus vrai.
+        const message = item.name + (item.category ? ' — ' + item.category : '');
+        return (maison ? Promise.resolve(MARQUE_LOGO) : vignette(currentUser && currentUser.logo))
+          .then(function(photo){
+            return window.__sb.from('client_news').insert({
+              client_name: clientName, network: 'Autre', message: message, link: '',
+              type: 'entana',
+              price: item.price != null ? Number(item.price) : null,
+              image: null,
+              item_id: item.id,
+              author_email: moi,
+              author_photo: photo
+            });
+          })
+          .then(function(res){
+            if(res && res.error) throw new Error(res.error.message || 'Tsy voaray ny fanambarana.');
+            renderCommunityNews();
+            return { deja: false };
+          });
+      });
+  };
+
+  // L'article est épuisé, ou retiré du stock : son annonce n'a plus d'objet.
+  //
+  // On n'ajoute pas « et dont je suis l'auteur » à la demande : c'est la base
+  // qui le tient, et elle compare les deux adresses sans tenir compte de la
+  // casse. Le faire ici avec « eq » les comparerait lettre à lettre, et une
+  // majuscule de différence laisserait l'annonce en place.
+  window.__effacerLesBilletsDeLEntana = function(itemId){
+    if(!itemId || !window.__sb) return Promise.resolve(false);
+    if(!(currentUser && currentUser.email)) return Promise.resolve(false);
+    return window.__sb.from('client_news').delete().eq('item_id', itemId)
+      .then(function(res){
+        if(res && res.error) return false;
+        renderCommunityNews();
+        return true;
+      }, function(){ return false; });
+  };
+
   function renderCommunityPanel(){
     const avatar = document.getElementById('composerAvatar');
     if(avatar){

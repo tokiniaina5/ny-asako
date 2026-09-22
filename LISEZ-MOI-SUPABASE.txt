@@ -828,6 +828,53 @@ trois vont ensemble : la fonction du script SQL,
 "botika/index.html", et RETENTION_JOURS du ménage des vidéos.
 
 
+L'ANNONCE S'EN VA AVEC LA MARCHANDISE
+------------------------------
+Une annonce "🛒 Entana amidy" ne disait que ce que son auteur
+avait tapé : un texte, un prix, et rien qui la relie à la
+marchandise qu'elle vend. Le jour où celle-ci était épuisée,
+l'annonce restait — et l'on proposait à la vente ce qu'on n'avait
+plus. Le client écrivait, on répondait qu'il n'y en avait plus.
+
+Un bouton "📢" paraît maintenant sur chaque ligne de la page des
+articles. Il publie la marchandise dans le fil — son nom, son
+rayon, son prix — et le billet garde le numéro de l'article. Le
+jour où la dernière unité sort, où l'on ramène la quantité à zéro
+à la main, ou où l'on retire l'article du registre, son annonce
+part avec lui.
+
+UNE ANNONCE ÉCRITE À LA MAIN dans le fil n'est pas concernée :
+elle ne porte aucun numéro d'article, et rien ne l'efface. C'est
+voulu — elle ne vend la marchandise de personne.
+
+IL FAUT UN COMPTE pour publier ainsi. La base n'accorde d'effacer
+qu'à l'auteur du billet, reconnu par l'adresse de son jeton. Une
+annonce publiée sans compte n'aurait pas d'auteur, et plus
+personne ne pourrait la retirer — ni à la rupture, ni à la main.
+
+LE STOCK RESTE DANS L'APPAREIL. La base ne sait pas ce qu'il reste
+d'un article : c'est le navigateur du propriétaire qui le sait, et
+c'est donc lui qui efface, au moment où la vente se fait. Une
+annonce publiée depuis un téléphone dont le stock vit ailleurs ne
+s'effacera pas toute seule — aucun autre appareil ne sait qu'elle
+le devrait.
+
+À FAIRE UNE FOIS :
+   Collez "supabase/sql/supabase-entana-lany.sql" dans SQL Editor
+   et exécutez-le. Il ajoute la colonne "item_id" à client_news,
+   son index, et la règle qui permet d'effacer SON PROPRE billet.
+
+Tant que ce script n'est pas passé, le bouton "📢" le dit et ne
+publie rien : la colonne n'existe pas, et le billet serait refusé.
+
+LA RÈGLE NE S'OUVRE QUE D'UN CRAN. La table n'accordait d'effacer
+à personne : ce qui est dit reste dit, et nul ne doit pouvoir
+effacer le billet d'un autre. C'était juste, mais trop large — on
+ne pouvait plus retirer le sien. Maintenant : on n'efface que ce
+qu'on a écrit, connecté, et un billet sans adresse d'auteur n'est
+effaçable par personne.
+
+
 « DÉPOSÉ » N'EST PAS « ARRIVÉ »
 ------------------------------
 PayPal répond 201 quand il PREND l'ordre, pas quand l'argent est

@@ -27,6 +27,7 @@
         '<td>' + (item.seuil != null ? item.seuil : 5) + '</td>' +
         '<td>' + escapeHtml(item.supplier || '—') + '</td>' +
         '<td style="white-space:nowrap;">' +
+          '<button class="btn btn-primary btn-icon" data-publier="' + idx + '" title="Publier" aria-label="Publier dans le fil" style="margin-right:0.35rem;">📢</button>' +
           '<button class="btn btn-violet btn-icon" data-edit="' + idx + '" title="Modifier" aria-label="Modifier" style="margin-right:0.35rem;">✏️</button>' +
           '<button class="btn btn-amber btn-icon" data-sortie="' + idx + '" title="Sortie" aria-label="Sortie" style="margin-right:0.35rem;">📤</button>' +
           '<button class="btn btn-red btn-icon" data-idx="' + idx + '" title="Supprimer" aria-label="Supprimer">🗑️</button>' +
@@ -36,6 +37,9 @@
     tbody.querySelectorAll('button[data-idx]').forEach(function(btn){
       btn.addEventListener('click', function(){
         const idx = Number(btn.dataset.idx);
+        // Retirer la marchandise du stock, c'est cesser de la vendre : son
+        // annonce part avec elle, comme le jour où elle s'épuise.
+        if(items[idx]) retirerLesBillets(items[idx].id);
         items.splice(idx, 1);
         saveItems(items);
         // Ny mouvement mikasika io entana voafafa io dia TSY esorina: mijanona
@@ -56,6 +60,34 @@
         openEditModal(Number(btn.dataset.edit));
       });
     });
+    tbody.querySelectorAll('button[data-publier]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const item = items[Number(btn.dataset.publier)];
+        if(!item) return;
+        if(typeof window.__publierLEntana !== 'function') return;
+        // Le bouton se tait le temps de l'envoi : deux pressions pendant que
+        // le serveur répond feraient deux annonces pour une marchandise.
+        btn.disabled = true;
+        window.__publierLEntana(item).then(function(r){
+          btn.disabled = false;
+          alert(r && r.deja
+            ? 'Efa navoaka tao amin\'ny fil ity entana ity.'
+            : 'Navoaka tao amin\'ny fil : « ' + item.name + ' ».');
+        }, function(err){
+          btn.disabled = false;
+          alert((err && err.message) || 'Tsy voaray ny fanambarana.');
+        });
+      });
+    });
+  }
+
+  // Une marchandise épuisée, ou retirée du stock : son annonce n'a plus
+  // d'objet, et la laisser, c'est proposer à la vente ce qu'on n'a plus.
+  // Elle ne part que d'ici — le stock vit dans l'appareil, et la base ne sait
+  // pas ce qu'il en reste.
+  function retirerLesBillets(itemId){
+    if(typeof window.__effacerLesBilletsDeLEntana !== 'function') return;
+    window.__effacerLesBilletsDeLEntana(itemId);
   }
 
   // ---------------- MODIFIER UN ARTICLE ----------------
@@ -103,6 +135,10 @@
     item.price = Number(document.getElementById('editItemPrice').value) || 0;
     item.seuil = Number(document.getElementById('editItemSeuil').value) || 0;
     item.supplier = document.getElementById('editItemSupplier').value.trim();
+    // Une quantité ramenée à zéro à la main, c'est une rupture comme une
+    // autre : l'annonce n'a plus d'objet. L'article, lui, reste au registre —
+    // on l'a mis à zéro, pas effacé.
+    if(Number(before.qty) > 0 && Number(item.qty) <= 0) retirerLesBillets(item.id);
     saveItems(items);
 
     // enregistre la modification dans l'historique des mouvements + notification
@@ -151,7 +187,10 @@
 
     if(item.qty <= 0){
       items.splice(idx, 1);
-      pushNotification('rupture', 'Entana « ' + item.name + ' » efa lany, voafafa tao amin\'ny stock.');
+      // L'annonce s'en va avec la marchandise : c'est ici, et nulle part
+      // ailleurs, qu'on sait que la dernière unité vient de sortir.
+      retirerLesBillets(item.id);
+      pushNotification('rupture', 'Entana « ' + item.name + ' » efa lany, voafafa tao amin\'ny stock sy tao amin\'ny fil.');
     }
     saveItems(items);
     renderStock();
