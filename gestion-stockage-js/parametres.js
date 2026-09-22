@@ -256,6 +256,7 @@
     a.setAttribute('data-apercu', url);
     a.setAttribute('data-apercu-nom', name);
     a.setAttribute('data-apercu-haut', String(APERCU_HAUT_BOUTIQUE));
+    a.setAttribute('data-apercu-direct', '');
     const garde = apercuGarde(url);
     dessinerLApercu(a, garde);
     if(!garde) a.setAttribute('data-apercu-attendu', '');
@@ -892,7 +893,10 @@
   // image, et resterait seul sous le billet une semaine durant. Changer de nom
   // les reprend tous d'un coup.
   const APERCU_CLE = 'stockmanager_apercus2';
-  const APERCU_DUREE = 7 * 24 * 60 * 60 * 1000;
+  // Un jour, et non sept : une boutique change sa vitrine tous les matins, et
+  // la carte doit changer avec elle. Sept jours, c'était la vitrine de la
+  // semaine dernière.
+  const APERCU_DUREE = 24 * 60 * 60 * 1000;
   // Un aperçu VIDE, lui, ne se garde pas la semaine : c'est une page qui
   // s'est refusée un instant, ou la fonction qui n'était pas encore déployée.
   // Gardé sept jours, ce raté-là survivrait au remède.
@@ -955,18 +959,24 @@
     cadre.__images = toutes;
     cadre.__tour = 0;
     const images = toutes.slice(0, APERCU_IMAGES);
+    // Dans la fenêtre des boutiques, les images sont demandées tout de suite.
+    // Le chargement différé y reste muet : la fenêtre naît cachée, et le
+    // navigateur ne revient pas sur sa décision quand elle paraît. Dans le
+    // fil, qui se déroule normalement, il fait très bien son travail.
+    const chargement = cadre.hasAttribute('data-apercu-direct') ? 'eager' : 'lazy';
     const cadreImage = 'width:100%; height:100%; object-fit:cover; display:block; ' +
       'background:var(--panel-2); transition:opacity 0.22s;';
     cadre.innerHTML =
       (images.length
         ? (images.length === 1
-          ? '<img src="' + escapeHtml(images[0]) + '" alt="" loading="lazy" ' +
+          ? '<img src="' + escapeHtml(images[0]) + '" alt="" loading="' + chargement + '" ' +
             'style="width:100%; max-height:' + Math.round(haut * 1.8) + 'px; object-fit:cover; ' +
             'display:block; background:var(--panel-2);">'
           : '<div style="display:grid; grid-template-columns:repeat(' + images.length + ', 1fr); gap:2px;">' +
             images.map(function(src, i){
               return '<div data-rang="' + i + '" style="height:' + haut + 'px;">' +
-                '<img src="' + escapeHtml(src) + '" alt="" loading="lazy" style="' + cadreImage + '"></div>';
+                '<img src="' + escapeHtml(src) + '" alt="" loading="' + chargement + '" ' +
+                'style="' + cadreImage + '"></div>';
             }).join('') +
             '</div>')
         : '') +
@@ -983,6 +993,17 @@
     // L'image d'un site qui la refuse à l'affichage laisserait un cadre gris.
     // Elle s'efface, et la grille se resserre sur ce qui reste.
     cadre.querySelectorAll('img').forEach(function(img){
+      // Les trois premières n'ont pas été regardées : elles arrivent telles
+      // que le serveur les a rapportées. Une bannière qui se glisse là est
+      // écartée dès qu'on connaît sa forme, et remplacée par la suivante.
+      img.addEventListener('load', function(){
+        if(formeAcceptable(img)) return;
+        const boite = img.parentElement;
+        if(!boite || !boite.hasAttribute('data-rang')) return;
+        const rang = Number(boite.getAttribute('data-rang'));
+        (cadre.__ecartes || (cadre.__ecartes = {}))[rang] = true;
+        poserDansLaCase(cadre, boite, prochainRang(cadre, boite), (cadre.__images || []).length);
+      });
       img.addEventListener('error', function(){
         const case_ = img.parentElement;
         const grille = case_ && case_.parentElement;
@@ -1009,6 +1030,75 @@
   const APERCU_TOUR_MS = 4500;
   let minuteurApercus = null;
 
+  // L'adresse ne dit pas tout : bien des bannières n'annoncent pas leurs
+  // dimensions, et seul le navigateur, une fois l'image chargée, sait qu'elle
+  // fait quatre fois plus large que haut. Une photo d'article est à peu près
+  // carrée ; le reste est de la mise en page, et n'a rien à montrer.
+  // 1,8 et non 2,5 : une bande de seize sur neuf est déjà une bannière, et
+  // aucune photo d'article n'a cette forme. Le carré et le quatre-tiers
+  // passent, qui sont les deux formes d'une photo de marchandise.
+  const APERCU_RATIO_MAX = 1.8;
+  // Et une taille minimale : le point de comptage d'un pixel sur un pixel est
+  // parfaitement carré, et l'icône de trente-deux pixels aussi. Ni l'un ni
+  // l'autre ne montre quoi que ce soit.
+  const APERCU_COTE_MIN = 120;
+
+  function formeAcceptable(img){
+    const l = img.naturalWidth, h = img.naturalHeight;
+    if(!l || !h) return false;
+    if(l < APERCU_COTE_MIN || h < APERCU_COTE_MIN) return false;
+    return l / h <= APERCU_RATIO_MAX && h / l <= APERCU_RATIO_MAX;
+  }
+
+  // Le rang suivant pour cette place : trois de plus, en sautant ce que les
+  // autres places occupent et ce qu'on a déjà écarté.
+  function prochainRang(cadre, boite){
+    const toutes = cadre.__images || [];
+    const cases = cadre.querySelectorAll('[data-rang]');
+    const ecartes = cadre.__ecartes || (cadre.__ecartes = {});
+    const pris = [];
+    cases.forEach(function(c){ if(c !== boite) pris.push(Number(c.getAttribute('data-rang'))); });
+    let rang = Number(boite.getAttribute('data-rang'));
+    for(let essai = 0; essai < toutes.length; essai++){
+      rang = (rang + cases.length) % toutes.length;
+      if(pris.indexOf(rang) === -1 && !ecartes[rang]) return rang;
+    }
+    return -1;
+  }
+
+  // Pose l'image du rang voulu dans une place, après l'avoir chargée et
+  // regardée. Mal formée, elle est écartée pour de bon et l'on passe à la
+  // suivante — c'est ainsi que les bannières disparaissent d'elles-mêmes.
+  function poserDansLaCase(cadre, boite, rang, restants){
+    const toutes = cadre.__images || [];
+    const img = boite.querySelector('img');
+    const suivante = toutes[rang];
+    if(!img || !suivante || rang < 0 || restants <= 0) return;
+    if(suivante === img.getAttribute('src')) return;
+
+    // Chargée avant d'être montrée : sans cela, la place reste vide le temps
+    // que l'image arrive, et c'est un trou qu'on voit, pas un changement.
+    const avance = new Image();
+    avance.onload = function(){
+      if(!formeAcceptable(avance)){
+        (cadre.__ecartes || (cadre.__ecartes = {}))[rang] = true;
+        poserDansLaCase(cadre, boite, prochainRang(cadre, boite), restants - 1);
+        return;
+      }
+      boite.setAttribute('data-rang', String(rang));
+      img.style.opacity = '0';
+      setTimeout(function(){
+        img.src = suivante;
+        img.style.opacity = '1';
+      }, 220);
+    };
+    avance.onerror = function(){
+      (cadre.__ecartes || (cadre.__ecartes = {}))[rang] = true;
+      poserDansLaCase(cadre, boite, prochainRang(cadre, boite), restants - 1);
+    };
+    avance.src = suivante;
+  }
+
   function tournerUnApercu(cadre){
     const toutes = cadre.__images || [];
     const cases = cadre.querySelectorAll('[data-rang]');
@@ -1017,32 +1107,7 @@
     const quelle = (cadre.__tour || 0) % cases.length;
     cadre.__tour = (cadre.__tour || 0) + 1;
     const boite = cases[quelle];
-    const img = boite.querySelector('img');
-    if(!img) return;
-
-    // Les rangs que les autres places occupent : on ne vient pas s'y poser.
-    const pris = [];
-    cases.forEach(function(c){ if(c !== boite) pris.push(Number(c.getAttribute('data-rang'))); });
-    let rang = Number(boite.getAttribute('data-rang'));
-    for(let essai = 0; essai < toutes.length; essai++){
-      rang = (rang + cases.length) % toutes.length;
-      if(pris.indexOf(rang) === -1) break;
-    }
-    const suivante = toutes[rang];
-    if(!suivante || suivante === img.getAttribute('src')) return;
-
-    // Chargée avant d'être montrée : sans cela, la place reste vide le temps
-    // que l'image arrive, et c'est un trou qu'on voit, pas un changement.
-    const avance = new Image();
-    avance.onload = function(){
-      boite.setAttribute('data-rang', String(rang));
-      img.style.opacity = '0';
-      setTimeout(function(){
-        img.src = suivante;
-        img.style.opacity = '1';
-      }, 220);
-    };
-    avance.src = suivante;
+    poserDansLaCase(cadre, boite, prochainRang(cadre, boite), toutes.length);
   }
 
   function veillerSurLeTourDesApercus(){

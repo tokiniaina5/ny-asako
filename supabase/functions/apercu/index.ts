@@ -80,11 +80,22 @@ function meta(html: string, noms: string[]): string {
 }
 
 // Ce qui n'est pas une marchandise : le logo du site, les icônes de son menu,
-// le point transparent qui sert à compter les visiteurs. On les reconnaît à
-// leur nom, et à la taille que ce nom annonce — « …-tps-84-84.png », c'est une
-// vignette d'interface, jamais une photo d'article.
-const REJET = /(logo|sprite|icon|avatar|blank|placeholder|pixel|spacer|loading|transparent)/i;
+// la bannière de sa promotion du mois, le squelette gris qu'il affiche en
+// attendant ses propres images, le bouton qui ferme sa fenêtre. Tout cela
+// porte son nom sur l'adresse — « desk-skeleton.png », « bandeau_alcool.jpg »,
+// « btn-close.png », « picto? » — et n'a rien à faire sur la carte d'une
+// boutique, qui doit montrer ce qu'on y achète.
+const REJET = new RegExp([
+  "logo", "sprite", "icon", "picto", "avatar", "blank", "placeholder", "pixel",
+  "spacer", "loading", "transparent", "skeleton", "bandeau", "banniere",
+  "banner", "btn[-_.]", "button", "header", "footer", "menu", "flag", "badge",
+  "hero", "cover", "close", "arrow", "fleche", "etoile", "star[-_.]",
+].join("|"), "i");
 const TAILLE = /(?:^|[^0-9])([0-9]{1,4})[x_-]([0-9]{1,4})(?:[^0-9]|$)/;
+// Une photo d'article est à peu près carrée. Ce qui est quatre fois plus
+// large que haut est une bannière, et ce qui est quatre fois plus haut
+// qu'large une colonne de mise en page.
+const RATIO_MAX = 2.5;
 
 function imageAcceptable(u: string): boolean {
   if (!u || /^data:/i.test(u)) return false;
@@ -92,7 +103,11 @@ function imageAcceptable(u: string): boolean {
   if (REJET.test(u)) return false;
   const nom = u.split("/").pop() || "";
   const m = nom.match(TAILLE);
-  if (m && Number(m[1]) <= 150 && Number(m[2]) <= 150) return false;
+  if (m) {
+    const l = Number(m[1]), h = Number(m[2]);
+    if (l <= 150 && h <= 150) return false;
+    if (l && h && (l / h > RATIO_MAX || h / l > RATIO_MAX)) return false;
+  }
   return true;
 }
 
@@ -206,7 +221,10 @@ Deno.serve(async (req: Request) => {
   // secondes. C'est aussi de quoi tenir si l'une ou l'autre ne s'affiche pas
   // chez celui qui regarde — un site peut refuser ses images à qui vient
   // d'ailleurs.
-  const images = imagesDeLaPage(html, finale, 12);
+  // Dix-huit et non douze : le navigateur en écartera encore — c'est lui, et
+  // lui seul, qui connaît les vraies dimensions d'une image — et il faut de
+  // quoi remplacer sans se retrouver à court.
+  const images = imagesDeLaPage(html, finale, 18);
 
   return json({
     url: finale.href,
