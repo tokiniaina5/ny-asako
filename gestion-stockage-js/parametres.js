@@ -167,9 +167,17 @@
   }
 
   // ---------------- COMMUNAUTÉ CLIENTS & ACHATS INTERNATIONAUX ----------------
+  // Les quatre boutiques par lesquelles on achète à l'étranger depuis ici.
+  // Elles ne sont pas interchangeables : Alibaba vend en gros au commerçant,
+  // AliExpress à l'unité, Taobao est le marché intérieur chinois — le moins
+  // cher, mais tout y est en chinois et il faut souvent un intermédiaire —
+  // et SHEIN ne fait que l'habillement. Celles qu'on ajoute soi-même
+  // (« Ajouter un autre lien ») viennent à la suite.
   const DEFAULT_MARKETPLACES = [
     { name: 'Alibaba', url: 'https://www.alibaba.com' },
-    { name: 'AliExpress', url: 'https://www.aliexpress.com' }
+    { name: 'AliExpress', url: 'https://www.aliexpress.com' },
+    { name: 'Taobao', url: 'https://world.taobao.com' },
+    { name: 'SHEIN', url: 'https://www.shein.com' }
   ];
 
   function addMarketplaceBtn(row, name, url){
