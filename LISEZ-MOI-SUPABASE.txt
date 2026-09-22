@@ -807,3 +807,37 @@ vide — et le serveur le refuse à quiconque d'autre.
 
 À FAIRE UNE FOIS :
      supabase functions deploy wallet
+
+
+L'APERÇU D'UN LIEN PARTAGÉ
+------------------------------
+Un billet qui ne porte qu'une adresse ne dit rien de ce qu'il y a
+au bout. "https://www.alibaba.com/" — et puis ? Personne ne touche
+une adresse nue ; on touche une image.
+
+Le fil montre donc, sous le billet, ce que le site publie pour être
+partagé : son image, son titre, sa phrase. C'est exactement ce
+qu'affichent WhatsApp et Facebook, et cela vient du site lui-même.
+
+CE QUE CE N'EST PAS : la liste des marchandises d'une boutique. Les
+grands sites ne la publient pas de cette façon — ils la construisent
+dans le navigateur de leur visiteur, et refusent qui n'est pas une
+personne. Pour une vraie liste de produits, il faut l'API officielle
+du site (compte développeur et clé chez Alibaba ou AliExpress) ;
+dites-le si vous en ouvrez une.
+
+Pourquoi une fonction, et pas la page elle-même : le navigateur
+INTERDIT de lire une page d'un autre domaine (c'est la règle CORS).
+Le serveur, lui, le peut. Il ne rapporte que quatre lignes, et ne
+télécharge jamais plus que l'en-tête de la page.
+
+À FAIRE UNE FOIS :
+     supabase functions deploy apercu --no-verify-jwt
+
+SI VOUS NE LE FAITES PAS, rien ne se casse : le billet montre le
+nom du site (alibaba.com) à la place de la carte, et le lien s'ouvre
+comme avant.
+
+L'aperçu est gardé une semaine sur l'appareil de chacun : un lien
+déjà vu ne redemande rien. Sans cela, trente billets redemanderaient
+trente aperçus chaque fois que le fil se redessine.

@@ -775,6 +775,42 @@
       'ankehitriny : bandeau 🔴 sy fampandrenesana. <strong>' + watching + '</strong> no efa mijery.';
   }
 
+  // ---------------- LE DIRECT MONTRÉ AILLEURS QUE DANS SA PAGE ----------------
+  //
+  // Un flux se montre dans autant de <video> qu'on veut : c'est la même image
+  // qu'on affiche deux fois, et non un second raccordement au diffuseur. Le
+  // fil de la Botika peut donc montrer le direct dans le billet lui-même,
+  // sans rien coûter de plus à celui qui diffuse.
+  let fluxRegarde = null;
+  let ecransDuLive = [];
+
+  function poserLeFluxDuLive(flux){
+    fluxRegarde = flux;
+    const principal = document.getElementById('liveViewerVideo');
+    if(principal) principal.srcObject = flux;
+    ecransDuLive = ecransDuLive.filter(function(v){ return v.isConnected; });
+    ecransDuLive.forEach(function(v){ v.srcObject = flux; });
+  }
+
+  // Un écran de plus pour le direct en cours. Il reçoit l'image tout de suite
+  // si elle est déjà là, et l'attend sinon.
+  function brancherUnEcranDuLive(video){
+    if(!video) return;
+    if(ecransDuLive.indexOf(video) === -1) ecransDuLive.push(video);
+    if(fluxRegarde) video.srcObject = fluxRegarde;
+  }
+
+  function debrancherLesEcransDuLive(){
+    ecransDuLive.forEach(function(v){ try { v.srcObject = null; } catch(e){} });
+    ecransDuLive = [];
+  }
+
+  // Le direct qu'on regarde en ce moment, pour qui veut le montrer ailleurs
+  // sans s'y raccorder une seconde fois.
+  function liveRegardeMaintenant(){
+    return watchingLive ? watchingLive.broadcasterEmail : null;
+  }
+
   function joinLive(broadcasterEmail, broadcasterName){
     if(!window.__sb){ alert('Tsy misy fifandraisana amin\'ny serveur.'); return; }
     if(watchingLive){ alert('Mijery live hafa efa ianao.'); return; }
@@ -782,7 +818,7 @@
     const me = myIdentity();
     const pc = new RTCPeerConnection(ICE_SERVERS);
     watchingLive = { broadcasterEmail: broadcasterEmail, broadcasterName: broadcasterName, peer: pc, pendingIce: [] };
-    pc.ontrack = function(e){ document.getElementById('liveViewerVideo').srcObject = e.streams[0]; };
+    pc.ontrack = function(e){ poserLeFluxDuLive(e.streams[0]); };
     pc.onicecandidate = function(e){
       if(e.candidate) sendLiveSignal({ kind: 'ice-v', broadcaster: broadcasterEmail, viewer: me.email, candidate: e.candidate });
     };
@@ -900,7 +936,11 @@
     document.getElementById('liveViewerView').style.display = 'none';
     document.getElementById('liveIdleControls').style.display = 'block';
     document.getElementById('liveChatBox').style.display = 'none';
-    document.getElementById('liveViewerVideo').srcObject = null;
+    poserLeFluxDuLive(null);
+    debrancherLesEcransDuLive();
+    // Les billets du fil montraient encore le direct : leur cadre se referme
+    // avec lui.
+    if(typeof window.__refermerLesLivesDuFil === 'function') window.__refermerLesLivesDuFil();
     renderLiveList();
   }
 

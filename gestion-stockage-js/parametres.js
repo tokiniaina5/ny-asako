@@ -480,24 +480,120 @@
     });
   }
 
-  // Les commentaires ne sont chargés qu'à l'ouverture : une trentaine de
-  // publications qui iraient toutes chercher leur fil à l'affichage feraient
-  // trente requêtes pour un fil que personne n'a demandé à lire.
+  // ---------------- LES COMMENTAIRES, OUVERTS D'OFFICE ----------------
   //
-  // Une fois ouvert, en revanche, il se relit tout seul. Il ne le faisait pas,
-  // et un commentaire écrit par quelqu'un d'autre n'arrivait qu'à la
-  // prochaine ouverture de la boîte — c'est-à-dire beaucoup trop tard, et
-  // sans que rien ne dise qu'il y en avait un.
+  // Ils attendaient derrière « Commenter ». Un billet en portait trois, et
+  // rien ne le disait : la conversation existait pour ceux qui avaient pensé
+  // à toucher le mot. Les autres passaient devant un fil qui paraissait muet.
+  // Ils sont donc à l'écran, sous leur billet, comme la réponse qu'ils sont.
   //
-  // Fermé, il ne demande plus rien : c'est la boîte ouverte qui coûte, et
-  // personne ne lit un fil replié.
-  // Sans temps réel, c'est cette relecture qui porte tout : quatre secondes.
+  // Ce qui les gardait repliés, c'était le coût : trente billets qui iraient
+  // chacun chercher leurs lignes, puis les relire toutes les quatre secondes,
+  // feraient trente requêtes là où une suffit — et trente canaux temps réel
+  // là où un seul porte la table entière. On ne replie donc pas les boîtes :
+  // on les sert ensemble. Une requête pour tout le fil, un minuteur, un
+  // canal, et chaque boîte reçoit sa part.
+  //
+  // Sans temps réel, c'est la relecture qui porte tout : quatre secondes.
   // Avec lui, elle n'est plus qu'un filet — le canal fait le travail, et elle
   // rattrape ce qu'il aurait laissé passer.
   const COMMENTAIRES_RAFRAICHI_MS = 4000;
   const COMMENTAIRES_FILET_MS = 25000;
+  // Au-delà, ce n'est plus un fil qu'on lit mais une page qu'on fait ramer.
+  const COMMENTAIRES_MAX = 1000;
 
-  function openComments(newsId, box){
+  let boitesCommentaires = {};
+  let minuteurCommentaires = null;
+  let canalCommentaires = null;
+  let realtimeCommentairesProuve = false;
+
+  function oublierLesCommentaires(){
+    boitesCommentaires = {};
+    if(minuteurCommentaires){ clearInterval(minuteurCommentaires); minuteurCommentaires = null; }
+    if(canalCommentaires){
+      try { window.__sb.removeChannel(canalCommentaires); } catch(e){}
+      canalCommentaires = null;
+    }
+    realtimeCommentairesProuve = false;
+  }
+
+  // « discret » : c'est la relecture automatique qui appelle. Une panne de
+  // réseau passagère ne doit pas effacer ce qui est lisible à l'écran.
+  function chargerLesCommentaires(discret){
+    const ids = Object.keys(boitesCommentaires);
+    if(!ids.length || !window.__sb) return;
+    window.__sb.from('client_news_comments')
+      .select('news_id,author_name,message,created_at')
+      .in('news_id', ids)
+      .order('created_at', { ascending: true })
+      .limit(COMMENTAIRES_MAX)
+      .then(function(res){
+        if(res && res.error){
+          if(!discret) ids.forEach(function(id){ boitesCommentaires[id].poser(null, res.error); });
+          return;
+        }
+        const parBillet = {};
+        ((res && res.data) || []).forEach(function(c){
+          (parBillet[c.news_id] || (parBillet[c.news_id] = [])).push(c);
+        });
+        ids.forEach(function(id){
+          if(boitesCommentaires[id]) boitesCommentaires[id].poser(parBillet[id] || []);
+        });
+      }, function(err){
+        if(!discret) ids.forEach(function(id){ boitesCommentaires[id].poser(null, err); });
+      });
+  }
+
+  function poserLeMinuteurDesCommentaires(periode){
+    if(minuteurCommentaires) clearInterval(minuteurCommentaires);
+    minuteurCommentaires = setInterval(function(){
+      // Plus une seule boîte à l'écran : le fil a été redessiné, ou l'on est
+      // parti ailleurs. Sans ce garde-fou, chaque affichage laisserait
+      // derrière lui une interrogation régulière pour personne.
+      const vivante = Object.keys(boitesCommentaires).some(function(id){
+        return boitesCommentaires[id].box.isConnected;
+      });
+      if(!vivante){ oublierLesCommentaires(); return; }
+      chargerLesCommentaires(true);
+    }, periode);
+  }
+
+  // Le temps réel : le serveur prévient dès que la ligne entre, et le
+  // commentaire paraît à la seconde.
+  //
+  // La relecture régulière ne disparaît pas pour autant — elle ralentit, mais
+  // seulement quand le canal a FAIT SES PREUVES. Être abonné ne prouve rien :
+  // le canal s'ouvre très bien sur une table absente de la publication, dit
+  // « SUBSCRIBED », et ne délivre jamais rien. Ralentir sur cette promesse-là
+  // rendrait le fil plus lent qu'avant. C'est donc le premier message reçu
+  // qui l'autorise.
+  function ecouterLesCommentaires(){
+    if(canalCommentaires || !window.__sb || !window.__sb.channel) return;
+    try {
+      canalCommentaires = window.__sb
+        .channel('commentaires-du-fil')
+        .on('postgres_changes', {
+          event: 'INSERT', schema: 'public', table: 'client_news_comments'
+        }, function(){
+          if(!realtimeCommentairesProuve){
+            realtimeCommentairesProuve = true;
+            poserLeMinuteurDesCommentaires(COMMENTAIRES_FILET_MS);
+          }
+          chargerLesCommentaires(true);
+        })
+        .subscribe(function(){});
+    } catch(e){ canalCommentaires = null; }
+  }
+
+  // Une fois toutes les boîtes en place : une lecture, un minuteur, un canal.
+  function veillerSurLesCommentaires(){
+    if(!Object.keys(boitesCommentaires).length) return;
+    chargerLesCommentaires(false);
+    poserLeMinuteurDesCommentaires(COMMENTAIRES_RAFRAICHI_MS);
+    ecouterLesCommentaires();
+  }
+
+  function openComments(newsId, box, avecFocus){
     if(!newsId || !window.__sb){
       box.innerHTML = '<div class="fb-comment-empty">Tsy misy fifandraisana amin\'ny serveur.</div>';
       return;
@@ -524,10 +620,10 @@
 
     function dessiner(rows){
       liste.innerHTML = '';
-      if(!rows.length){
-        liste.innerHTML = '<div class="fb-comment-empty">Tsy mbola misy hevitra. Ianao no voalohany.</div>';
-        return;
-      }
+      // Ouvertes d'office, les boîtes vides diraient trente fois la même
+      // chose sous trente billets. Le champ, juste en dessous, invite mieux
+      // que la phrase qui l'annonçait.
+      if(!rows.length) return;
       rows.forEach(function(c){
         const ligne = document.createElement('div');
         ligne.className = 'fb-comment';
@@ -541,98 +637,24 @@
       });
     }
 
-    // « discret » : c'est la relecture automatique qui appelle. Une panne de
-    // réseau passagère ne doit pas effacer ce qui est lisible à l'écran.
-    function charger(discret){
-      window.__sb.from('client_news_comments')
-        .select('author_name,message,created_at')
-        .eq('news_id', newsId)
-        .order('created_at', { ascending: true })
-        .limit(100)
-        .then(function(res){
-          if(res && res.error){
-            if(discret) return;
-            liste.innerHTML = '<div class="fb-comment-empty">' + escapeHtml(feedErrorText(res.error)) + '</div>';
-            return;
-          }
-          const rows = (res && res.data) || [];
-          const sig = signature(rows);
-          if(sig === empreinte) return;
-          empreinte = sig;
-          dessiner(rows);
-        }, function(err){
-          if(discret) return;
-          liste.innerHTML = '<div class="fb-comment-empty">' + escapeHtml(feedErrorText(err)) + '</div>';
-        });
+    // La part de cette boîte dans la lecture commune. Elle ne demande plus
+    // rien d'elle-même : on la sert.
+    function poser(rows, err){
+      if(err){
+        liste.innerHTML = '<div class="fb-comment-empty">' + escapeHtml(feedErrorText(err)) + '</div>';
+        return;
+      }
+      const sig = signature(rows);
+      if(sig === empreinte) return;
+      empreinte = sig;
+      dessiner(rows);
     }
 
     box.innerHTML = '';
+    liste.innerHTML = '<div class="fb-comment-empty">Mamaky…</div>';
     box.appendChild(liste);
     box.appendChild(saisie);
-    charger(false);
-
-    // Tout s'arrête ensemble : le minuteur et le canal. Une boîte refermée
-    // qui laisserait l'un ou l'autre derrière elle continuerait d'interroger
-    // le serveur pour personne.
-    function arreter(){
-      if(box.__minuteurCommentaires){
-        clearInterval(box.__minuteurCommentaires);
-        box.__minuteurCommentaires = null;
-      }
-      if(box.__canalCommentaires){
-        try { window.__sb.removeChannel(box.__canalCommentaires); } catch(e){}
-        box.__canalCommentaires = null;
-      }
-    }
-    box.__arreterCommentaires = arreter;
-
-    // Un seul minuteur par boîte : rouvrir n'en empile pas un second.
-    function poserLeMinuteur(periode){
-      if(box.__minuteurCommentaires) clearInterval(box.__minuteurCommentaires);
-      box.__minuteurCommentaires = setInterval(function(){
-        // Refermée, ou le fil entier redessiné sous elle : dans les deux cas
-        // plus personne ne regarde. Sans ce garde-fou, chaque ouverture
-        // laisserait derrière elle une interrogation régulière pour une boîte
-        // qui n'existe plus.
-        if(!box.isConnected || box.style.display === 'none'){ arreter(); return; }
-        charger(true);
-      }, periode);
-    }
-
-    arreter();
-    poserLeMinuteur(COMMENTAIRES_RAFRAICHI_MS);
-
-    // Le temps réel : le serveur prévient dès que la ligne entre, et le
-    // commentaire paraît à la seconde.
-    //
-    // La relecture régulière ne disparaît pas pour autant — elle ralentit,
-    // mais seulement quand le canal a FAIT SES PREUVES. Être abonné ne prouve
-    // rien : le canal s'ouvre très bien sur une table absente de la
-    // publication, dit « SUBSCRIBED », et ne délivre jamais rien. Ralentir
-    // sur cette promesse-là rendrait le fil plus lent qu'avant.
-    //
-    // C'est donc le premier message reçu qui l'autorise. Tant qu'il n'arrive
-    // pas, les quatre secondes tiennent — et si la publication n'est pas
-    // faite, elles tiendront toujours. Personne n'y perd.
-    if(window.__sb.channel){
-      try {
-        box.__canalCommentaires = window.__sb
-          .channel('commentaires-' + newsId)
-          .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'client_news_comments',
-            filter: 'news_id=eq.' + newsId
-          }, function(){
-            if(!box.__realtimeProuve){
-              box.__realtimeProuve = true;
-              poserLeMinuteur(COMMENTAIRES_FILET_MS);
-            }
-            charger(true);
-          })
-          .subscribe(function(){});
-      } catch(e){ box.__canalCommentaires = null; }
-    }
+    boitesCommentaires[newsId] = { poser: poser, box: box };
 
     const champ = saisie.querySelector('.fb-comment-input');
     const bouton = saisie.querySelector('.fb-comment-send');
@@ -674,7 +696,7 @@
         }
         // La relecture remplace le pâle par le vrai, daté par le serveur.
         empreinte = null;
-        charger(true);
+        chargerLesCommentaires(true);
       }, function(err){
         bouton.disabled = false;
         provisoire.remove();
@@ -697,7 +719,10 @@
 
     bouton.addEventListener('click', envoyer);
     champ.addEventListener('keydown', function(e){ if(e.key === 'Enter') envoyer(); });
-    champ.focus();
+    // Les boîtes s'ouvrent maintenant toutes seules, et trente champs qui se
+    // disputeraient le curseur emporteraient la page avec eux. Seul celui
+    // qu'on a demandé — le mot « Commenter » — prend la main.
+    if(avecFocus) champ.focus();
   }
 
   // ---------------- LE DIRECT DANS LE FIL ----------------
@@ -727,6 +752,186 @@
     return !!(p && p.live);
   }
 
+  // ---------------- L'APERÇU D'UN LIEN PARTAGÉ ----------------
+  //
+  // Un billet qui ne porte qu'une adresse ne dit rien de ce qu'il y a au bout.
+  // « https://www.alibaba.com/ » — et puis ? Personne ne touche une adresse
+  // nue ; on touche une image. C'est la fonction « apercu » qui va la
+  // chercher : le navigateur ne peut pas lire une page d'un autre domaine
+  // (CORS), le serveur le peut.
+  //
+  // Ce qu'on rapporte, c'est ce que le site publie pour être partagé — une
+  // image, un titre, une phrase — et non sa liste de marchandises : les
+  // grands sites ne la donnent pas, la construisent dans le navigateur de
+  // leur visiteur, et refusent qui n'est pas une personne.
+  //
+  // Un aperçu ne change pas d'une heure à l'autre : il est gardé sur
+  // l'appareil une semaine. Sans cela, trente billets redemanderaient trente
+  // aperçus à chaque fois que le fil se redessine — et il se redessine
+  // souvent.
+  // Le lien est rarement dans la case prévue pour lui : un partage venu du
+  // dehors (zara-miditra.js) dépose l'adresse dans le texte, là où la
+  // personne l'aurait collée elle-même. On la cherche donc dans les deux.
+  function premierLien(texte){
+    const m = String(texte || '').match(/https?:\/\/[^\s<>"']+/i);
+    if(!m) return '';
+    // Une adresse en fin de phrase emporte la ponctuation qui la suit.
+    return m[0].replace(/[),.;:!?]+$/, '');
+  }
+
+  const APERCU_CLE = 'stockmanager_apercus';
+  const APERCU_DUREE = 7 * 24 * 60 * 60 * 1000;
+  let apercusEnCours = 0;
+
+  function lireLesApercus(){
+    try { return JSON.parse(localStorage.getItem(APERCU_CLE)) || {}; }
+    catch(e){ return {}; }
+  }
+  function garderLApercu(url, apercu){
+    try {
+      const tous = lireLesApercus();
+      tous[url] = { apercu: apercu, le: Date.now() };
+      // Le fil ne garde que sept jours : au-delà de deux cents aperçus, ce
+      // sont des liens que plus personne ne verra passer.
+      const cles = Object.keys(tous);
+      if(cles.length > 200){
+        cles.sort(function(a, b){ return (tous[a].le || 0) - (tous[b].le || 0); });
+        cles.slice(0, cles.length - 200).forEach(function(k){ delete tous[k]; });
+      }
+      localStorage.setItem(APERCU_CLE, JSON.stringify(tous));
+    } catch(e){}
+  }
+  function apercuGarde(url){
+    const ligne = lireLesApercus()[url];
+    if(!ligne || (Date.now() - (ligne.le || 0)) > APERCU_DUREE) return null;
+    return ligne.apercu;
+  }
+
+  function dessinerLApercu(cadre, apercu){
+    const url = cadre.getAttribute('data-apercu');
+    const site = (apercu && apercu.site) || (function(){
+      try { return new URL(url).hostname.replace(/^www\./, ''); } catch(e){ return url; }
+    })();
+    const titre = (apercu && apercu.titre) || '';
+    const texte = (apercu && apercu.description) || '';
+    const image = (apercu && apercu.image) || '';
+    cadre.innerHTML =
+      (image
+        ? '<img src="' + escapeHtml(image) + '" alt="" loading="lazy" ' +
+          'style="width:100%; max-height:220px; object-fit:cover; display:block; background:var(--panel-2);">'
+        : '') +
+      '<div style="padding:0.6rem 0.7rem;">' +
+        '<div style="font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em;">' +
+          escapeHtml(site) + '</div>' +
+        (titre ? '<div style="font-weight:600; line-height:1.3; margin-top:0.15rem;">' + escapeHtml(titre) + '</div>' : '') +
+        (texte ? '<div style="font-size:0.8rem; color:var(--muted); line-height:1.4; margin-top:0.25rem;">' +
+          escapeHtml(texte) + '</div>' : '') +
+      '</div>';
+    // L'image d'un site qui la refuse à l'affichage laisserait un cadre gris.
+    const img = cadre.querySelector('img');
+    if(img) img.addEventListener('error', function(){ img.remove(); });
+  }
+
+  // Les aperçus manquants, un à la fois : trente appels lancés ensemble
+  // feraient attendre les trente.
+  function chercherLesApercus(){
+    const cadre = document.querySelector('#communityNewsList [data-apercu][data-apercu-attendu]');
+    if(!cadre) return;
+    if(apercusEnCours) return;
+    const url = cadre.getAttribute('data-apercu');
+    cadre.removeAttribute('data-apercu-attendu');
+
+    const fini = function(apercu){
+      apercusEnCours = 0;
+      // Le fil a pu être redessiné entre-temps : on sert tous les cadres qui
+      // portent cette adresse, et non celui d'avant, qui n'existe plus.
+      const vise = (window.CSS && CSS.escape) ? CSS.escape(url) : url.replace(/["\\]/g, '\\$&');
+      document.querySelectorAll('#communityNewsList [data-apercu="' + vise + '"]')
+        .forEach(function(c){ dessinerLApercu(c, apercu); });
+      chercherLesApercus();
+    };
+
+    if(!window.__sb || !window.__sb.functions || !window.__sb.functions.invoke){
+      fini(null);
+      return;
+    }
+    apercusEnCours = 1;
+    window.__sb.functions.invoke('apercu', { body: { url: url } }).then(function(res){
+      const a = (res && res.data && !res.data.error) ? res.data : null;
+      // Gardé même vide : une page qui se refuse aujourd'hui se refusera
+      // toute la semaine, et l'on ne va pas le redemander à chaque passage.
+      garderLApercu(url, a || { site: '', titre: '', description: '', image: '' });
+      fini(a);
+    }, function(){ fini(null); });
+  }
+
+  // Le direct se regarde dans le billet, là où on l'a trouvé. Il partait dans
+  // la page « Live direct » — la bonne page, mais pas celle qu'on regardait,
+  // et le fil se refermait derrière soi.
+  //
+  // Le raccordement au diffuseur reste unique : joinLive fait le travail une
+  // fois, et le billet n'est qu'un écran de plus sur le même flux
+  // (brancherUnEcranDuLive). Regarder depuis le fil ou depuis la page Live,
+  // c'est la même image et le même coût pour celui qui diffuse.
+  //
+  // Un appui, et non tout seul : une image qui part d'elle-même chez chacun,
+  // c'est le téléphone du diffuseur qui s'épuise à nourrir des écrans que
+  // personne ne regarde. Et le son ne partirait pas de toute façon — aucun
+  // navigateur ne laisse une vidéo s'ouvrir avec le son sans qu'on l'ait
+  // demandé.
+  function montrerLeLiveDansLeBillet(div, leLive, nom){
+    const bouton = div.querySelector('[data-live-join]');
+    let cadre = div.querySelector('[data-live-video]');
+    if(!cadre){
+      cadre = document.createElement('div');
+      cadre.setAttribute('data-live-video', '');
+      cadre.style.cssText = 'margin-top:0.6rem;';
+      cadre.innerHTML =
+        '<video autoplay playsinline controls ' +
+          'style="width:100%; border-radius:10px; background:#000; display:block;"></video>' +
+        '<div data-live-etat class="fb-comment-empty">Mampifandray amin\'ny Live…</div>';
+      if(bouton) bouton.insertAdjacentElement('afterend', cadre);
+      else div.appendChild(cadre);
+      const video = cadre.querySelector('video');
+      // L'image est là : le mot d'attente n'a plus rien à dire.
+      video.addEventListener('playing', function(){
+        const etat = cadre.querySelector('[data-live-etat]');
+        if(etat) etat.remove();
+      });
+    }
+    cadre.style.display = '';
+
+    const video = cadre.querySelector('video');
+    if(typeof brancherUnEcranDuLive === 'function') brancherUnEcranDuLive(video);
+    // Déjà raccordé à ce direct-là — depuis la page Live, ou depuis un autre
+    // billet : il n'y a qu'à montrer, surtout pas à rejoindre une seconde fois.
+    if(typeof liveRegardeMaintenant !== 'function' || liveRegardeMaintenant() !== leLive.email){
+      joinLive(leLive.email, nom);
+    }
+    video.play().catch(function(){});
+
+    if(bouton){
+      bouton.textContent = '⏹️ Ajanony ny fijerena';
+      bouton.__enCours = true;
+    }
+  }
+
+  function refermerLeLiveDuBillet(div){
+    const cadre = div.querySelector('[data-live-video]');
+    if(cadre) cadre.remove();
+    const bouton = div.querySelector('[data-live-join]');
+    if(bouton){
+      bouton.textContent = '▶️ Jereo ny Live eto';
+      bouton.__enCours = false;
+    }
+  }
+
+  // Le direct s'est arrêté, ou l'on a quitté : live.js appelle ici pour que
+  // les billets ne gardent pas un écran noir.
+  window.__refermerLesLivesDuFil = function(){
+    document.querySelectorAll('#communityNewsList [data-live-email]').forEach(refermerLeLiveDuBillet);
+  };
+
   // Un direct s'arrête sans prévenir le fil : le billet reste, et continue de
   // dire « en ce moment ». On repasse donc sur les billets déjà affichés à
   // chaque changement de présence, plutôt que de recharger tout le fil.
@@ -742,6 +947,9 @@
       div.classList.toggle('fb-post-live', encore);
       const bouton = div.querySelector('[data-live-join]');
       if(bouton) bouton.style.display = encore ? '' : 'none';
+      // Terminé : l'écran du billet se referme avec lui, plutôt que de
+      // rester noir sous un billet qui dit « tapitra ».
+      if(!encore) refermerLeLiveDuBillet(div);
     });
   }
   window.__majBilletsLive = majBilletsLive;
@@ -768,6 +976,9 @@
         return res;
       })
       .then(function(res){
+        // Le fil est redessiné : les boîtes d'avant n'existent plus, et la
+        // lecture commune ne doit pas continuer de les servir.
+        oublierLesCommentaires();
         list.innerHTML = '';
         const rows = (res && res.data) || [];
         emptyHint.style.display = rows.length ? 'none' : 'block';
@@ -784,6 +995,7 @@
           // fini, quelle que soit l'heure du billet : deux heures, c'était
           // faute de savoir. La présence le sait.
           const leLive = type === 'live' ? lireLeLienDuLive(n.link) : null;
+          const lienDuBillet = leLive ? '' : (String(n.link || '').trim() || premierLien(n.message));
           const liveEnCours = type === 'live' && !liveFini &&
             (!leLive || leLiveEstEnCours(leLive.email));
           div.className = 'fb-post' +
@@ -841,11 +1053,18 @@
             // Un direct n'affiche pas son adresse : elle est longue, illisible,
             // et ne sert qu'à la machine. À sa place, le bouton qui entre —
             // caché dès que le direct s'arrête, car il ne mènerait à rien.
+            // Un lien ordinaire, lui, devient une carte : l'image et le titre
+            // que le site publie pour être partagé.
             (leLive
               ? '<button type="button" class="btn btn-red btn-sm" data-live-join ' +
                 'style="width:auto; margin-top:0.6rem;' + (liveEnCours ? '' : ' display:none;') +
-                '">▶️ Miditra amin\'ny Live</button>'
-              : (n.link ? '<a href="' + escapeHtml(n.link) + '" target="_blank" rel="noopener" class="fb-post-link">🔗 ' + escapeHtml(n.link) + '</a>' : '')) +
+                '">▶️ Jereo ny Live eto</button>'
+              : (lienDuBillet
+                ? '<a href="' + escapeHtml(lienDuBillet) + '" target="_blank" rel="noopener" ' +
+                  'data-apercu="' + escapeHtml(lienDuBillet) + '" data-apercu-attendu ' +
+                  'style="display:block; margin-top:0.6rem; border:1px solid var(--line); ' +
+                  'border-radius:10px; overflow:hidden; text-decoration:none; color:inherit;"></a>'
+                : '')) +
             '<div class="fb-post-actions">' +
             '<span class="fb-like-action" data-like style="cursor:pointer;">👍 J\'aime</span>' +
             '<span class="fb-comment-action" data-comment style="cursor:pointer;">💬 Commenter</span>' +
@@ -876,13 +1095,20 @@
           if(shareAllEl){
             shareAllEl.addEventListener('click', function(){ shareToutLeMonde(n); });
           }
+          // La carte du lien : le nom du site tout de suite — un cadre vide
+          // n'annonce rien — puis l'image et le titre quand ils arrivent.
+          const cadreApercu = div.querySelector('[data-apercu]');
+          if(cadreApercu){
+            const garde = apercuGarde(lienDuBillet);
+            dessinerLApercu(cadreApercu, garde);
+            if(garde) cadreApercu.removeAttribute('data-apercu-attendu');
+          }
           const buyEl = div.querySelector('[data-buy]');
           if(buyEl){
             buyEl.addEventListener('click', function(){ buyFromPost(n); });
           }
-          // On entre dans le direct sans quitter la page : la section Live
-          // s'ouvre, et la vidéo arrive là. Sans joinLive — la page publique
-          // de la Botika n'a pas le WebRTC — il reste le lien d'origine.
+          // Le direct se regarde ici même. Sans joinLive — la page publique de
+          // la Botika n'a pas le WebRTC — il reste le lien d'origine.
           const liveEl = div.querySelector('[data-live-join]');
           if(liveEl && leLive){
             liveEl.addEventListener('click', function(){
@@ -890,30 +1116,38 @@
                 if(n.link) window.open(n.link, '_blank');
                 return;
               }
-              const nav = document.querySelector('.nav-item[data-section="live"]');
-              if(nav && !nav.classList.contains('active')) nav.click();
-              joinLive(leLive.email, leLive.name || n.client_name || '');
+              if(liveEl.__enCours){
+                if(typeof leaveLive === 'function') leaveLive();
+                refermerLeLiveDuBillet(div);
+                return;
+              }
+              montrerLeLiveDansLeBillet(div, leLive, leLive.name || n.client_name || '');
             });
           }
           const likeEl = div.querySelector('[data-like]');
           if(likeEl) setupLike(likeEl, n.id);
           const commentEl = div.querySelector('[data-comment]');
           const commentsBox = div.querySelector('[data-comments]');
-          if(commentEl && commentsBox){
+          if(commentEl && commentsBox && n.id){
+            // La boîte est là dès l'affichage : les commentaires sont la
+            // suite du billet, pas une annexe qu'il faut penser à déplier.
+            commentsBox.style.display = 'block';
+            openComments(n.id, commentsBox, false);
+            // Le mot ne déplie donc plus rien — il mène au champ, qui est ce
+            // qu'on cherchait en le touchant.
             commentEl.addEventListener('click', function(){
-              const ouvert = commentsBox.style.display === 'block';
-              commentsBox.style.display = ouvert ? 'none' : 'block';
-              if(ouvert){
-                // Refermée : on coupe la relecture et le canal tout de suite,
-                // sans attendre que le minuteur s'en aperçoive de lui-même.
-                if(commentsBox.__arreterCommentaires) commentsBox.__arreterCommentaires();
-                return;
-              }
-              openComments(n.id, commentsBox);
+              commentsBox.style.display = 'block';
+              const champ = commentsBox.querySelector('.fb-comment-input');
+              if(champ){ champ.focus(); champ.scrollIntoView({ block: 'nearest' }); }
             });
           }
           list.appendChild(div);
         });
+        // Une lecture pour tout le fil, un minuteur, un canal — une fois
+        // toutes les boîtes en place.
+        veillerSurLesCommentaires();
+        // Puis les aperçus qui manquent, un à la fois.
+        chercherLesApercus();
         // Un seul appel pour tout le fil : trente publications qui iraient
         // chacune compter ses « j'aime » feraient trente requêtes.
         loadLikes(rows.map(function(n){ return n.id; }).filter(Boolean));
