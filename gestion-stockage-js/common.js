@@ -1328,9 +1328,15 @@
       sentBtn.type = 'button';
       sentBtn.className = 'btn btn-primary btn-sm';
       sentBtn.style.width = 'auto';
-      sentBtn.textContent = '✅ Argent envoyé';
+      // Au premier coup d'œil, « Argent envoyé » se lit comme un ordre — et
+      // l'on croit que l'application va envoyer. Elle n'envoie rien : ce
+      // bouton ne fait que consigner ce que la personne a fait de ses mains.
+      // À la première personne, il ne peut plus se lire autrement.
+      sentBtn.textContent = '✅ Efa nalefako an-tanana';
       sentBtn.addEventListener('click', function(){
-        if(!confirm('Avez-vous bien envoyé ' + arrivee + ' vers ' + r.destination + ' ?')) return;
+        if(!confirm('Efa nalefanao TENA ve ny ' + arrivee + ' ho any amin\'ny ' + r.destination + ' ?\n\n' +
+          'Ity bokotra ity dia tsy mandefa vola : manamarina fotsiny izy fa efa nataonao. ' +
+          'Raha te-hampandeha azy amin\'ny PayPal dia « 📤 Alefa amin\'ny PayPal izao » no tsindrio.')) return;
         settlePayout(r.id, 'sent', '', sentBtn);
       });
 
