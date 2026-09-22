@@ -841,3 +841,23 @@ comme avant.
 L'aperçu est gardé une semaine sur l'appareil de chacun : un lien
 déjà vu ne redemande rien. Sans cela, trente billets redemanderaient
 trente aperçus chaque fois que le fil se redessine.
+
+
+LE FIL PARLE AU NOM DE LA MAISON
+------------------------------
+Vos billets ne paraissent plus sous votre nom et vos initiales,
+mais sous « Ny asako » et le logo du site. Le fil est la vitrine
+de l'application : celui qui le lit vient chez Ny asako, pas chez
+quelqu'un.
+
+Les billets des autres clients gardent leur nom et leur photo :
+c'est une communauté, et non une seule voix.
+
+Ce qui vous reconnaît, c'est l'ADRESSE de votre compte, et non le
+nom affiché — un nom se retape, une adresse non. Vos billets déjà
+partis avec l'adresse prennent donc la marque tout de suite ; les
+plus anciens, qui n'en portent pas, gardent le nom sous lequel ils
+sont partis. On ne réécrit pas le passé de quelqu'un.
+
+RIEN À DÉPLOYER : c'est la page qui le fait.
+

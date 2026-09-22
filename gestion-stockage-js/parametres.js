@@ -174,6 +174,11 @@
   //
   // Les liens ajoutés à la main (« Ajouter ») viennent toujours après, sous
   // leur propre titre : ce qui est ici est le fond, pas la liste entière.
+  //
+  // CETTE LISTE EST RECOPIÉE DANS « supabase/functions/vaovao-boutique » —
+  // c'est elle que la maison publie quatre fois par jour dans le fil, et un
+  // serveur ne lit pas cette page. Une boutique ajoutée ici et pas là-bas
+  // paraît dans cette fenêtre sans jamais venir dans le fil.
   const DEFAULT_MARKETPLACES = [
     {
       // Le gros et l'Asie : c'est là qu'on achète pour revendre.
@@ -345,6 +350,47 @@
     });
   }
 
+  // ---------------- LE FIL PARLE AU NOM DE LA MAISON ----------------
+  //
+  // Le propriétaire n'écrit pas ici en son nom propre. Le fil est la vitrine
+  // de l'application : celui qui le lit vient chez « Ny asako », pas chez
+  // quelqu'un. Ses billets paraissent donc sous la marque et sous son logo,
+  // comme ceux que la maison publie toute seule (fonction « vaovao-boutique »).
+  //
+  // Les billets des autres clients gardent leur nom et leur visage : c'est
+  // une communauté, et non une seule voix.
+  const MARQUE_NOM = 'Ny asako';
+  const MARQUE_LOGO = '/icone-192.png';
+
+  // Celui qui écrit en ce moment est-il la maison ? L'adresse du compte, et
+  // non le nom affiché : un nom se retape, une adresse de compte non.
+  function jeSuisLaMaison(){
+    return !!(currentUser && currentUser.email &&
+      currentUser.email.trim().toLowerCase() === String(OWNER_EMAIL).trim().toLowerCase());
+  }
+
+  // Un billet déjà écrit se reconnaît de même à l'adresse de son auteur. Le
+  // nom de la marque rattrape ceux que la machine publie, qui n'ont pas
+  // d'adresse, et les anciens billets d'avant ce changement gardent le nom
+  // sous lequel ils sont partis : on ne réécrit pas le passé de quelqu'un.
+  function estBilletDeLaMarque(n){
+    if(!n) return false;
+    const adresse = String(n.author_email || '').trim().toLowerCase();
+    if(adresse && adresse === String(OWNER_EMAIL).trim().toLowerCase()) return true;
+    return String(n.client_name || '').trim() === MARQUE_NOM;
+  }
+
+  // Le nom et le visage à montrer : ceux de la marque pour la maison, ceux du
+  // billet pour tous les autres.
+  function nomAffiche(n){
+    if(estBilletDeLaMarque(n)) return MARQUE_NOM;
+    return (n && n.client_name) || '';
+  }
+  function photoAffichee(n){
+    if(estBilletDeLaMarque(n)) return MARQUE_LOGO;
+    return (n && n.author_photo) || '';
+  }
+
   function initials(name){
     if(!name) return '?';
     const parts = name.trim().split(/\s+/);
@@ -410,7 +456,8 @@
 
   function sharePost(n){
     const parts = [];
-    if(n.client_name) parts.push(n.client_name + ' :');
+    const signature = nomAffiche(n);
+    if(signature) parts.push(signature + ' :');
     if(n.message) parts.push(n.message);
     if(n.price) parts.push('(' + formatAr(n.price) + ')');
     const text = parts.join(' ').trim() || 'Vaovao ao amin\'ny asako';
@@ -448,7 +495,8 @@
   function shareToutLeMonde(n){
     if(typeof window.__zaraoAminyRehetra !== 'function') return;
     const parts = [];
-    if(n.client_name) parts.push(n.client_name + ' :');
+    const signature = nomAffiche(n);
+    if(signature) parts.push(signature + ' :');
     if(n.message) parts.push(n.message);
     if(n.price) parts.push('(' + formatAr(n.price) + ')');
     const text = parts.join(' ').trim() || 'Vaovao ao amin\'ny asako';
@@ -483,7 +531,7 @@
     if(select) select.dispatchEvent(new Event('change'));
     if(!existant && nom) nom.value = titre;
     if(prix && post.price) prix.value = post.price;
-    if(fournisseur) fournisseur.value = post.client_name || '';
+    if(fournisseur) fournisseur.value = nomAffiche(post) || '';
     if(qty) qty.value = 1;
     if(statut){
       statut.textContent = existant
@@ -1262,13 +1310,14 @@
     if(!list) return;
     if(!window.__sb){ list.innerHTML=''; emptyHint.style.display = 'block'; return; }
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    // La colonne author_photo peut ne pas exister encore : tant que le script
-    // SQL n'a pas été passé, la demander ferait échouer la requête entière et
-    // le fil resterait vide. On la redemande alors sans elle.
+    // Les colonnes author_photo et author_email peuvent ne pas exister encore
+    // — le même script SQL les pose toutes deux. Tant qu'il n'est pas passé,
+    // les demander ferait échouer la requête entière et le fil resterait vide.
+    // On les redemande alors sans elles.
     const COLONNES = 'id,client_name,network,message,link,type,price,image,created_at';
     function lireLeFil(avecPhoto){
       return window.__sb.from('client_news')
-        .select(COLONNES + (avecPhoto ? ',author_photo' : ''))
+        .select(COLONNES + (avecPhoto ? ',author_photo,author_email' : ''))
         .gte('created_at', oneWeekAgo)
         .order('created_at', { ascending: false }).limit(30);
     }
@@ -1340,12 +1389,14 @@
             '<div class="fb-post-head">' +
               // La photo que l'auteur a jointe à SON billet, et rien d'autre :
               // aller la chercher ailleurs d'après le nom affiché la donnerait
-              // à une homonyme. Sans photo, les initiales.
-              '<div class="fb-avatar">' + (n.author_photo
-                ? '<img src="' + escapeHtml(n.author_photo) + '" alt="' + escapeHtml(n.client_name || '') + '">'
-                : escapeHtml(initials(n.client_name))) + '</div>' +
+              // à une homonyme. Sans photo, les initiales. Un billet de la
+              // maison, lui, porte le logo du site : il n'appartient à
+              // personne en particulier.
+              '<div class="fb-avatar">' + (photoAffichee(n)
+                ? '<img src="' + escapeHtml(photoAffichee(n)) + '" alt="' + escapeHtml(nomAffiche(n)) + '">'
+                : escapeHtml(initials(nomAffiche(n)))) + '</div>' +
               '<div>' +
-                '<div class="fb-post-name">' + escapeHtml(n.client_name || 'Client') + '</div>' +
+                '<div class="fb-post-name">' + escapeHtml(nomAffiche(n) || 'Client') + '</div>' +
                 '<div class="fb-post-meta">' + typeBadge + '<span class="fb-network-badge">' + escapeHtml(n.network || 'Autre') + '</span><span>' + d + '</span></div>' +
               '</div>' +
             '</div>' +
@@ -1644,10 +1695,12 @@
       if(videoEnCours){ alert('Miandrasa kely : mbola mandeha ny video.'); return; }
       if(!message && !pendingNewsImages.length){ alert('Soraty ny vaovao na alao sary aloha.'); return; }
       if(!window.__sb){ alert('Tsy misy fifandraisana amin\'ny serveur.'); return; }
-      const clientName = (currentUser && currentUser.name) || 'Client';
+      const maison = jeSuisLaMaison();
+      const clientName = maison ? MARQUE_NOM : ((currentUser && currentUser.name) || 'Client');
       // La vignette est calculée avant l'envoi : le billet part avec le visage
-      // de son auteur, seul moyen d'en être sûr chez les autres.
-      vignette(currentUser && currentUser.logo).then(function(photo){
+      // de son auteur, seul moyen d'en être sûr chez les autres. Le logo de la
+      // maison, lui, est déjà posé sur le site : rien à recopier ni à réduire.
+      (maison ? Promise.resolve(MARQUE_LOGO) : vignette(currentUser && currentUser.logo)).then(function(photo){
       const billet = {
         client_name: clientName, network: 'Autre', message: message, link: '',
         // Une annonce marquée « entana amidy » porte son prix, et c'est elle
@@ -1679,17 +1732,20 @@
   function renderCommunityPanel(){
     const avatar = document.getElementById('composerAvatar');
     if(avatar){
-      // La photo du profil quand elle existe ; les initiales sinon, pour ne
-      // pas laisser un rond vide à qui n’en a pas déposé.
-      const photo = currentUser && currentUser.logo;
+      // Le rond du composeur montre qui va signer : le logo de la maison
+      // quand c'est elle qui écrit, la photo du profil sinon, et les
+      // initiales pour ne pas laisser un rond vide à qui n’en a pas déposé.
+      const maison = jeSuisLaMaison();
+      const nom = maison ? MARQUE_NOM : ((currentUser && currentUser.name) || '');
+      const photo = maison ? MARQUE_LOGO : (currentUser && currentUser.logo);
       if(photo){
         avatar.innerHTML = '';
         const img = document.createElement('img');
         img.src = photo;
-        img.alt = currentUser.name || '';
+        img.alt = nom;
         avatar.appendChild(img);
       } else {
-        avatar.textContent = initials(currentUser && currentUser.name);
+        avatar.textContent = initials(nom);
       }
     }
     renderCommunityNews();
