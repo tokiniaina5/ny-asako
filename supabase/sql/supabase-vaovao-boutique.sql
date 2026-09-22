@@ -63,9 +63,16 @@ from cron.job
 where jobname = 'vaovao-boutique-quatre-fois';
 
 -- Ce qu'elle a donné, une fois qu'elle sera passée (vide au début) :
--- select * from cron.job_run_details
--- where jobname = 'vaovao-boutique-quatre-fois'
--- order by start_time desc limit 10;
+-- select d.status, d.return_message, d.start_time
+-- from cron.job_run_details d
+-- join cron.job j on j.jobid = d.jobid
+-- where j.jobname = 'vaovao-boutique-quatre-fois'
+-- order by d.start_time desc limit 10;
+--
+-- Cela ne dit que « l'ordre est parti ». Ce que la fonction a RÉPONDU :
+-- select status_code, content, created
+-- from net._http_response
+-- order by created desc limit 10;
 
 -- Les billets qu'elle a écrits :
 -- select created_at, message, link from public.client_news
