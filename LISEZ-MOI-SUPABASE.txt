@@ -904,7 +904,7 @@ liste de marchandises à qui n'est pas une personne — voir plus haut,
    VOTRE_SECRET_ICI dedans).
 
 L'HORAIRE est en UTC, et Madagascar est en avance de trois heures :
-5, 9, 13 et 17 h UTC font 8 h, midi, 16 h et 19 h à Antananarivo.
+5, 9, 13 et 17 h UTC font 8 h, midi, 16 h et 20 h à Antananarivo.
 Pour en faire moins, laissez moins d'heures dans la ligne de la
 tâche et repassez le script.
 

@@ -17,7 +17,7 @@
 -- cherche à éviter.
 --
 -- L'HEURE EST CELLE D'UTC, pas celle de Madagascar, qui est en avance de
--- trois heures. 5, 9, 13 et 17 heures UTC font donc 8 h, midi, 16 h et 19 h
+-- trois heures. 5, 9, 13 et 17 heures UTC font donc 8 h, midi, 16 h et 20 h
 -- à Antananarivo : le matin, le déjeuner, l'après-midi et le soir.
 --
 -- AVANT DE COLLER, remplacez VOTRE_SECRET_ICI par le secret que vous avez
