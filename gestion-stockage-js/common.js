@@ -4184,11 +4184,11 @@
     function fermerLesFenetres(){
       const nav = document.getElementById('navList');
       if(nav) nav.classList.remove('open');
-      ['notifPanel', 'marketPanel', 'livraisonPanel', 'fbComposer', 'barReglages'].forEach(function(id){
+      ['notifPanel', 'marketPanel', 'livraisonPanel', 'recherchePanel', 'fbComposer', 'barReglages'].forEach(function(id){
         const el = document.getElementById(id);
         if(el) el.style.display = 'none';
       });
-      ['menuToggle', 'menuFlottant', 'notifToggle', 'marketToggle', 'livraisonToggle',
+      ['menuToggle', 'menuFlottant', 'notifToggle', 'marketToggle', 'livraisonToggle', 'barRecherche',
        'composerToggle', 'barComposer', 'barReglagesBtn'].forEach(function(id){
         const el = document.getElementById(id);
         if(el) el.setAttribute('aria-expanded', 'false');
@@ -4734,7 +4734,7 @@
       const bouton = e.target.closest ? e.target.closest('.dash-tab') : null;
       if(!bouton || !rangee.contains(bouton)) return;
       // La loupe et les réglages tiennent la rangée : ils n'en sortent pas.
-      if(bouton.id === 'menuToggle' || bouton.id === 'barReglagesBtn') return;
+      if(bouton.id === 'menuToggle' || bouton.id === 'barReglagesBtn' || bouton.id === 'barRecherche') return;
       if(e.target.closest && e.target.closest('.epingle-retirer')) return;
       const cle = bouton.dataset.epingle || (bouton.id ? 'fixe:' + bouton.id : null);
       if(!cle) return;
@@ -4991,8 +4991,9 @@
           if(menuToggle) menuToggle.setAttribute('aria-expanded','false');
         }
         placerNotif();
-        // Les panneaux du menu se referment : une seule liste à la fois.
-        [['marketPanel', 'marketToggle'], ['livraisonPanel', 'livraisonToggle']].forEach(function(paire){
+        // Les panneaux du menu et la loupe se referment : une seule à la fois.
+        [['marketPanel', 'marketToggle'], ['livraisonPanel', 'livraisonToggle'],
+         ['recherchePanel', 'barRecherche']].forEach(function(paire){
           var mp = document.getElementById(paire[0]);
           if(!mp) return;
           mp.style.display = 'none';
@@ -5062,6 +5063,10 @@
           if(autre) autre.style.display = 'none';
           if(sonBouton) sonBouton.setAttribute('aria-expanded', 'false');
         });
+        var loupe = document.getElementById('recherchePanel');
+        if(loupe) loupe.style.display = 'none';
+        var boutonLoupe = document.getElementById('barRecherche');
+        if(boutonLoupe) boutonLoupe.setAttribute('aria-expanded', 'false');
         if(typeof window[p.remplir] === 'function') window[p.remplir]();
       }
     });
@@ -5074,6 +5079,245 @@
       }
     });
   });
+
+  // ---- La loupe de la rangée du bas ----
+  // Le menu range ce qu'on connaît déjà : on y descend jusqu'à l'entrée qu'on
+  // cherchait. La loupe répond à une autre question — « où est-ce, déjà ? » —
+  // et la réponse n'est pas toujours une page. C'est parfois un article du
+  // stock, parfois une adresse que le menu garde dans l'une de ses fenêtres.
+  //
+  // Trois listes, donc, mais une seule question et une seule fenêtre :
+  // chercher « Amazon » ne doit pas demander de savoir d'avance laquelle des
+  // trois le contient.
+  (function(){
+    const bouton = document.getElementById('barRecherche');
+    const panneau = document.getElementById('recherchePanel');
+    const champ = document.getElementById('rechercheChamp');
+    const sortie = document.getElementById('rechercheResultats');
+    const rienTrouve = document.getElementById('rechercheVide');
+    if(!bouton || !panneau || !champ || !sortie) return;
+
+    // Hors du menu, comme les autres panneaux : rangé dedans, il serait rogné
+    // par la liste qui défile.
+    document.body.appendChild(panneau);
+    panneau.style.position = 'fixed';
+    panneau.style.zIndex = '130';
+    panneau.style.width = 'min(340px, calc(100vw - 24px))';
+
+    // Huit par groupe : au-delà on ne lit plus, on fait défiler. Qui ne trouve
+    // pas son article dans les huit premiers tape une lettre de plus, et c'est
+    // plus court que de parcourir trente lignes.
+    const PAR_GROUPE = 8;
+
+    // « Télécharger » se trouve en tapant « telecharger » : personne ne pose
+    // les accents sur un clavier de téléphone quand il cherche vite.
+    function nu(s){
+      return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    // Une entrée que cette personne-ci n'a pas le droit de voir ne doit pas
+    // reparaître par la recherche : « Espace admin » est au propriétaire,
+    // « Ny momba ahy » à l'employé. On ne lit pas l'affichage de la liste du
+    // menu pour le savoir — elle reste parfois filtrée d'une fois sur l'autre,
+    // et l'on prendrait ce filtre pour une interdiction. La règle est redite.
+    function entreeOuverte(el){
+      if(el.id === 'navStock') return false;
+      if(el.id === 'navAdmin') return !!(currentUser && currentUser.email && isOwnerEmail(currentUser.email));
+      if(el.classList.contains('seulement-mpiasa')) return document.body.classList.contains('mode-mpiasa');
+      return true;
+    }
+
+    function lesPages(){
+      if(!navList) return [];
+      return [].slice.call(navList.children).filter(function(el){
+        return (el.classList.contains('nav-item') || el.classList.contains('nav-action')) && entreeOuverte(el);
+      }).map(function(el){
+        // Le premier libellé et non tout le bouton : la cloche porte un
+        // compteur, qui donnerait « Notifications3 ».
+        const porteur = el.querySelector('span') || el;
+        const nom = (porteur.textContent || el.textContent || '').trim();
+        return { nom: nom, ouvrir: function(){ el.click(); } };
+      });
+    }
+
+    function lesArticles(){
+      if(typeof items === 'undefined' || !Array.isArray(items)) return [];
+      return items.map(function(it){
+        const bouts = [];
+        if(it.ref) bouts.push(String(it.ref));
+        if(it.category) bouts.push(String(it.category));
+        bouts.push((it.qty != null ? it.qty : 0) + ' ' + (it.unit || 'pièce'));
+        if(it.supplier) bouts.push(String(it.supplier));
+        return {
+          nom: '📦 ' + (it.name || '—'),
+          detail: bouts.join(' · '),
+          // Ce qu'on tape n'est pas toujours le nom : c'est parfois la
+          // référence lue sur le carton, ou le nom du fournisseur.
+          mots: [it.name, it.ref, it.category, it.supplier].join(' '),
+          ouvrir: function(){ versLArticle(it.id); }
+        };
+      });
+    }
+
+    function lesAdresses(){
+      const vues = Object.create(null);
+      const liste = [];
+      function ajouter(icone, nom, url){
+        if(!nom || !url || vues[url]) return;
+        vues[url] = true;
+        liste.push({
+          nom: icone + ' ' + nom,
+          detail: url.replace(/^https?:\/\//, '').replace(/\/$/, ''),
+          mots: nom + ' ' + url,
+          ouvrir: function(){ window.open(url, '_blank', 'noopener'); }
+        });
+      }
+      if(typeof DEFAULT_MARKETPLACES !== 'undefined'){
+        DEFAULT_MARKETPLACES.forEach(function(g){
+          g.liens.forEach(function(m){ ajouter('🌍', m.name, m.url); });
+        });
+      }
+      if(typeof DEFAULT_TRANSPORTEURS !== 'undefined'){
+        DEFAULT_TRANSPORTEURS.forEach(function(g){
+          g.liens.forEach(function(m){ ajouter('🚚', m.name, m.url); });
+        });
+      }
+      // Les magazay ajoutés à la main vivent dans la base et n'arrivent
+      // qu'avec leur fenêtre. Si elle a déjà été ouverte, ils sont là : on les
+      // prend au passage plutôt que de redemander au serveur à chaque lettre
+      // tapée.
+      const boite = document.getElementById('marketplaceLinks');
+      if(boite){
+        [].slice.call(boite.querySelectorAll('a[href]')).forEach(function(a){
+          ajouter('🌍', (a.getAttribute('data-apercu-nom') || a.textContent || '').trim(), a.href);
+        });
+      }
+      return liste;
+    }
+
+    // La page des articles en compte parfois cent. Y arriver sans savoir
+    // laquelle des cent lignes on cherchait, c'est arriver nulle part : la
+    // ligne se place au milieu de l'écran et s'éclaire un instant.
+    function versLArticle(id){
+      if(typeof ouvrirDepuisLeMenu !== 'function') return;
+      ouvrirDepuisLeMenu('articles');
+      requestAnimationFrame(function(){
+        const ligne = document.querySelector('#stockTableBody tr[data-item-id="' + id + '"]');
+        if(!ligne) return;
+        if(ligne.scrollIntoView) ligne.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        // Retirée puis remise : sans cela, chercher deux fois le même article
+        // ne rejouerait pas la couleur, et le second passage n'aurait l'air
+        // de rien.
+        ligne.classList.remove('ligne-visee');
+        void ligne.offsetWidth;
+        ligne.classList.add('ligne-visee');
+      });
+    }
+
+    function placer(){
+      if(panneau.style.display !== 'block') return;
+      if(typeof placerPresDuMenu === 'function') placerPresDuMenu(panneau);
+    }
+
+    function fermer(){
+      panneau.style.display = 'none';
+      bouton.setAttribute('aria-expanded', 'false');
+    }
+
+    function chercher(){
+      const q = nu(champ.value.trim());
+      sortie.innerHTML = '';
+      if(!q){
+        if(rienTrouve) rienTrouve.style.display = 'none';
+        placer();
+        return;
+      }
+      const groupes = [
+        { titre: 'Pejy', lignes: lesPages() },
+        { titre: 'Entana', lignes: lesArticles() },
+        { titre: 'Magazay sy fitaterana', lignes: lesAdresses() }
+      ];
+      let total = 0;
+      groupes.forEach(function(g){
+        const gardes = g.lignes.filter(function(l){
+          return nu(l.nom + ' ' + (l.mots || '')).indexOf(q) >= 0;
+        }).slice(0, PAR_GROUPE);
+        if(!gardes.length) return;
+        total += gardes.length;
+        const titre = document.createElement('div');
+        titre.className = 'recherche-groupe';
+        titre.textContent = g.titre;
+        sortie.appendChild(titre);
+        gardes.forEach(function(l){
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'nav-action';
+          b.textContent = l.nom;
+          if(l.detail){
+            const d = document.createElement('span');
+            d.className = 'recherche-detail';
+            d.textContent = l.detail;
+            b.appendChild(d);
+          }
+          // La fenêtre se referme AVANT d'ouvrir : ce qu'on ouvre est parfois
+          // une page, et elle paraîtrait sous la recherche restée dessus.
+          b.addEventListener('click', function(){ fermer(); l.ouvrir(); });
+          sortie.appendChild(b);
+        });
+      });
+      if(rienTrouve) rienTrouve.style.display = total ? 'none' : 'block';
+      placer();
+    }
+
+    bouton.addEventListener('click', function(e){
+      e.stopPropagation();
+      if(panneau.style.display === 'block'){ fermer(); return; }
+      panneau.style.display = 'block';
+      bouton.setAttribute('aria-expanded', 'true');
+      // Une seule fenêtre ouverte à la fois, comme partout ailleurs.
+      if(navList){
+        navList.classList.remove('open');
+        if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+      }
+      if(notifPanel){
+        notifPanel.style.display = 'none';
+        if(notifToggle) notifToggle.setAttribute('aria-expanded', 'false');
+      }
+      PANNEAUX_DU_MENU.forEach(function(q){
+        const p = document.getElementById(q.panneau);
+        const b = document.getElementById(q.bouton);
+        if(p) p.style.display = 'none';
+        if(b) b.setAttribute('aria-expanded', 'false');
+      });
+      // Ce qu'on cherchait la fois d'avant n'a rien à voir avec maintenant :
+      // le champ repart vide.
+      champ.value = '';
+      chercher();
+      requestAnimationFrame(function(){
+        placer();
+        champ.focus({ preventScroll: true });
+      });
+    });
+
+    champ.addEventListener('input', chercher);
+    champ.addEventListener('click', function(e){ e.stopPropagation(); });
+    champ.addEventListener('keydown', function(e){
+      if(e.key === 'Escape'){ fermer(); return; }
+      // Entrée : on ouvre le premier résultat, sans avoir à viser.
+      if(e.key !== 'Enter') return;
+      const premier = sortie.querySelector('.nav-action');
+      if(premier) premier.click();
+    });
+
+    document.addEventListener('click', function(e){
+      if(panneau.style.display !== 'block') return;
+      if(panneau.contains(e.target) || bouton.contains(e.target)) return;
+      fermer();
+    });
+
+    window.addEventListener('resize', placer);
+    window.addEventListener('scroll', placer, { passive: true });
+  })();
 
   var notifClearBtn = document.getElementById('notifClearBtn');
   if(notifClearBtn){

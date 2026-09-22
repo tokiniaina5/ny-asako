@@ -541,6 +541,30 @@
   .marketplace-row{ display:flex; flex-wrap:wrap; gap:0.6rem; }
   .marketplace-row a.btn{ display:inline-block; text-align:center; width:auto; }
 
+  /* ---------- La recherche de la rangée du bas ---------- */
+  /* Les résultats empruntent l'habillage des entrées du menu : ce sont les
+     mêmes gestes, et une deuxième apparence pour la même chose ne ferait
+     qu'une deuxième chose à apprendre. */
+  .recherche-resultats{ display:flex; flex-direction:column; gap:0.1rem; margin-top:0.6rem; }
+  .recherche-groupe{ font-size:0.7rem; color:var(--muted); text-transform:uppercase;
+    letter-spacing:0.04em; margin:0.6rem 0 0.2rem; }
+  .recherche-groupe:first-child{ margin-top:0; }
+  /* Ce qui distingue deux articles du même nom : la référence, ce qu'il en
+     reste, son prix. Sous le nom, en plus petit — on le lit si on en a besoin. */
+  .recherche-detail{ display:block; font-size:0.66rem; color:var(--muted);
+    margin-top:0.12rem; font-weight:400; }
+  .recherche-resultats .nav-action{ text-align:left; }
+
+  /* L'article qu'on vient d'atteindre depuis la recherche. La page des
+     articles en compte parfois cent : arriver dessus sans savoir laquelle des
+     cent lignes on cherchait, c'est arriver nulle part. La couleur passe, et
+     ne laisse rien derrière elle. */
+  .ligne-visee{ animation: ligneVisee 2.6s ease-out 1; }
+  @keyframes ligneVisee{
+    0%, 100%{ background: transparent; }
+    12%, 55%{ background: rgba(34, 211, 238, 0.16); }
+  }
+
   /* ---------- Accueil style "réseau social" ---------- */
   .fb-main{ display:flex; flex-direction:column; gap:0.9rem; }
   .fb-avatar{
@@ -760,6 +784,7 @@
   .panneau-boite,
   #notifPanel,
   #marketPanel,
+  #livraisonPanel,
   #fbComposer.composer-flottant{
     border-radius: 24px !important;
     box-shadow:
@@ -793,6 +818,7 @@
     .panneau-boite,
     #notifPanel,
     #marketPanel,
+    #livraisonPanel,
     #fbComposer.composer-flottant{
       scrollbar-width: thin;
       scrollbar-color: var(--line) transparent;

@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="fdf5b63f">
+<meta name="ny-asako-version" content="65232fbb">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -136,7 +136,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=821571f5">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=4ed847db">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=6fd6129a">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
@@ -664,6 +664,11 @@
              sous le pouce au lieu de flotter sur la page. Son panneau s'ouvre
              au-dessus de la rangée, avec le champ de recherche en tête. -->
         <button type="button" class="dash-tab bar-icone" id="menuToggle" title="Ouvrir le menu" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
+        <!-- Juste à côté du menu, et elle ne s'enlève pas : le menu range ce
+             qu'on connaît déjà, la loupe trouve ce qu'on ne sait plus où
+             ranger. Les deux vont ensemble, et l'une sans l'autre laisserait
+             chercher à la main. -->
+        <button type="button" class="dash-tab bar-icone" id="barRecherche" title="Karohy" aria-label="Rechercher" aria-expanded="false">🔍</button>
         <button type="button" class="dash-tab" id="barComposer" title="Écrire" aria-label="Écrire un message" aria-expanded="false">
           <span aria-hidden="true">✏️</span><span class="tab-text">Écrire</span>
         </button>
@@ -674,6 +679,17 @@
              s'en vont. Trois points, et non un engrenage — celui-ci désigne
              déjà les Paramètres du compte. -->
         <button type="button" class="dash-tab bar-icone" id="barReglagesBtn" title="Réglages de la rangée" aria-label="Réglages de la rangée" aria-expanded="false">⋯</button>
+      </div>
+
+      <!-- La recherche : une seule fenêtre pour tout ce qui se cherche. Les
+           pages du menu, les articles de la boutique, et les adresses que le
+           menu garde — magazay et transporteurs. Chercher « Amazon » ne devrait
+           pas demander de savoir d'avance dans laquelle des trois listes il se
+           trouve. -->
+      <div class="panneau-flottant panneau-boite" id="recherchePanel" style="display:none;">
+        <input type="search" id="rechercheChamp" class="menu-recherche" placeholder="Karohy: entana, pejy, magazay..." aria-label="Rechercher" autocomplete="off">
+        <div id="rechercheResultats" class="recherche-resultats"></div>
+        <p class="panneau-note" id="rechercheVide" style="display:none;">Tsy misy hita.</p>
       </div>
 
       <!-- Petit panneau des réglages de la rangée : il monte au-dessus d'elle,
@@ -2835,7 +2851,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=99f94971"></script>
+<script src="gestion-stockage-js/common.js?v=ee20f81b"></script>
 <script src="gestion-stockage-js/stock.js?v=b2d75571"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
