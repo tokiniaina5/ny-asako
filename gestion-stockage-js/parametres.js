@@ -833,15 +833,12 @@
   // refuser ses images à qui vient d'ailleurs, et un cadre gris vaut moins que
   // pas de cadre du tout.
   const APERCU_IMAGES = 3;
-  const COUPE_2 = 'display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;';
 
   function dessinerLApercu(cadre, apercu){
     const url = cadre.getAttribute('data-apercu');
     const site = (apercu && apercu.site) || (function(){
       try { return new URL(url).hostname.replace(/^www\./, ''); } catch(e){ return url; }
     })();
-    const titre = (apercu && apercu.titre) || '';
-    const texte = (apercu && apercu.description) || '';
     const toutes = ((apercu && apercu.images) || (apercu && apercu.image ? [apercu.image] : []))
       .filter(Boolean);
     // Toute la réserve reste attachée au cadre : c'est elle qui tourne.
@@ -862,15 +859,15 @@
             }).join('') +
             '</div>')
         : '') +
-      '<div style="padding:0.6rem 0.7rem;">' +
+      // Le nom du site, et rien d'autre. Le titre et la phrase venaient du
+      // site lui-même — celui d'Alibaba tient en quatre lignes et redit la
+      // même chose deux fois, écrit pour les moteurs de recherche et non pour
+      // qui regarde. Sous les images, c'était un mur de texte qui les
+      // écrasait. Ce qu'on a besoin de savoir, c'est où mène le lien : le nom
+      // suffit, et l'image dit le reste.
+      '<div style="padding:0.5rem 0.7rem;">' +
         '<div style="font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em;">' +
           escapeHtml(site) + '</div>' +
-        // Deux lignes chacun : le titre d'une grande boutique tient parfois en
-        // quatre lignes, et la carte devient un mur de texte sous les images.
-        (titre ? '<div style="font-weight:600; line-height:1.3; margin-top:0.15rem; ' + COUPE_2 + '">' +
-          escapeHtml(titre) + '</div>' : '') +
-        (texte ? '<div style="font-size:0.8rem; color:var(--muted); line-height:1.4; margin-top:0.25rem; ' +
-          COUPE_2 + '">' + escapeHtml(texte) + '</div>' : '') +
       '</div>';
     // L'image d'un site qui la refuse à l'affichage laisserait un cadre gris.
     // Elle s'efface, et la grille se resserre sur ce qui reste.
