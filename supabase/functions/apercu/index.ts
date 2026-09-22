@@ -201,9 +201,12 @@ Deno.serve(async (req: Request) => {
   const titre = meta(html, ["og:title", "twitter:title"]) || titreDeLaPage(html);
   const description = meta(html, ["og:description", "twitter:description", "description"]);
   const site = meta(html, ["og:site_name"]) || finale.hostname.replace(/^www\./, "");
-  // Six, pour que le fil en garde trois même si deux ne s'affichent pas chez
-  // celui qui regarde — un site peut refuser ses images à qui vient d'ailleurs.
-  const images = imagesDeLaPage(html, finale, 6);
+  // Douze, parce que les trois de la carte tournent : chacune des trois places
+  // a sa file, et l'on ne repasse pas sur la même image au bout de vingt
+  // secondes. C'est aussi de quoi tenir si l'une ou l'autre ne s'affiche pas
+  // chez celui qui regarde — un site peut refuser ses images à qui vient
+  // d'ailleurs.
+  const images = imagesDeLaPage(html, finale, 12);
 
   return json({
     url: finale.href,

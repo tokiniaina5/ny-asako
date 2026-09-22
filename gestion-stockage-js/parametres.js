@@ -834,18 +834,23 @@
     })();
     const titre = (apercu && apercu.titre) || '';
     const texte = (apercu && apercu.description) || '';
-    const images = ((apercu && apercu.images) || (apercu && apercu.image ? [apercu.image] : []))
-      .filter(Boolean).slice(0, APERCU_IMAGES);
-    const cadreImage = 'width:100%; height:100%; object-fit:cover; display:block; background:var(--panel-2);';
+    const toutes = ((apercu && apercu.images) || (apercu && apercu.image ? [apercu.image] : []))
+      .filter(Boolean);
+    // Toute la réserve reste attachée au cadre : c'est elle qui tourne.
+    cadre.__images = toutes;
+    cadre.__tour = 0;
+    const images = toutes.slice(0, APERCU_IMAGES);
+    const cadreImage = 'width:100%; height:100%; object-fit:cover; display:block; ' +
+      'background:var(--panel-2); transition:opacity 0.22s;';
     cadre.innerHTML =
       (images.length
         ? (images.length === 1
           ? '<img src="' + escapeHtml(images[0]) + '" alt="" loading="lazy" ' +
             'style="width:100%; max-height:220px; object-fit:cover; display:block; background:var(--panel-2);">'
           : '<div style="display:grid; grid-template-columns:repeat(' + images.length + ', 1fr); gap:2px;">' +
-            images.map(function(src){
-              return '<div style="height:120px;"><img src="' + escapeHtml(src) + '" alt="" loading="lazy" ' +
-                'style="' + cadreImage + '"></div>';
+            images.map(function(src, i){
+              return '<div data-rang="' + i + '" style="height:120px;">' +
+                '<img src="' + escapeHtml(src) + '" alt="" loading="lazy" style="' + cadreImage + '"></div>';
             }).join('') +
             '</div>')
         : '') +
@@ -874,6 +879,68 @@
         }
       });
     });
+  }
+
+  // ---- Les images tournent ----
+  //
+  // Trois places à l'écran, douze images en réserve : la carte montre ce que
+  // la boutique vend, et non trois articles pour toujours les mêmes.
+  //
+  // Une seule change à la fois. Trois qui basculent ensemble, c'est un
+  // clignotement — l'œil ne sait plus où regarder, et la page paraît agitée.
+  // Chaque place garde sa file, avancée de trois en trois : les trois images
+  // visibles ne sont jamais la même.
+  const APERCU_TOUR_MS = 4500;
+  let minuteurApercus = null;
+
+  function tournerUnApercu(cadre){
+    const toutes = cadre.__images || [];
+    const cases = cadre.querySelectorAll('[data-rang]');
+    if(toutes.length <= cases.length || !cases.length) return;
+
+    const quelle = (cadre.__tour || 0) % cases.length;
+    cadre.__tour = (cadre.__tour || 0) + 1;
+    const boite = cases[quelle];
+    const img = boite.querySelector('img');
+    if(!img) return;
+
+    // Les rangs que les autres places occupent : on ne vient pas s'y poser.
+    const pris = [];
+    cases.forEach(function(c){ if(c !== boite) pris.push(Number(c.getAttribute('data-rang'))); });
+    let rang = Number(boite.getAttribute('data-rang'));
+    for(let essai = 0; essai < toutes.length; essai++){
+      rang = (rang + cases.length) % toutes.length;
+      if(pris.indexOf(rang) === -1) break;
+    }
+    const suivante = toutes[rang];
+    if(!suivante || suivante === img.getAttribute('src')) return;
+
+    // Chargée avant d'être montrée : sans cela, la place reste vide le temps
+    // que l'image arrive, et c'est un trou qu'on voit, pas un changement.
+    const avance = new Image();
+    avance.onload = function(){
+      boite.setAttribute('data-rang', String(rang));
+      img.style.opacity = '0';
+      setTimeout(function(){
+        img.src = suivante;
+        img.style.opacity = '1';
+      }, 220);
+    };
+    avance.src = suivante;
+  }
+
+  function veillerSurLeTourDesApercus(){
+    if(minuteurApercus) return;
+    minuteurApercus = setInterval(function(){
+      const cadres = document.querySelectorAll('#communityNewsList [data-apercu]');
+      if(!cadres.length){ clearInterval(minuteurApercus); minuteurApercus = null; return; }
+      // Onglet caché : personne ne regarde, et une image qui se charge pour
+      // personne, c'est le forfait de quelqu'un qui s'en va.
+      if(document.hidden) return;
+      cadres.forEach(function(cadre){
+        if(cadre.offsetParent) tournerUnApercu(cadre);
+      });
+    }, APERCU_TOUR_MS);
   }
 
   // Les aperçus manquants, un à la fois : trente appels lancés ensemble
@@ -1190,8 +1257,9 @@
         // Une lecture pour tout le fil, un minuteur, un canal — une fois
         // toutes les boîtes en place.
         veillerSurLesCommentaires();
-        // Puis les aperçus qui manquent, un à la fois.
+        // Puis les aperçus qui manquent, un à la fois, et le tour des images.
         chercherLesApercus();
+        veillerSurLeTourDesApercus();
         // Un seul appel pour tout le fil : trente publications qui iraient
         // chacune compter ses « j'aime » feraient trente requêtes.
         loadLikes(rows.map(function(n){ return n.id; }).filter(Boolean));
