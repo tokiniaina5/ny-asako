@@ -5163,11 +5163,17 @@
       const vues = Object.create(null);
       const liste = [];
       function ajouter(icone, nom, url){
-        if(!nom || !url || vues[url]) return;
-        vues[url] = true;
+        if(!nom || !url) return;
+        // La même adresse s'écrit de deux façons : « pixmania.com » dans la
+        // liste, « pixmania.com/ » une fois que le navigateur l'a lue dans un
+        // lien. Comparées telles quelles, elles font deux résultats pour une
+        // seule boutique.
+        const court = url.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        if(vues[court]) return;
+        vues[court] = true;
         liste.push({
           nom: icone + ' ' + nom,
-          detail: url.replace(/^https?:\/\//, '').replace(/\/$/, ''),
+          detail: court,
           mots: nom + ' ' + url,
           ouvrir: function(){ window.open(url, '_blank', 'noopener'); }
         });
@@ -5195,6 +5201,101 @@
       return liste;
     }
 
+    // Le fil : ce que les clients ont publié, ce qu'ils ont mis en vente, et
+    // ce qui s'est dit dessous. On le lit dans la page plutôt que d'aller le
+    // redemander au serveur à chaque lettre tapée — c'est exactement ce que
+    // le fil montre, et cela reste juste quand le réseau ne répond plus.
+    function court(s){
+      const t = (s || '').replace(/\s+/g, ' ').trim();
+      return t.length > 64 ? t.slice(0, 63) + '…' : t;
+    }
+    function leFil(){
+      const liste = document.getElementById('communityNewsList');
+      const billets = [], hevitra = [];
+      if(!liste) return { billets: billets, hevitra: hevitra };
+      [].slice.call(liste.querySelectorAll('.fb-post')).forEach(function(post){
+        const id = post.dataset.newsId;
+        if(!id) return;
+        const texteDe = function(sel){
+          const el = post.querySelector(sel);
+          return el ? (el.textContent || '').trim() : '';
+        };
+        const auteur = texteDe('.fb-post-name');
+        const corps = texteDe('.fb-post-body');
+        const prix = texteDe('.fb-post-price');
+        // Une marchandise mise en vente porte son prix et son propre habillage :
+        // elle se montre comme telle, et non comme une nouvelle parmi d'autres.
+        const entana = post.classList.contains('fb-post-entana');
+        billets.push({
+          nom: (entana ? '🛒 ' : '📰 ') + (court(corps) || auteur || 'Billet'),
+          detail: [auteur, prix].filter(Boolean).join(' · '),
+          mots: auteur + ' ' + corps + ' ' + prix,
+          ouvrir: function(){ versLeBillet(id, null); }
+        });
+        [].slice.call(post.querySelectorAll('.fb-comment')).forEach(function(ligne){
+          const fort = ligne.querySelector('strong');
+          const date = ligne.querySelector('.fb-comment-date');
+          const qui = fort ? (fort.textContent || '').trim() : '';
+          // Le propos seul : ni son auteur, ni l'heure. On cherche ce qui a
+          // été dit, et les retrouver dans le résultat ne dirait rien de plus
+          // que la ligne du dessous, qui les porte déjà.
+          let quoi = (ligne.textContent || '');
+          if(date) quoi = quoi.replace(date.textContent, '');
+          if(qui) quoi = quoi.replace(qui, '');
+          quoi = quoi.trim();
+          if(!quoi) return;
+          hevitra.push({
+            nom: '💬 ' + court(quoi),
+            detail: [qui, auteur ? 'ambanin\'ny an\'i ' + auteur : ''].filter(Boolean).join(' · '),
+            mots: qui + ' ' + quoi,
+            ouvrir: function(){ versLeBillet(id, quoi); }
+          });
+        });
+      });
+      return { billets: billets, hevitra: hevitra };
+    }
+
+    function viser(el, classe){
+      if(el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.remove(classe);
+      void el.offsetWidth;
+      el.classList.add(classe);
+    }
+
+    // Ouvrir l'Accueil REFAIT le fil entièrement, et il revient du serveur —
+    // deux secondes et demie, parfois. Le billet qui est à l'écran au moment
+    // où l'on presse disparaît donc, et avec lui la marque qu'on venait de
+    // poser : on atteignait l'Accueil sans que rien ne s'éclaire.
+    //
+    // On ne devine donc pas quand le fil aura fini : on marque le billet dès
+    // qu'on le voit, et on le remarque s'il est remplacé par un neuf. Six
+    // secondes de guet, une fois sur dix de seconde — de quoi laisser passer
+    // le fil, puis les commentaires qui arrivent derrière lui par une autre
+    // requête. Rien ne se remarque deux fois : la classe déjà posée le dit.
+    function versLeBillet(id, texteDuHevitra){
+      if(typeof ouvrirDepuisLeMenu !== 'function') return;
+      ouvrirDepuisLeMenu('accueil');
+      const numero = String(id).replace(/[^\w-]/g, '');
+      if(!numero) return;
+      const ou = '#communityNewsList .fb-post[data-news-id="' + numero + '"]';
+      let tours = 0;
+      (function guetter(){
+        const post = document.querySelector(ou);
+        if(post){
+          if(!post.classList.contains('billet-vise')) viser(post, 'billet-vise');
+          if(texteDuHevitra){
+            const ligne = [].slice.call(post.querySelectorAll('.fb-comment')).filter(function(l){
+              return (l.textContent || '').indexOf(texteDuHevitra) >= 0;
+            })[0];
+            if(ligne && !ligne.classList.contains('ligne-visee')) viser(ligne, 'ligne-visee');
+          }
+        }
+        tours += 1;
+        if(tours >= 60) return;
+        setTimeout(guetter, 100);
+      })();
+    }
+
     // La page des articles en compte parfois cent. Y arriver sans savoir
     // laquelle des cent lignes on cherchait, c'est arriver nulle part : la
     // ligne se place au milieu de l'écran et s'éclaire un instant.
@@ -5203,14 +5304,10 @@
       ouvrirDepuisLeMenu('articles');
       requestAnimationFrame(function(){
         const ligne = document.querySelector('#stockTableBody tr[data-item-id="' + id + '"]');
-        if(!ligne) return;
-        if(ligne.scrollIntoView) ligne.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        // Retirée puis remise : sans cela, chercher deux fois le même article
-        // ne rejouerait pas la couleur, et le second passage n'aurait l'air
-        // de rien.
-        ligne.classList.remove('ligne-visee');
-        void ligne.offsetWidth;
-        ligne.classList.add('ligne-visee');
+        // « viser » retire la classe avant de la remettre : sans cela,
+        // chercher deux fois le même article ne rejouerait pas la couleur, et
+        // le second passage n'aurait l'air de rien.
+        if(ligne) viser(ligne, 'ligne-visee');
       });
     }
 
@@ -5232,9 +5329,12 @@
         placer();
         return;
       }
+      const fil = leFil();
       const groupes = [
         { titre: 'Pejy', lignes: lesPages() },
-        { titre: 'Entana', lignes: lesArticles() },
+        { titre: 'Entana ao amin\'ny stock', lignes: lesArticles() },
+        { titre: 'Vaovao sy entana navoaka', lignes: fil.billets },
+        { titre: 'Hevitra', lignes: fil.hevitra },
         { titre: 'Magazay sy fitaterana', lignes: lesAdresses() }
       ];
       let total = 0;
@@ -5289,6 +5389,14 @@
         if(p) p.style.display = 'none';
         if(b) b.setAttribute('aria-expanded', 'false');
       });
+      // Le fil n'a peut-être jamais été affiché — on a ouvert l'application
+      // sur les Factures, et la loupe cherche alors dans une page vide. On le
+      // demande une fois, ici, et non à chaque lettre tapée : les résultats
+      // paraîtront dès qu'il arrivera.
+      const filVide = !document.querySelector('#communityNewsList .fb-post');
+      if(filVide && window.__sb && typeof window.renderCommunityNews === 'function'){
+        try { window.renderCommunityNews(); } catch(e){}
+      }
       // Ce qu'on cherchait la fois d'avant n'a rien à voir avec maintenant :
       // le champ repart vide.
       champ.value = '';
