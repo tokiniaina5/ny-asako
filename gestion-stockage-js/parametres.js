@@ -781,6 +781,10 @@
 
   const APERCU_CLE = 'stockmanager_apercus';
   const APERCU_DUREE = 7 * 24 * 60 * 60 * 1000;
+  // Un aperçu VIDE, lui, ne se garde pas la semaine : c'est une page qui
+  // s'est refusée un instant, ou la fonction qui n'était pas encore déployée.
+  // Gardé sept jours, ce raté-là survivrait au remède.
+  const APERCU_VIDE_DUREE = 60 * 60 * 1000;
   let apercusEnCours = 0;
 
   function lireLesApercus(){
@@ -803,8 +807,11 @@
   }
   function apercuGarde(url){
     const ligne = lireLesApercus()[url];
-    if(!ligne || (Date.now() - (ligne.le || 0)) > APERCU_DUREE) return null;
-    return ligne.apercu;
+    if(!ligne) return null;
+    const a = ligne.apercu || {};
+    const duree = (a.titre || a.image) ? APERCU_DUREE : APERCU_VIDE_DUREE;
+    if((Date.now() - (ligne.le || 0)) > duree) return null;
+    return a;
   }
 
   function dessinerLApercu(cadre, apercu){
