@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="8e746535">
+<meta name="ny-asako-version" content="53bf3c6f">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -136,7 +136,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=821571f5">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=89f28c69">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=2355e7f2">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
@@ -522,7 +522,7 @@
         <div class="brand">Ny <span>asako</span></div>
         <div style="display:flex; align-items:center; gap:0.5rem; position:relative;">
 
-          <div id="notifPanel" style="display:none; position:absolute; top:44px; right:0; width:300px; max-height:360px; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:50;">
+          <div id="notifPanel" style="display:none; position:absolute; top:44px; right:0; width:320px; max-height:min(70vh, 520px); overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:50;">
             <div style="display:flex; align-items:center; justify-content:space-between; padding:0.7rem 0.9rem; border-bottom:1px solid var(--line);">
               <strong style="font-size:0.85rem;">Notifications</strong>
               <button type="button" id="notifClearBtn" style="background:none; border:none; color:var(--cyan); font-size:0.72rem; cursor:pointer;">Tout effacer</button>
@@ -535,8 +535,8 @@
               <strong style="font-size:0.85rem;">🌍 Achats internationaux</strong>
             </div>
             <div style="padding:0.8rem 0.9rem;">
-              <p class="community-sub" style="margin-bottom:0.8rem;">Rohy mankany amin'ny varotra international (Alibaba, AliExpress, Taobao, SHEIN, sy ny hafa).</p>
-              <div id="marketplaceLinks" class="marketplace-row"></div>
+              <p class="community-sub" style="margin-bottom:0.8rem;">Magazay 30 any ivelany, voasokajy araka izay tadiavinao. Ampio ny anao eo ambany.</p>
+              <div id="marketplaceLinks" class="marketplace-groupes"></div>
               <div id="marketplaceAdminForm" style="display:none; margin-top:1rem; border-top:1px solid var(--line); padding-top:1rem;">
                 <div class="form-grid">
                   <div class="field" style="margin-bottom:0;">
@@ -2831,7 +2831,7 @@
 <script src="gestion-stockage-js/zara-rehetra.js?v=dfde1af2"></script>
 <script src="gestion-stockage-js/live.js?v=accde37b"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=5994d005"></script>
+<script src="gestion-stockage-js/parametres.js?v=183c6cec"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>

@@ -530,6 +530,9 @@
      le fil d’actualité occupe désormais toute la largeur */
   .community-grid{ display:grid; grid-template-columns: 1fr; gap:0.9rem; margin-bottom:1.4rem; align-items:start; }
   .community-sub{ font-size:0.8rem; color:var(--muted); margin-bottom:0.9rem; line-height:1.5; }
+  .marketplace-groupes{ display:flex; flex-direction:column; gap:0.75rem; }
+  .marketplace-titre{ font-size:0.7rem; color:var(--muted); text-transform:uppercase;
+    letter-spacing:0.04em; margin-bottom:-0.35rem; }
   .marketplace-row{ display:flex; flex-wrap:wrap; gap:0.6rem; }
   .marketplace-row a.btn{ display:inline-block; text-align:center; width:auto; }
 

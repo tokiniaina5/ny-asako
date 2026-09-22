@@ -167,36 +167,112 @@
   }
 
   // ---------------- COMMUNAUTÉ CLIENTS & ACHATS INTERNATIONAUX ----------------
-  // Les quatre boutiques par lesquelles on achète à l'étranger depuis ici.
-  // Elles ne sont pas interchangeables : Alibaba vend en gros au commerçant,
-  // AliExpress à l'unité, Taobao est le marché intérieur chinois — le moins
-  // cher, mais tout y est en chinois et il faut souvent un intermédiaire —
-  // et SHEIN ne fait que l'habillement. Celles qu'on ajoute soi-même
-  // (« Ajouter un autre lien ») viennent à la suite.
+  // Les boutiques par lesquelles on achète à l'étranger depuis ici, rangées
+  // par ce qu'on y cherche. Trente à la file, ce serait une liste que
+  // personne ne lit : on ne cherche pas « une adresse », on cherche « où
+  // acheter une perceuse ». Le rangement est donc la moitié du travail.
+  //
+  // Les liens ajoutés à la main (« Ajouter ») viennent toujours après, sous
+  // leur propre titre : ce qui est ici est le fond, pas la liste entière.
   const DEFAULT_MARKETPLACES = [
-    { name: 'Alibaba', url: 'https://www.alibaba.com' },
-    { name: 'AliExpress', url: 'https://www.aliexpress.com' },
-    { name: 'Taobao', url: 'https://world.taobao.com' },
-    { name: 'SHEIN', url: 'https://www.shein.com' }
+    {
+      // Le gros et l'Asie : c'est là qu'on achète pour revendre.
+      groupe: '📦 Ambongadiny sy Azia',
+      liens: [
+        { name: 'Alibaba', url: 'https://www.alibaba.com' },
+        { name: 'AliExpress', url: 'https://www.aliexpress.com' },
+        { name: 'Taobao', url: 'https://world.taobao.com' },
+        { name: 'Lazada', url: 'https://www.lazada.com' }
+      ]
+    },
+    {
+      groupe: '🛒 Ny zavatra rehetra',
+      liens: [
+        { name: 'Amazon', url: 'https://www.amazon.fr' },
+        { name: 'eBay', url: 'https://www.ebay.fr' },
+        { name: 'Cdiscount', url: 'https://www.cdiscount.com' },
+        { name: 'Fnac', url: 'https://www.fnac.com' },
+        { name: 'Rakuten', url: 'https://fr.shopping.rakuten.com' },
+        { name: 'E.Leclerc', url: 'https://www.e.leclerc' },
+        { name: 'Auchan', url: 'https://www.auchan.fr' },
+        { name: 'Rue du Commerce', url: 'https://www.rueducommerce.fr' },
+        { name: 'Pixmania', url: 'https://www.pixmania.com' }
+      ]
+    },
+    {
+      groupe: '👕 Akanjo sy kiraro',
+      liens: [
+        { name: 'SHEIN', url: 'https://www.shein.com' },
+        { name: 'Zalando', url: 'https://www.zalando.fr' },
+        { name: 'ASOS', url: 'https://www.asos.com' },
+        { name: 'La Redoute', url: 'https://www.laredoute.fr' },
+        { name: 'Spartoo', url: 'https://www.spartoo.com' },
+        { name: 'Farfetch', url: 'https://www.farfetch.com' }
+      ]
+    },
+    {
+      groupe: '💻 Elektronika sy mozika',
+      liens: [
+        { name: 'Darty', url: 'https://www.darty.com' },
+        { name: 'Boulanger', url: 'https://www.boulanger.com' },
+        { name: 'Materiel.net', url: 'https://www.materiel.net' },
+        { name: 'Son-Vidéo', url: 'https://www.son-video.com' },
+        { name: 'JBL', url: 'https://www.jbl.com' },
+        { name: 'Thomann', url: 'https://www.thomann.de' }
+      ]
+    },
+    {
+      groupe: '⚽ Fanatanjahantena',
+      liens: [
+        { name: 'Decathlon', url: 'https://www.decathlon.fr' },
+        { name: 'Nike', url: 'https://www.nike.com' }
+      ]
+    },
+    {
+      groupe: '🔧 Fitaovana sy fiara',
+      liens: [
+        { name: 'ManoMano', url: 'https://www.manomano.fr' },
+        { name: 'Oscaro', url: 'https://www.oscaro.com' },
+        { name: 'AUTODOC', url: 'https://www.autodoc.fr' }
+      ]
+    }
   ];
 
+  // Le maillon 🔗 devant chaque nom : sur quatre boutiques il décorait, sur
+  // trente il prend la place d'une lettre à chaque fois et l'on n'en lit plus
+  // aucune. Ce sont des boutons, on sait qu'ils s'ouvrent.
   function addMarketplaceBtn(row, name, url){
     const a = document.createElement('a');
     a.href = url; a.target = '_blank'; a.rel = 'noopener';
     a.className = 'btn btn-sm';
-    a.textContent = '🔗 ' + name;
+    a.textContent = name;
     row.appendChild(a);
   }
 
+  function ajouterUnGroupe(boite, titre, liens){
+    if(!liens.length) return;
+    const nom = document.createElement('div');
+    nom.className = 'marketplace-titre';
+    nom.textContent = titre;
+    boite.appendChild(nom);
+    const ligne = document.createElement('div');
+    ligne.className = 'marketplace-row';
+    liens.forEach(function(m){ addMarketplaceBtn(ligne, m.name, m.url); });
+    boite.appendChild(ligne);
+  }
+
   function renderMarketplaceLinks(){
-    const row = document.getElementById('marketplaceLinks');
-    if(!row) return;
-    row.innerHTML = '';
-    DEFAULT_MARKETPLACES.forEach(function(m){ addMarketplaceBtn(row, m.name, m.url); });
+    const boite = document.getElementById('marketplaceLinks');
+    if(!boite) return;
+    boite.innerHTML = '';
+    DEFAULT_MARKETPLACES.forEach(function(g){ ajouterUnGroupe(boite, g.groupe, g.liens); });
     if(window.__sb){
       window.__sb.from('marketplace_links').select('name,url').order('created_at', { ascending: true })
         .then(function(res){
-          if(res && res.data){ res.data.forEach(function(m){ addMarketplaceBtn(row, m.name, m.url); }); }
+          const siens = (res && res.data) || [];
+          // Sous son propre titre : on doit pouvoir distinguer d'un coup d'œil
+          // ce qu'on a ajouté soi-même de ce qui était là.
+          ajouterUnGroupe(boite, '⭐ Ny anao', siens.filter(function(m){ return m && m.name && m.url; }));
         }, function(){});
     }
   }
