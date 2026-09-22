@@ -861,3 +861,58 @@ sont partis. On ne réécrit pas le passé de quelqu'un.
 
 RIEN À DÉPLOYER : c'est la page qui le fait.
 
+
+LES QUATRE PUBLICATIONS DU JOUR, TOUTES SEULES
+------------------------------
+Le fil ne vivait que de ce que les gens y écrivaient. Les jours où
+personne n'écrivait, il ne disait rien, et l'on n'y revenait plus.
+
+La fonction "vaovao-boutique" y publie maintenant QUATRE BILLETS
+PAR JOUR, un par passage, tirés des boutiques d'achats
+internationaux — les mêmes que celles de la fenêtre « Boutiques ».
+Chaque billet porte le nom de la boutique, son rayon, la phrase que
+le site publie lui-même pour être partagé, et son adresse. Le fil
+en tire ensuite la carte aux images, comme pour n'importe quel lien.
+
+UNE BOUTIQUE NE REVIENT PAS avant sept jours : c'est la fenêtre du
+fil, et la remontrer ferait deux fois la même carte dans la même
+page. Trente boutiques et quatre billets par jour font le tour en
+sept jours et demi.
+
+CE QUE CE N'EST PAS : un catalogue. Aucun de ces sites ne publie sa
+liste de marchandises à qui n'est pas une personne — voir plus haut,
+"L'APERÇU D'UN LIEN PARTAGÉ".
+
+À FAIRE UNE FOIS :
+1. Choisissez un mot de passe pour la porte, et posez-le :
+     supabase secrets set VAOVAO_SECRET=<un long mot au hasard>
+
+2. Déployez, SANS vérification du jeton — c'est une machine qui
+   appelle, jamais une personne connectée :
+     supabase functions deploy vaovao-boutique --no-verify-jwt
+
+3. ESSAYEZ À BLANC. "essai: true" dit quel billet elle écrirait,
+   sans rien écrire :
+     curl -X POST \
+       https://ezpsapvthujkhttbfhlr.supabase.co/functions/v1/vaovao-boutique \
+       -H "Content-Type: application/json" \
+       -H "x-secret-vaovao: <votre secret>" \
+       -d '{"essai":true}'
+
+4. Quand le billet vous paraît juste, posez l'horaire :
+   "supabase/sql/supabase-vaovao-boutique.sql" (remplacez d'abord
+   VOTRE_SECRET_ICI dedans).
+
+L'HORAIRE est en UTC, et Madagascar est en avance de trois heures :
+5, 9, 13 et 17 h UTC font 8 h, midi, 16 h et 19 h à Antananarivo.
+Pour en faire moins, laissez moins d'heures dans la ligne de la
+tâche et repassez le script.
+
+À SAVOIR : le fil ne montre que les trente derniers billets de la
+semaine. Quatre par jour en occupent vingt-huit — s'il vous semble
+que les billets de vos clients passent trop vite, c'est là qu'il
+faut descendre à deux ou trois par jour.
+
+Sans le secret, la fonction refuse tout et ne publie rien : un
+secret vide laisserait n'importe qui écrire dans le fil de tout le
+monde.
