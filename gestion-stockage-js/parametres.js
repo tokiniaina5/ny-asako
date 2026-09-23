@@ -414,6 +414,62 @@
     veillerSurLeTourDesApercus();
   }
 
+  // ---------------- CHROME ET EDGE ----------------
+  // Deux entrées du menu pour sortir chercher ailleurs. On ouvre l'application
+  // elle-même quand l'appareil sait le faire, et sa page de recherche sinon :
+  //   - Android : un lien « intent » vers l'application, avec la page de
+  //     recherche en repli si elle n'est pas installée ;
+  //   - iPhone : l'adresse propre à l'application, puis la page de recherche
+  //     si rien ne s'est ouvert ;
+  //   - Windows : Edge répond à « microsoft-edge: » ; Chrome n'a pas d'adresse
+  //     à lui, il reçoit un onglet ;
+  //   - ailleurs : un onglet.
+  const NAVIGATEURS = {
+    chrome: { page: 'https://www.google.com', android: 'com.android.chrome', ios: 'googlechromes://www.google.com' },
+    edge: { page: 'https://www.bing.com', android: 'com.microsoft.emmx', ios: 'microsoft-edge-https://www.bing.com', windows: 'microsoft-edge:https://www.bing.com' }
+  };
+
+  function ouvrirLeNavigateur(nom){
+    const n = NAVIGATEURS[nom];
+    if(!n) return;
+    const ua = navigator.userAgent || '';
+    if(/Android/i.test(ua)){
+      const hote = n.page.replace(/^https:\/\//, '');
+      location.href = 'intent://' + hote + '#Intent;scheme=https;package=' + n.android +
+        ';S.browser_fallback_url=' + encodeURIComponent(n.page) + ';end';
+      return;
+    }
+    if(/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)){
+      // L'application ouverte, la page passe en arrière-plan : le repli ne
+      // part que si l'on est toujours là.
+      const repli = setTimeout(function(){
+        if(!document.hidden) window.open(n.page, '_blank', 'noopener');
+      }, 1200);
+      document.addEventListener('visibilitychange', function annuler(){
+        if(document.hidden){ clearTimeout(repli); document.removeEventListener('visibilitychange', annuler); }
+      });
+      location.href = n.ios;
+      return;
+    }
+    if(n.windows && /Windows/i.test(ua) && !/Edg\//.test(ua)){
+      location.href = n.windows;
+      return;
+    }
+    window.open(n.page, '_blank', 'noopener');
+  }
+
+  document.querySelectorAll('[data-navigateur]').forEach(function(bouton){
+    bouton.addEventListener('click', function(){
+      ouvrirLeNavigateur(bouton.getAttribute('data-navigateur'));
+      const menu = document.getElementById('navList');
+      if(menu && menu.classList.contains('open')){
+        menu.classList.remove('open');
+        const bascule = document.getElementById('menuToggle');
+        if(bascule) bascule.setAttribute('aria-expanded', 'false');
+      }
+    });
+  });
+
   // La fenêtre des boutiques s'ouvre, ou l'on y descend : les cartes que l'on
   // découvre vont chercher leurs images à ce moment-là, et pas avant. Celle
   // des transporteurs se conduit de même.

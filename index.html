@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="d350faa4">
+<meta name="ny-asako-version" content="422b5f6f">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -603,6 +603,11 @@
         <!-- Juste sous « Achats internationaux », et non ailleurs dans la liste :
              les deux entrées sont les deux moitiés d'une même question. -->
         <button type="button" class="nav-action" id="livraisonToggle" aria-label="Livraison international" aria-expanded="false">🚚 Livraison international</button>
+        <!-- Les deux navigateurs, pour chercher ailleurs sur Internet : leur
+             application quand le téléphone l'a, leur moteur de recherche
+             sinon (parametres.js, « ouvrirLeNavigateur »). -->
+        <button type="button" class="nav-action" id="menuChrome" data-navigateur="chrome">🌐 Chrome</button>
+        <button type="button" class="nav-action" id="menuEdge" data-navigateur="edge">🌊 Edge</button>
         <!-- « Stock » ne se montre plus : on y entre par Accueil ou Articles,
              qui sont ses deux vues. L'entrée reste pourtant là, masquée : c'est
              par elle que le code ouvre la section — l'Accueil et les Articles
@@ -2944,7 +2949,7 @@
 <script src="gestion-stockage-js/zara-rehetra.js?v=dfde1af2"></script>
 <script src="gestion-stockage-js/live.js?v=accde37b"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=a57c69c1"></script>
+<script src="gestion-stockage-js/parametres.js?v=b227c98b"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>
