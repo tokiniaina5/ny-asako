@@ -1055,7 +1055,7 @@
   // Le nom porte le numéro de ce qu'on garde : un aperçu d'hier n'avait qu'une
   // image, et resterait seul sous le billet une semaine durant. Changer de nom
   // les reprend tous d'un coup.
-  const APERCU_CLE = 'stockmanager_apercus2';
+  const APERCU_CLE = 'stockmanager_apercus3';
   // Un jour, et non sept : une boutique change sa vitrine tous les matins, et
   // la carte doit changer avec elle. Sept jours, c'était la vitrine de la
   // semaine dernière.
@@ -1092,14 +1092,18 @@
     const ligne = lireLesApercus()[url];
     if(!ligne) return null;
     const a = ligne.apercu || {};
-    const duree = (a.titre || a.image) ? APERCU_DUREE : APERCU_VIDE_DUREE;
+    // Trois images ou moins ne tournent pas : un aperçu si maigre est
+    // redemandé aussi vite qu'un vide — la page en donnera peut-être plus.
+    const nb = (a.images || (a.image ? [a.image] : [])).length;
+    const duree = nb > APERCU_IMAGES ? APERCU_DUREE : APERCU_VIDE_DUREE;
     if((Date.now() - (ligne.le || 0)) > duree) return null;
     return a;
   }
 
   // Trois images, et non une. Une seule ne dit pas grand-chose d'une boutique ;
   // trois disent ce qu'on y vend. Elles se mettent côte à côte quand il y en a
-  // plusieurs, en grand quand il n'y en a qu'une.
+  // plusieurs, en grand quand il n'y en a qu'une. Peu nombreuses, elles
+  // échangent leurs places ; nombreuses, de nouvelles prennent la relève.
   //
   // Celle qui ne s'affiche pas s'efface d'elle-même : un site peut très bien
   // refuser ses images à qui vient d'ailleurs, et un cadre gris vaut moins que
@@ -1129,12 +1133,15 @@
     const chargement = cadre.hasAttribute('data-apercu-direct') ? 'eager' : 'lazy';
     const cadreImage = 'width:100%; height:100%; object-fit:cover; display:block; ' +
       'background:var(--panel-2); transition:opacity 0.22s;';
+    // Une image seule prend toute la place ; deux ou trois se mettent côte à
+    // côte et échangent leurs places à chaque tour.
+    const seule = toutes.length === 1;
     cadre.innerHTML =
       (images.length
-        ? (images.length === 1
-          ? '<img src="' + escapeHtml(images[0]) + '" alt="" loading="' + chargement + '" ' +
-            'style="width:100%; max-height:' + Math.round(haut * 1.8) + 'px; object-fit:cover; ' +
-            'display:block; background:var(--panel-2);">'
+        ? (seule
+          ? '<div data-rang="0" data-seule style="height:' + Math.round(haut * 1.8) + 'px;">' +
+            '<img src="' + escapeHtml(images[0]) + '" alt="" loading="' + chargement + '" ' +
+            'style="' + cadreImage + '"></div>'
           : '<div style="display:grid; grid-template-columns:repeat(' + images.length + ', 1fr); gap:2px;">' +
             images.map(function(src, i){
               return '<div data-rang="' + i + '" style="height:' + haut + 'px;">' +
@@ -1169,6 +1176,15 @@
       });
       img.addEventListener('error', function(){
         const case_ = img.parentElement;
+        // La grande place seule passe à l'image suivante ; plus rien, elle
+        // s'efface.
+        if(case_ && case_.hasAttribute('data-seule')){
+          (cadre.__ecartes || (cadre.__ecartes = {}))[Number(case_.getAttribute('data-rang'))] = true;
+          const suivant = prochainRang(cadre, case_);
+          if(suivant >= 0) poserDansLaCase(cadre, case_, suivant, (cadre.__images || []).length);
+          else case_.remove();
+          return;
+        }
         const grille = case_ && case_.parentElement;
         img.remove();
         if(case_ && case_.childElementCount === 0 && grille && grille.style.gridTemplateColumns){
@@ -1186,10 +1202,9 @@
   // Trois places à l'écran, douze images en réserve : la carte montre ce que
   // la boutique vend, et non trois articles pour toujours les mêmes.
   //
-  // Une seule change à la fois. Trois qui basculent ensemble, c'est un
-  // clignotement — l'œil ne sait plus où regarder, et la page paraît agitée.
-  // Chaque place garde sa file, avancée de trois en trois : les trois images
-  // visibles ne sont jamais la même.
+  // Les trois changent ensemble, à chaque tour. Chaque place garde sa file,
+  // avancée de trois en trois : les trois images visibles ne sont jamais la
+  // même.
   const APERCU_TOUR_MS = 4500;
   let minuteurApercus = null;
 
@@ -1241,6 +1256,9 @@
 
     // Chargée avant d'être montrée : sans cela, la place reste vide le temps
     // que l'image arrive, et c'est un trou qu'on voit, pas un changement.
+    // La place retient son rang dès maintenant : les places voisines, qui
+    // tournent au même instant, ne viseront pas la même image.
+    boite.setAttribute('data-rang', String(rang));
     const avance = new Image();
     avance.onload = function(){
       if(!formeAcceptable(avance)){
@@ -1265,12 +1283,37 @@
   function tournerUnApercu(cadre){
     const toutes = cadre.__images || [];
     const cases = cadre.querySelectorAll('[data-rang]');
-    if(toutes.length <= cases.length || !cases.length) return;
+    if(!cases.length) return;
 
-    const quelle = (cadre.__tour || 0) % cases.length;
-    cadre.__tour = (cadre.__tour || 0) + 1;
-    const boite = cases[quelle];
-    poserDansLaCase(cadre, boite, prochainRang(cadre, boite), toutes.length);
+    // Pas assez d'images pour en montrer de nouvelles : celles qu'on voit
+    // glissent d'une place vers la gauche (A B C → B C A).
+    if(toutes.length <= cases.length){
+      if(cases.length < 2) return;
+      // Ces images sont déjà là et déjà vues : pas de chargement, pas
+      // d'examen, un simple fondu.
+      const vues = [];
+      cases.forEach(function(c){
+        const img = c.querySelector('img');
+        vues.push({ rang: c.getAttribute('data-rang'), src: img ? img.getAttribute('src') : '' });
+      });
+      cases.forEach(function(boite, i){
+        const img = boite.querySelector('img');
+        const suivante = vues[(i + 1) % vues.length];
+        if(!img || !suivante.src) return;
+        boite.setAttribute('data-rang', suivante.rang);
+        img.style.opacity = '0';
+        setTimeout(function(){
+          img.src = suivante.src;
+          img.style.opacity = '1';
+        }, 220);
+      });
+      return;
+    }
+
+    // Toutes les places changent ensemble, chacune avancée de trois.
+    cases.forEach(function(boite){
+      poserDansLaCase(cadre, boite, prochainRang(cadre, boite), toutes.length);
+    });
   }
 
   function veillerSurLeTourDesApercus(){
