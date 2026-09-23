@@ -3100,6 +3100,90 @@
       });
     }
 
+    // ---- « Actualiser », caché derrière le menu ----
+    // Recharger la page, c'est ce qu'on fait quand une nouvelle version tarde
+    // à venir ; mais une application installée n'a pas de barre d'adresse, ni
+    // de bouton pour cela. Il se tient donc derrière le menu, sans prendre de
+    // place : clic droit sur ordinateur, deux appuis rapides au téléphone. Il
+    // paraît à côté du bouton du menu, et s'en va de lui-même.
+    (function(){
+      const bouton = document.createElement('button');
+      bouton.type = 'button';
+      bouton.className = 'bouton-actualiser';
+      bouton.textContent = '🔄';
+      bouton.title = 'Actualiser';
+      bouton.setAttribute('aria-label', 'Actualiser la page');
+      bouton.hidden = true;
+      document.body.appendChild(bouton);
+      let minuteur = null;
+
+      function cacher(){
+        bouton.hidden = true;
+        clearTimeout(minuteur);
+      }
+      function montrerPres(porte){
+        const r = porte.getBoundingClientRect();
+        bouton.hidden = false;
+        const l = bouton.offsetWidth || 44, h = bouton.offsetHeight || 44;
+        // À droite du menu s'il y a la place, à gauche sinon ; à sa hauteur,
+        // ramené dans l'écran.
+        let x = r.right + 6;
+        if(x + l > window.innerWidth - 4) x = r.left - l - 6;
+        let y = r.top + (r.height - h) / 2;
+        y = Math.max(4, Math.min(y, window.innerHeight - h - 4));
+        bouton.style.left = Math.max(4, Math.round(x)) + 'px';
+        bouton.style.top = Math.round(y) + 'px';
+        clearTimeout(minuteur);
+        minuteur = setTimeout(cacher, 6000);
+      }
+
+      bouton.addEventListener('click', function(e){
+        e.stopPropagation();
+        bouton.textContent = '⏳';
+        // Le service worker va d'abord voir s'il y a plus récent : la page
+        // rechargée prend alors la nouvelle version, pas la copie gardée.
+        const recharger = function(){ location.reload(); };
+        try {
+          if(navigator.serviceWorker && navigator.serviceWorker.getRegistration){
+            navigator.serviceWorker.getRegistration()
+              .then(function(reg){ return reg ? reg.update() : null; })
+              .then(recharger, recharger);
+            setTimeout(recharger, 2500);
+            return;
+          }
+        } catch(err){}
+        recharger();
+      });
+
+      portesDuMenu.forEach(function(porte){
+        // Ordinateur : le clic droit, à la place du menu du navigateur.
+        porte.addEventListener('contextmenu', function(e){
+          e.preventDefault();
+          montrerPres(porte);
+        });
+        // Téléphone : deux appuis en moins d'un tiers de seconde. Le menu
+        // s'ouvre au premier et se referme au second ; reste le bouton.
+        let dernier = 0;
+        porte.addEventListener('pointerup', function(e){
+          if(e.pointerType === 'mouse') return;
+          const maintenant = Date.now();
+          if(maintenant - dernier < 350){
+            dernier = 0;
+            setTimeout(function(){ montrerPres(porte); }, 0);
+          } else {
+            dernier = maintenant;
+          }
+        });
+      });
+
+      document.addEventListener('click', function(e){
+        if(bouton.hidden || bouton.contains(e.target)) return;
+        if(portesDuMenu.some(function(p){ return p.contains(e.target); })) return;
+        cacher();
+      });
+      window.addEventListener('resize', cacher);
+    })();
+
     if(champ){
       champ.addEventListener('input', filtrer);
       // Entrée : on ouvre la seule page qui reste, sans avoir à viser.
