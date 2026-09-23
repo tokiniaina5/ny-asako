@@ -2160,16 +2160,111 @@
       // sans quoi l'icône ne montrerait rien de son état.
       const etiquette = document.getElementById('newsIsGoodsLabel');
       if(etiquette) etiquette.classList.toggle('actif', newsIsGoods.checked);
-      if(newsIsGoods.checked) newsPrice.focus();
+      const fiche = document.getElementById('entanaFiche');
+      if(fiche) fiche.style.display = newsIsGoods.checked ? '' : 'none';
+      if(newsIsGoods.checked){
+        const nom = document.getElementById('entanaNom');
+        (nom || newsPrice).focus();
+      }
     });
   }
+
+  // ---- La fiche de l'article ----
+  // Ce qu'une place de marché internationale exige de toute annonce : on ne
+  // vend pas « un truc à 20 000 Ar », on vend un article nommé, d'une marque,
+  // rangé, dans un état dit, en quantité connue, venu de quelque part, et
+  // décrit. Chaque rubrique a son libellé pour le message d'erreur.
+  const FICHE_ENTANA = [
+    { id: 'entanaNom', nom: 'Anarana ny entana' },
+    { id: 'entanaMarque', nom: 'Marque' },
+    { id: 'entanaCategorie', nom: 'Sokajy (Catégorie)' },
+    { id: 'entanaEtat', nom: 'Toetrany (État)' },
+    { id: 'entanaQuantite', nom: 'Isa misy (Quantité)' },
+    { id: 'entanaOrigine', nom: 'Firenena niaviany' },
+    { id: 'entanaDescription', nom: 'Famaritana (20 litera farafahakeliny)' }
+  ];
+  const DESCRIPTION_MIN = 20;
+
+  function valeurFiche(id){
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  // Ce qui manque, dans l'ordre de la fiche. Les cases vides sont marquées en
+  // rouge, et le rouge s'en va dès qu'on y écrit.
+  function cequiManqueALaFiche(){
+    const manque = [];
+    let premier = null;
+    FICHE_ENTANA.forEach(function(r){
+      const el = document.getElementById(r.id);
+      let v = valeurFiche(r.id);
+      let bon = !!v;
+      if(r.id === 'entanaQuantite') bon = Number(v) >= 1;
+      if(r.id === 'entanaDescription') bon = v.length >= DESCRIPTION_MIN;
+      if(el) el.classList.toggle('tsy-feno', !bon);
+      if(!bon){ manque.push(r.nom); if(!premier) premier = el; }
+    });
+    const prix = Number(newsPrice && newsPrice.value);
+    const prixBon = !!(newsPrice && newsPrice.value) && prix > 0;
+    if(newsPrice) newsPrice.classList.toggle('tsy-feno', !prixBon);
+    if(!prixBon){ manque.push('Vidiny (Ar)'); if(!premier) premier = newsPrice; }
+    if(!pendingNewsImages.some(function(s){ return !estVideo(s); })) manque.push('Sary iray farafahakeliny');
+    return { manque: manque, premier: premier };
+  }
+
+  // Le texte de l'annonce, toujours dans le même ordre : qui l'a déjà lu une
+  // fois sait où chercher la marque ou l'état sur toutes les autres.
+  function texteDeLaFiche(){
+    return [
+      '📦 ' + valeurFiche('entanaNom'),
+      '🏷️ Marque : ' + valeurFiche('entanaMarque'),
+      '🗂️ Catégorie : ' + valeurFiche('entanaCategorie'),
+      '✨ État : ' + valeurFiche('entanaEtat'),
+      '🔢 Quantité : ' + valeurFiche('entanaQuantite'),
+      '🌍 Origine : ' + valeurFiche('entanaOrigine'),
+      '',
+      '📝 ' + valeurFiche('entanaDescription')
+    ].join('\n');
+  }
+
+  function viderLaFiche(){
+    FICHE_ENTANA.forEach(function(r){
+      const el = document.getElementById(r.id);
+      if(el){ el.value = ''; el.classList.remove('tsy-feno'); }
+    });
+    if(newsPrice) newsPrice.classList.remove('tsy-feno');
+    const fiche = document.getElementById('entanaFiche');
+    if(fiche) fiche.style.display = 'none';
+    const etiquette = document.getElementById('newsIsGoodsLabel');
+    if(etiquette) etiquette.classList.remove('actif');
+  }
+
+  FICHE_ENTANA.concat([{ id: 'newsPrice' }]).forEach(function(r){
+    const el = document.getElementById(r.id);
+    if(!el) return;
+    const effacerLeRouge = function(){ el.classList.remove('tsy-feno'); };
+    el.addEventListener('input', effacerLeRouge);
+    el.addEventListener('change', effacerLeRouge);
+  });
 
   const postNewsBtn = document.getElementById('postNewsBtn');
   if(postNewsBtn){
     postNewsBtn.addEventListener('click', function(){
-      const message = document.getElementById('newsMessage').value.trim();
+      const libre = document.getElementById('newsMessage').value.trim();
+      const entana = !!(newsIsGoods && newsIsGoods.checked);
       // Publier maintenant, c'est publier sans la vidéo qui est en route.
       if(videoEnCours){ alert('Miandrasa kely : mbola mandeha ny video.'); return; }
+      if(entana){
+        const bilan = cequiManqueALaFiche();
+        if(bilan.manque.length){
+          alert('Tsy mbola azo avoaka : fenoy aloha ireto :\n\n• ' + bilan.manque.join('\n• '));
+          if(bilan.premier) bilan.premier.focus();
+          return;
+        }
+      }
+      // L'annonce d'un article : ce que la personne a écrit en tête, puis la
+      // fiche. Une nouvelle ordinaire reste ce qu'on a tapé.
+      const message = entana ? [libre, texteDeLaFiche()].filter(Boolean).join('\n\n') : libre;
       if(!message && !pendingNewsImages.length){ alert('Soraty ny vaovao na alao sary aloha.'); return; }
       if(!window.__sb){ alert('Tsy misy fifandraisana amin\'ny serveur.'); return; }
       const maison = jeSuisLaMaison();
@@ -2199,8 +2294,13 @@
         document.getElementById('newsMessage').value = '';
         if(newsIsGoods){ newsIsGoods.checked = false; }
         if(newsPrice){ newsPrice.value = ''; newsPrice.style.display = 'none'; }
+        viderLaFiche();
         clearNewsImages();
         renderCommunityNews();
+        // La boîte se referme sur ce signal (common.js), et non plus sur un
+        // champ vide : une annonce refusée pour sa fiche a souvent un champ
+        // libre vide, et la boîte se fermait sur un travail pas fini.
+        document.dispatchEvent(new Event('billet-publie'));
       }, function(){ alert("Tsy voaray ny fanambarana."); });
       });
     });

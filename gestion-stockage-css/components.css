@@ -599,6 +599,25 @@
   }
   .fb-composer-extra input:focus, .fb-composer-extra select:focus{ outline:none; border-color:var(--cyan); }
   .fb-composer-extra select{ flex:0 0 auto; min-width:140px; }
+  /* La fiche de l'article (🛒) : deux colonnes, une seule au téléphone. */
+  .entana-fiche{
+    display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.6rem 0.8rem;
+    margin-top:0.8rem; padding-top:0.8rem; border-top:1px solid var(--line);
+  }
+  .entana-fiche-titre{ grid-column:1 / -1; margin:0; font-size:0.85rem; font-weight:700; color:var(--text); }
+  .entana-fiche-titre span, .entana-fiche label span{ font-weight:400; color:var(--muted); }
+  .entana-fiche label{ display:flex; flex-direction:column; gap:0.3rem; font-size:0.75rem; color:var(--muted); }
+  .entana-fiche input, .entana-fiche select, .entana-fiche textarea{
+    width:100%; box-sizing:border-box; padding:0.55rem 0.7rem; border-radius:8px;
+    border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.85rem; font-family:inherit;
+  }
+  .entana-fiche textarea{ resize:vertical; min-height:4.5rem; }
+  .entana-fiche input:focus, .entana-fiche select:focus, .entana-fiche textarea:focus{ outline:none; border-color:var(--cyan); }
+  .entana-fiche .tsy-feno{ border-color:var(--red); }
+  .entana-fiche-large, .entana-fiche-rappel{ grid-column:1 / -1; }
+  .entana-fiche-rappel{ margin:0; font-size:0.75rem; color:var(--muted); }
+  #newsPrice.tsy-feno{ border-color:var(--red); }
+  @media (max-width: 560px){ .entana-fiche{ grid-template-columns:minmax(0, 1fr); } }
 
   /* Un billet glissé pour être effacé sort du fil sans faire défiler la page de côté. */
   .fb-feed{ display:flex; flex-direction:column; gap:0.9rem; overflow-x:clip; }

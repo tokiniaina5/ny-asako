@@ -3805,21 +3805,13 @@
       fermerComposer();
     });
 
-    const publier = document.getElementById('postNewsBtn');
-    if(publier){
-      publier.addEventListener('click', function(){
-        setTimeout(function(){
-          const champ = document.getElementById('newsMessage');
-          // Le champ vidé est le signe que l'envoi a réussi ; en cas d'échec le
-          // message est encore là, et la boîte doit le rester aussi.
-          if(champ && !champ.value.trim()){
-            fermerComposer();
-            // On montre le fil : sans cela, rien ne dit que le message est parti.
-            if(typeof ouvrirDepuisLeMenu === 'function') ouvrirDepuisLeMenu('accueil');
-          }
-        }, 600);
-      });
-    }
+    // L'envoi réussi le dit lui-même (parametres.js) ; en cas d'échec ou de
+    // fiche incomplète, rien ne vient, et la boîte reste ouverte.
+    document.addEventListener('billet-publie', function(){
+      fermerComposer();
+      // On montre le fil : sans cela, rien ne dit que le message est parti.
+      if(typeof ouvrirDepuisLeMenu === 'function') ouvrirDepuisLeMenu('accueil');
+    });
   }
 
   // ---------------- LA VERSION AFFICHÉE ----------------

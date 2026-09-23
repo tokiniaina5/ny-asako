@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="9a7f28c0">
+<meta name="ny-asako-version" content="d350faa4">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -136,7 +136,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=821571f5">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=199c3f18">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=af7d5d3e">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
@@ -800,6 +800,64 @@
                     <div id="newsImagePreviewWrap" style="display:none; flex-wrap:wrap; gap:0.5rem;"></div>
                     <input type="text" id="newsMessage" class="fb-composer-input" placeholder="Inona no vaovao aminao, ry client?" style="width:100%;">
                   </div>
+                </div>
+                <!-- La fiche de l'article, dès que 🛒 est coché : les rubriques
+                     qu'une place de marché internationale demande à toute
+                     annonce (nom, marque, catégorie, état, quantité, origine,
+                     description), plus le prix et une photo. Sans elles,
+                     « Publier » refuse (parametres.js). -->
+                <div class="entana-fiche" id="entanaFiche" style="display:none;">
+                  <p class="entana-fiche-titre">📦 Famaritana ny entana <span>(* tsy maintsy fenoina)</span></p>
+                  <label>Anarana ny entana (Nom du produit) *
+                    <input type="text" id="entanaNom" maxlength="120" placeholder="Ohatra : Écouteurs sans fil Bluetooth 5.3">
+                  </label>
+                  <label>Marque *
+                    <input type="text" id="entanaMarque" maxlength="60" placeholder="Ohatra : JBL, Samsung, Tsy misy marque">
+                  </label>
+                  <label>Sokajy (Catégorie) *
+                    <select id="entanaCategorie">
+                      <option value="">— Safidio —</option>
+                      <option>Électronique et audio</option>
+                      <option>Téléphones et accessoires</option>
+                      <option>Informatique et bureau</option>
+                      <option>Vêtements et accessoires</option>
+                      <option>Chaussures</option>
+                      <option>Bijoux et montres</option>
+                      <option>Beauté et soins</option>
+                      <option>Santé et bien-être</option>
+                      <option>Maison et cuisine</option>
+                      <option>Meubles et décoration</option>
+                      <option>Électroménager</option>
+                      <option>Alimentation et boissons</option>
+                      <option>Bébé et enfants</option>
+                      <option>Jouets et jeux</option>
+                      <option>Sports et loisirs</option>
+                      <option>Auto et moto</option>
+                      <option>Outils et bricolage</option>
+                      <option>Jardin et extérieur</option>
+                      <option>Livres et médias</option>
+                      <option>Animaux</option>
+                      <option>Autre</option>
+                    </select>
+                  </label>
+                  <label>Toetrany (État) *
+                    <select id="entanaEtat">
+                      <option value="">— Safidio —</option>
+                      <option value="Neuf">Vaovao (Neuf)</option>
+                      <option value="Reconditionné">Nohavaozina (Reconditionné)</option>
+                      <option value="Occasion">Efa nampiasaina (Occasion)</option>
+                    </select>
+                  </label>
+                  <label>Isa misy (Quantité) *
+                    <input type="number" id="entanaQuantite" min="1" step="1" placeholder="Ohatra : 10">
+                  </label>
+                  <label>Firenena niaviany (Pays d'origine) *
+                    <input type="text" id="entanaOrigine" maxlength="60" placeholder="Ohatra : Chine, France, Madagascar">
+                  </label>
+                  <label class="entana-fiche-large">Famaritana (Description) * <span>— 20 litera farafahakeliny</span>
+                    <textarea id="entanaDescription" rows="3" maxlength="1500" placeholder="Ny toetra, ny habeny, ny loko, ny fitaovana nanaovana azy, ny garantie..."></textarea>
+                  </label>
+                  <p class="entana-fiche-rappel">💰 Vidiny sy 🖼️ sary iray farafahakeliny koa dia tsy maintsy asiana.</p>
                 </div>
                 <div class="fb-composer-extra">
                   <!-- title et aria-label portent le sens que l'icône seule ne
@@ -2873,7 +2931,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=ac157e4c"></script>
+<script src="gestion-stockage-js/common.js?v=61801ab7"></script>
 <script src="gestion-stockage-js/stock.js?v=f9ee9706"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2886,7 +2944,7 @@
 <script src="gestion-stockage-js/zara-rehetra.js?v=dfde1af2"></script>
 <script src="gestion-stockage-js/live.js?v=accde37b"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=c42c7a64"></script>
+<script src="gestion-stockage-js/parametres.js?v=a57c69c1"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>
