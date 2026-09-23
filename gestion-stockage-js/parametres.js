@@ -2219,8 +2219,16 @@
       const fiche = document.getElementById('entanaFiche');
       if(fiche) fiche.style.display = newsIsGoods.checked ? '' : 'none';
       if(newsIsGoods.checked){
-        const nom = document.getElementById('entanaNom');
-        (nom || newsPrice).focus();
+        remplirLaListeDesArticles();
+        const choix = document.getElementById('entanaArticle');
+        (choix || newsPrice).focus({ preventScroll: true });
+        // La boîte a sa hauteur à elle, et défile : la fiche qui s'ouvre en
+        // dessous doit venir sous les yeux.
+        if(fiche && fiche.scrollIntoView) fiche.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } else {
+        // Une nouvelle ordinaire n'a pas d'article : le prix redevient libre.
+        newsPrice.readOnly = false;
+        newsPrice.placeholder = 'Vidiny (Ar)';
       }
     });
   }
@@ -2228,16 +2236,22 @@
   // ---- La fiche de l'article ----
   // Ce qu'une place de marché internationale exige de toute annonce : on ne
   // vend pas « un truc à 20 000 Ar », on vend un article nommé, d'une marque,
-  // rangé, dans un état dit, en quantité connue, venu de quelque part, et
-  // décrit. Chaque rubrique a son libellé pour le message d'erreur.
+  // rangé, dans un état dit, venu de quelque part, et décrit.
+  //
+  // L'ARTICLE VIENT DU STOCK (📋 Articles). Son nom, son prix et sa quantité
+  // sont lus là et ne se retapent pas : l'annonce dit ce que dit le stock, et
+  // non une seconde version tapée à la main qui s'en écarterait. Elle porte
+  // son numéro (item_id) : épuisé ou retiré du stock, l'article emporte son
+  // annonce (stock.js). Le reste de la fiche — marque, catégorie, état,
+  // origine, description — est gardé sur l'article, et revient tel quel la
+  // fois suivante.
   const FICHE_ENTANA = [
-    { id: 'entanaNom', nom: 'Anarana ny entana' },
-    { id: 'entanaMarque', nom: 'Marque' },
-    { id: 'entanaCategorie', nom: 'Sokajy (Catégorie)' },
-    { id: 'entanaEtat', nom: 'Toetrany (État)' },
-    { id: 'entanaQuantite', nom: 'Isa misy (Quantité)' },
-    { id: 'entanaOrigine', nom: 'Firenena niaviany' },
-    { id: 'entanaDescription', nom: 'Famaritana (20 litera farafahakeliny)' }
+    { id: 'entanaArticle', nom: 'Entana ao amin\'ny Articles' },
+    { id: 'entanaMarque', nom: 'Marque', garde: 'marque' },
+    { id: 'entanaCategorie', nom: 'Sokajy (Catégorie)', garde: 'categorie' },
+    { id: 'entanaEtat', nom: 'Toetrany (État)', garde: 'etat' },
+    { id: 'entanaOrigine', nom: 'Firenena niaviany', garde: 'origine' },
+    { id: 'entanaDescription', nom: 'Famaritana (20 litera farafahakeliny)', garde: 'description' }
   ];
   const DESCRIPTION_MIN = 20;
 
@@ -2246,6 +2260,66 @@
     return el ? String(el.value || '').trim() : '';
   }
 
+  function lesArticles(){
+    return (typeof items !== 'undefined' && Array.isArray(items)) ? items : [];
+  }
+  function articleChoisi(){
+    const id = valeurFiche('entanaArticle');
+    if(!id) return null;
+    return lesArticles().find(function(it){ return String(it.id) === id; }) || null;
+  }
+
+  // La liste suit le stock tel qu'il est à l'instant où l'on coche 🛒. Un
+  // article épuisé y figure, mais ne se choisit pas : on ne vend pas ce qu'on
+  // n'a plus.
+  function remplirLaListeDesArticles(){
+    const choix = document.getElementById('entanaArticle');
+    if(!choix) return;
+    const avant = choix.value;
+    const tous = lesArticles().slice().sort(function(a, b){
+      return String(a.name || '').localeCompare(String(b.name || ''), 'fr');
+    });
+    choix.innerHTML = '<option value="">— Safidio ny entana —</option>' + tous.map(function(it){
+      const lany = !(Number(it.qty) >= 1);
+      const libelle = (it.ref ? it.ref + ' — ' : '') + (it.name || '') +
+        (lany ? ' (lany)' : ' · ' + Number(it.qty) + ' ' + (it.unit || ''));
+      return '<option value="' + escapeHtml(String(it.id)) + '"' + (lany ? ' disabled' : '') + '>' +
+        escapeHtml(libelle) + '</option>';
+    }).join('');
+    const vide = document.getElementById('entanaArticleVide');
+    if(vide) vide.style.display = tous.length ? 'none' : '';
+    const encore = tous.some(function(it){ return String(it.id) === avant && Number(it.qty) >= 1; });
+    choix.value = (avant && encore) ? avant : '';
+    appliquerLArticle();
+  }
+
+  // Ce que le stock sait, posé et verrouillé ; ce que l'article a gardé de
+  // sa dernière fiche, reposé.
+  function appliquerLArticle(){
+    const it = articleChoisi();
+    const nom = document.getElementById('entanaNom');
+    const qte = document.getElementById('entanaQuantite');
+    if(nom) nom.value = it ? (it.name || '') : '';
+    if(qte) qte.value = it ? (Number(it.qty) || 0) : '';
+    if(newsPrice){
+      newsPrice.value = (it && Number(it.price) > 0) ? Number(it.price) : '';
+      newsPrice.readOnly = true;
+      newsPrice.placeholder = 'Vidiny (Articles)';
+      newsPrice.classList.remove('tsy-feno');
+    }
+    if(!it) return;
+    const garde = it.fiche || {};
+    FICHE_ENTANA.forEach(function(r){
+      if(!r.garde) return;
+      const el = document.getElementById(r.id);
+      if(el && garde[r.garde]){ el.value = garde[r.garde]; el.classList.remove('tsy-feno'); }
+    });
+  }
+  (function(){
+    const choix = document.getElementById('entanaArticle');
+    if(choix) choix.addEventListener('change', appliquerLArticle);
+  })();
+
   // Ce qui manque, dans l'ordre de la fiche. Les cases vides sont marquées en
   // rouge, et le rouge s'en va dès qu'on y écrit.
   function cequiManqueALaFiche(){
@@ -2253,55 +2327,104 @@
     let premier = null;
     FICHE_ENTANA.forEach(function(r){
       const el = document.getElementById(r.id);
-      let v = valeurFiche(r.id);
+      const v = valeurFiche(r.id);
       let bon = !!v;
-      if(r.id === 'entanaQuantite') bon = Number(v) >= 1;
       if(r.id === 'entanaDescription') bon = v.length >= DESCRIPTION_MIN;
       if(el) el.classList.toggle('tsy-feno', !bon);
       if(!bon){ manque.push(r.nom); if(!premier) premier = el; }
     });
-    const prix = Number(newsPrice && newsPrice.value);
-    const prixBon = !!(newsPrice && newsPrice.value) && prix > 0;
-    if(newsPrice) newsPrice.classList.toggle('tsy-feno', !prixBon);
-    if(!prixBon){ manque.push('Vidiny (Ar)'); if(!premier) premier = newsPrice; }
+    const it = articleChoisi();
+    if(it){
+      // Le prix et la quantité ne se corrigent pas ici : c'est le stock qui
+      // les tient, et c'est là qu'on les change.
+      if(!(Number(it.qty) >= 1)) manque.push('Lany ao amin\'ny stock ity entana ity');
+      if(!(Number(it.price) > 0)){
+        manque.push('Vidiny : ampidiro ao amin\'ny Articles (✏️) ny vidin\'ity entana ity');
+        if(newsPrice) newsPrice.classList.add('tsy-feno');
+      }
+    }
     if(!pendingNewsImages.some(function(s){ return !estVideo(s); })) manque.push('Sary iray farafahakeliny');
     return { manque: manque, premier: premier };
   }
 
   // Le texte de l'annonce, toujours dans le même ordre : qui l'a déjà lu une
   // fois sait où chercher la marque ou l'état sur toutes les autres.
+  //
+  // La quantité n'y est pas écrite : elle baisse à chaque vente, et le billet,
+  // lui, ne se réécrit pas — il dirait au bout de trois jours un chiffre qui
+  // n'est plus vrai. Qu'il soit en ligne suffit à dire qu'il en reste.
   function texteDeLaFiche(){
-    return [
-      '📦 ' + valeurFiche('entanaNom'),
+    const it = articleChoisi() || {};
+    const lignes = ['📦 ' + (it.name || '')];
+    if(it.ref) lignes.push('🔖 Réf. : ' + it.ref);
+    lignes.push(
       '🏷️ Marque : ' + valeurFiche('entanaMarque'),
       '🗂️ Catégorie : ' + valeurFiche('entanaCategorie'),
       '✨ État : ' + valeurFiche('entanaEtat'),
-      '🔢 Quantité : ' + valeurFiche('entanaQuantite'),
       '🌍 Origine : ' + valeurFiche('entanaOrigine'),
       '',
       '📝 ' + valeurFiche('entanaDescription')
-    ].join('\n');
+    );
+    return lignes.join('\n');
+  }
+
+  // La fiche remplie reste sur l'article : la prochaine annonce du même
+  // article la retrouve telle quelle.
+  function garderLaFicheSurLArticle(){
+    const it = articleChoisi();
+    if(!it || typeof saveItems !== 'function') return;
+    const garde = {};
+    FICHE_ENTANA.forEach(function(r){ if(r.garde) garde[r.garde] = valeurFiche(r.id); });
+    it.fiche = garde;
+    saveItems(items);
   }
 
   function viderLaFiche(){
-    FICHE_ENTANA.forEach(function(r){
+    FICHE_ENTANA.concat([{ id: 'entanaNom' }, { id: 'entanaQuantite' }]).forEach(function(r){
       const el = document.getElementById(r.id);
       if(el){ el.value = ''; el.classList.remove('tsy-feno'); }
     });
-    if(newsPrice) newsPrice.classList.remove('tsy-feno');
+    if(newsPrice){ newsPrice.classList.remove('tsy-feno'); newsPrice.readOnly = false; newsPrice.placeholder = 'Vidiny (Ar)'; }
     const fiche = document.getElementById('entanaFiche');
     if(fiche) fiche.style.display = 'none';
     const etiquette = document.getElementById('newsIsGoodsLabel');
     if(etiquette) etiquette.classList.remove('actif');
   }
 
-  FICHE_ENTANA.concat([{ id: 'newsPrice' }]).forEach(function(r){
+  FICHE_ENTANA.forEach(function(r){
     const el = document.getElementById(r.id);
     if(!el) return;
     const effacerLeRouge = function(){ el.classList.remove('tsy-feno'); };
     el.addEventListener('input', effacerLeRouge);
     el.addEventListener('change', effacerLeRouge);
   });
+
+  // Le 📢 de la page des articles ouvre cette même boîte, 🛒 coché et
+  // l'article choisi : il ne reste qu'à compléter la fiche et poser la photo.
+  window.__ouvrirLaFicheDeLEntana = function(item){
+    const porte = document.getElementById('barComposer') || document.getElementById('composerToggle');
+    const boite = document.getElementById('fbComposer');
+    if(!porte || !boite || !newsIsGoods) return false;
+    if(item && !(Number(item.qty) >= 1)){
+      alert('Lany ao amin\'ny stock ity entana ity : tsy azo avoaka.');
+      return true;
+    }
+    if(boite.style.display === 'none') porte.click();
+    if(!newsIsGoods.checked){
+      newsIsGoods.checked = true;
+      newsIsGoods.dispatchEvent(new Event('change'));
+    } else {
+      remplirLaListeDesArticles();
+    }
+    const choix = document.getElementById('entanaArticle');
+    if(choix && item){
+      choix.value = String(item.id);
+      appliquerLArticle();
+    }
+    const suivant = document.getElementById('entanaMarque');
+    if(suivant) suivant.focus({ preventScroll: true });
+    return true;
+  };
 
   const postNewsBtn = document.getElementById('postNewsBtn');
   if(postNewsBtn){
@@ -2323,8 +2446,14 @@
       const message = entana ? [libre, texteDeLaFiche()].filter(Boolean).join('\n\n') : libre;
       if(!message && !pendingNewsImages.length){ alert('Soraty ny vaovao na alao sary aloha.'); return; }
       if(!window.__sb){ alert('Tsy misy fifandraisana amin\'ny serveur.'); return; }
+      const article = entana ? articleChoisi() : null;
+      // L'annonce d'un article s'efface avec lui, et seule la base sait qui
+      // peut effacer : il faut un compte pour qu'elle ait un auteur.
+      if(article && !(currentUser && currentUser.email)){ alert('Midira aloha amin\'ny kaontinao.'); return; }
       const maison = jeSuisLaMaison();
       const clientName = maison ? MARQUE_NOM : ((currentUser && currentUser.name) || 'Client');
+
+      function envoyer(){
       // La vignette est calculée avant l'envoi : le billet part avec le visage
       // de son auteur, seul moyen d'en être sûr chez les autres. Le logo de la
       // maison, lui, est déjà posé sur le site : rien à recopier ni à réduire.
@@ -2332,21 +2461,23 @@
       const billet = {
         client_name: clientName, network: 'Autre', message: message, link: '',
         // Une annonce marquée « entana amidy » porte son prix, et c'est elle
-        // qui fera apparaître le bouton Acheter chez les autres.
-        type: (newsIsGoods && newsIsGoods.checked) ? 'entana' : 'vaovao',
-        price: (newsIsGoods && newsIsGoods.checked && newsPrice && newsPrice.value) ? Number(newsPrice.value) : null,
+        // qui fera apparaître le bouton Acheter chez les autres. Le prix d'un
+        // article est celui du stock, et nul autre.
+        type: entana ? 'entana' : 'vaovao',
+        price: article ? Number(article.price) : null,
         image: pendingNewsImages.length ? JSON.stringify(pendingNewsImages) : null
       };
       const avecAuteur = Object.assign({}, billet, {
         author_email: (currentUser && currentUser.email) || null,
         author_photo: photo
-      });
-      // Tant que le script SQL n'a pas été passé, ces deux colonnes n'existent
+      }, article ? { item_id: article.id } : {});
+      // Tant que le script SQL n'a pas été passé, ces colonnes n'existent
       // pas et l'envoi entier serait refusé : le message doit partir quand même,
       // sans le visage.
       window.__sb.from('client_news').insert(avecAuteur)
         .then(function(res){ return (res && res.error) ? window.__sb.from('client_news').insert(billet) : res; })
         .then(function(){
+        if(article) garderLaFicheSurLArticle();
         document.getElementById('newsMessage').value = '';
         if(newsIsGoods){ newsIsGoods.checked = false; }
         if(newsPrice){ newsPrice.value = ''; newsPrice.style.display = 'none'; }
@@ -2359,6 +2490,20 @@
         document.dispatchEvent(new Event('billet-publie'));
       }, function(){ alert("Tsy voaray ny fanambarana."); });
       });
+      }
+
+      if(!article){ envoyer(); return; }
+      // Deux annonces en ligne pour un même article, ce serait la même
+      // marchandise deux fois dans le fil. Si la question échoue (colonnes pas
+      // encore posées), on publie quand même.
+      window.__sb.from('client_news').select('id').eq('item_id', article.id).is('deleted_at', null).limit(1)
+        .then(function(res){
+          if(res && !res.error && res.data && res.data.length){
+            alert('Efa navoaka tao amin\'ny fil ity entana ity. Fafao aloha ilay teo aloha raha te-hamoaka vaovao.');
+            return;
+          }
+          envoyer();
+        }, envoyer);
     });
   }
 

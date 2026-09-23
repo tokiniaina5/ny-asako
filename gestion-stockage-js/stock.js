@@ -64,6 +64,9 @@
       btn.addEventListener('click', function(){
         const item = items[Number(btn.dataset.publier)];
         if(!item) return;
+        // L'annonce s'écrit dans la boîte « Écrire », fiche comprise : le nom,
+        // le prix et la quantité y viennent d'ici, le reste se complète là.
+        if(typeof window.__ouvrirLaFicheDeLEntana === 'function' && window.__ouvrirLaFicheDeLEntana(item)) return;
         if(typeof window.__publierLEntana !== 'function') return;
         // Le bouton se tait le temps de l'envoi : deux pressions pendant que
         // le serveur répond feraient deux annonces pour une marchandise.

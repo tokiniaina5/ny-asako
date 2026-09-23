@@ -614,6 +614,8 @@
   .entana-fiche textarea{ resize:vertical; min-height:4.5rem; }
   .entana-fiche input:focus, .entana-fiche select:focus, .entana-fiche textarea:focus{ outline:none; border-color:var(--cyan); }
   .entana-fiche .tsy-feno{ border-color:var(--red); }
+  /* Ce qui vient du stock se lit mais ne se retape pas. */
+  .entana-fiche input[readonly], #newsPrice[readonly]{ background:var(--panel-2); color:var(--muted); cursor:not-allowed; }
   .entana-fiche-large, .entana-fiche-rappel{ grid-column:1 / -1; }
   .entana-fiche-rappel{ margin:0; font-size:0.75rem; color:var(--muted); }
   #newsPrice.tsy-feno{ border-color:var(--red); }

@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="998950e1">
+<meta name="ny-asako-version" content="2933c8ed">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -136,7 +136,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=3c7a1283">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=af7d5d3e">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=e288d70b">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
@@ -806,15 +806,41 @@
                     <input type="text" id="newsMessage" class="fb-composer-input" placeholder="Inona no vaovao aminao, ry client?" style="width:100%;">
                   </div>
                 </div>
-                <!-- La fiche de l'article, dès que 🛒 est coché : les rubriques
+                <div class="fb-composer-extra">
+                  <!-- title et aria-label portent le sens que l'icône seule ne
+                       dit pas : au survol pour la souris, à la lecture d'écran
+                       pour qui ne voit pas l'image. -->
+                  <label for="newsImage" class="composer-icone" title="Sary (maromaro azo alaina)" aria-label="Sary (maromaro azo alaina)">🖼️</label>
+                  <input type="file" id="newsImage" accept="image/*" multiple style="display:none;">
+                  <!-- Une seule vidéo, et elle ne voyage pas dans la ligne
+                       comme les photos : elle part au bucket, la ligne garde
+                       son adresse. -->
+                  <label for="newsVideo" class="composer-icone" title="Video (iray, 25 Mo farany ambony)" aria-label="Video (iray, 25 Mo farany ambony)">🎬</label>
+                  <input type="file" id="newsVideo" accept="video/*" style="display:none;">
+                  <label class="composer-icone" id="newsIsGoodsLabel" title="Entana amidy" aria-label="Entana amidy">
+                    <input type="checkbox" id="newsIsGoods" class="composer-case"> 🛒
+                  </label>
+                  <input type="number" id="newsPrice" min="0" step="100" placeholder="Vidiny (Ar)" style="display:none; width:130px;">
+                  <button type="button" class="btn btn-primary btn-sm" id="postNewsBtn" style="width:auto;">Publier</button>
+                </div>
+                <!-- Sous la rangée des boutons, là où l'on vient de cocher 🛒 : au-dessus,
+                     elle s'ouvrait hors de vue dans une boîte déjà défilée.
+                     La fiche de l'article, dès que 🛒 est coché : les rubriques
                      qu'une place de marché internationale demande à toute
                      annonce (nom, marque, catégorie, état, quantité, origine,
                      description), plus le prix et une photo. Sans elles,
                      « Publier » refuse (parametres.js). -->
                 <div class="entana-fiche" id="entanaFiche" style="display:none;">
                   <p class="entana-fiche-titre">📦 Famaritana ny entana <span>(* tsy maintsy fenoina)</span></p>
-                  <label>Anarana ny entana (Nom du produit) *
-                    <input type="text" id="entanaNom" maxlength="120" placeholder="Ohatra : Écouteurs sans fil Bluetooth 5.3">
+                  <!-- L'annonce part d'un article du stock : son nom, son prix et sa
+                       quantité viennent de là et ne se retapent pas. L'annonce
+                       garde son numéro, et s'en va quand il est épuisé. -->
+                  <label class="entana-fiche-large">Entana ao amin'ny Articles *
+                    <select id="entanaArticle"><option value="">— Safidio ny entana —</option></select>
+                  </label>
+                  <p class="entana-fiche-rappel" id="entanaArticleVide" style="display:none;">Tsy mbola misy entana ao amin'ny Articles. Ampidiro any aloha ilay entana (📋 Articles), dia miverena eto.</p>
+                  <label>Anarana ny entana (Nom du produit) * <span>— avy amin'ny Articles</span>
+                    <input type="text" id="entanaNom" maxlength="120" readonly placeholder="Safidio ny entana eo ambony">
                   </label>
                   <label>Marque *
                     <input type="text" id="entanaMarque" maxlength="60" placeholder="Ohatra : JBL, Samsung, Tsy misy marque">
@@ -853,8 +879,8 @@
                       <option value="Occasion">Efa nampiasaina (Occasion)</option>
                     </select>
                   </label>
-                  <label>Isa misy (Quantité) *
-                    <input type="number" id="entanaQuantite" min="1" step="1" placeholder="Ohatra : 10">
+                  <label>Isa ao amin'ny stock (Quantité) * <span>— avy amin'ny Articles</span>
+                    <input type="number" id="entanaQuantite" min="1" step="1" readonly placeholder="—">
                   </label>
                   <label>Firenena niaviany (Pays d'origine) *
                     <input type="text" id="entanaOrigine" maxlength="60" placeholder="Ohatra : Chine, France, Madagascar">
@@ -862,24 +888,7 @@
                   <label class="entana-fiche-large">Famaritana (Description) * <span>— 20 litera farafahakeliny</span>
                     <textarea id="entanaDescription" rows="3" maxlength="1500" placeholder="Ny toetra, ny habeny, ny loko, ny fitaovana nanaovana azy, ny garantie..."></textarea>
                   </label>
-                  <p class="entana-fiche-rappel">💰 Vidiny sy 🖼️ sary iray farafahakeliny koa dia tsy maintsy asiana.</p>
-                </div>
-                <div class="fb-composer-extra">
-                  <!-- title et aria-label portent le sens que l'icône seule ne
-                       dit pas : au survol pour la souris, à la lecture d'écran
-                       pour qui ne voit pas l'image. -->
-                  <label for="newsImage" class="composer-icone" title="Sary (maromaro azo alaina)" aria-label="Sary (maromaro azo alaina)">🖼️</label>
-                  <input type="file" id="newsImage" accept="image/*" multiple style="display:none;">
-                  <!-- Une seule vidéo, et elle ne voyage pas dans la ligne
-                       comme les photos : elle part au bucket, la ligne garde
-                       son adresse. -->
-                  <label for="newsVideo" class="composer-icone" title="Video (iray, 25 Mo farany ambony)" aria-label="Video (iray, 25 Mo farany ambony)">🎬</label>
-                  <input type="file" id="newsVideo" accept="video/*" style="display:none;">
-                  <label class="composer-icone" id="newsIsGoodsLabel" title="Entana amidy" aria-label="Entana amidy">
-                    <input type="checkbox" id="newsIsGoods" class="composer-case"> 🛒
-                  </label>
-                  <input type="number" id="newsPrice" min="0" step="100" placeholder="Vidiny (Ar)" style="display:none; width:130px;">
-                  <button type="button" class="btn btn-primary btn-sm" id="postNewsBtn" style="width:auto;">Publier</button>
+                  <p class="entana-fiche-rappel">💰 Ny vidiny dia avy amin'ny Articles. 🖼️ Sary iray farafahakeliny no tsy maintsy asiana.</p>
                 </div>
               </div>
 
@@ -2937,7 +2946,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
 <script src="gestion-stockage-js/common.js?v=80e17225"></script>
-<script src="gestion-stockage-js/stock.js?v=f9ee9706"></script>
+<script src="gestion-stockage-js/stock.js?v=b65f89d4"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
 <script src="gestion-stockage-js/factures.js?v=3c5eba5b"></script>
@@ -2949,7 +2958,7 @@
 <script src="gestion-stockage-js/zara-rehetra.js?v=dfde1af2"></script>
 <script src="gestion-stockage-js/live.js?v=accde37b"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=b227c98b"></script>
+<script src="gestion-stockage-js/parametres.js?v=9ffc256a"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>
