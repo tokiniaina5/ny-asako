@@ -2293,8 +2293,10 @@
     appliquerLArticle();
   }
 
-  // Ce que le stock sait, posé et verrouillé ; ce que l'article a gardé de
-  // sa dernière fiche, reposé.
+  // Ce que le stock sait, posé ; le nom et la quantité verrouillés. Le prix,
+  // lui, se propose mais se corrige ici : corrigé, il repart au stock à la
+  // publication (changerLePrixDeLArticle). Ce que l'article a gardé de sa
+  // dernière fiche est reposé.
   function appliquerLArticle(){
     const it = articleChoisi();
     const nom = document.getElementById('entanaNom');
@@ -2303,8 +2305,8 @@
     if(qte) qte.value = it ? (Number(it.qty) || 0) : '';
     if(newsPrice){
       newsPrice.value = (it && Number(it.price) > 0) ? Number(it.price) : '';
-      newsPrice.readOnly = true;
-      newsPrice.placeholder = 'Vidiny (Articles)';
+      newsPrice.readOnly = false;
+      newsPrice.placeholder = 'Vidiny (Ar)';
       newsPrice.classList.remove('tsy-feno');
     }
     if(!it) return;
@@ -2334,15 +2336,11 @@
       if(!bon){ manque.push(r.nom); if(!premier) premier = el; }
     });
     const it = articleChoisi();
-    if(it){
-      // Le prix et la quantité ne se corrigent pas ici : c'est le stock qui
-      // les tient, et c'est là qu'on les change.
-      if(!(Number(it.qty) >= 1)) manque.push('Lany ao amin\'ny stock ity entana ity');
-      if(!(Number(it.price) > 0)){
-        manque.push('Vidiny : ampidiro ao amin\'ny Articles (✏️) ny vidin\'ity entana ity');
-        if(newsPrice) newsPrice.classList.add('tsy-feno');
-      }
-    }
+    // La quantité ne se corrige pas ici : c'est le stock qui la tient.
+    if(it && !(Number(it.qty) >= 1)) manque.push('Lany ao amin\'ny stock ity entana ity');
+    const prixBon = !!(newsPrice && newsPrice.value) && Number(newsPrice.value) > 0;
+    if(newsPrice) newsPrice.classList.toggle('tsy-feno', !prixBon);
+    if(!prixBon){ manque.push('Vidiny (Ar)'); if(!premier) premier = newsPrice; }
     if(!pendingNewsImages.some(function(s){ return !estVideo(s); })) manque.push('Sary iray farafahakeliny');
     return { manque: manque, premier: premier };
   }
@@ -2367,6 +2365,48 @@
     );
     return lignes.join('\n');
   }
+
+  // Le prix corrigé dans l'annonce devient celui du stock : l'article et son
+  // annonce disent le même prix. La correction s'inscrit à l'historique comme
+  // celle faite au ✏️ de la page des articles (stock.js).
+  function changerLePrixDeLArticle(it, prix){
+    if(!it || !(prix > 0) || Number(it.price) === prix || typeof saveItems !== 'function') return;
+    const avant = Number(it.price) || 0;
+    it.price = prix;
+    saveItems(items);
+    if(typeof movements !== 'undefined' && Array.isArray(movements) && typeof saveMovements === 'function'){
+      const note = 'prix : ' + formatAr(avant) + ' → ' + formatAr(prix) + ' (publication)';
+      movements.push({
+        itemId: it.id, ref: it.ref || '', name: it.name, category: it.category || '',
+        type: 'modification', qty: it.qty, price: prix, value: (Number(it.qty) || 0) * prix,
+        date: new Date().toISOString(), day: dayKey(new Date()), note: note
+      });
+      saveMovements(movements);
+      if(typeof pushNotification === 'function') pushNotification('modification', 'Entana « ' + it.name + ' » novaina : ' + note);
+    }
+    if(typeof renderStock === 'function') renderStock();
+    if(typeof renderMovementsHistory === 'function') renderMovementsHistory();
+    if(typeof renderDashboard === 'function') renderDashboard();
+  }
+
+  // Dans l'autre sens : le prix changé au ✏️ des articles suit dans l'annonce
+  // en ligne. Seul le prix est à reprendre — le texte de la fiche ne le porte
+  // pas.
+  window.__majLePrixDuBillet = function(itemId, prix){
+    if(!itemId || !window.__sb || !(Number(prix) > 0)) return Promise.resolve(false);
+    let q = window.__sb.from('client_news').update({ price: Number(prix) }).eq('item_id', itemId);
+    return q.is('deleted_at', null).select('id')
+      .then(function(res){
+        // Sans la colonne deleted_at, on reprend sans ce filtre.
+        if(res && res.error) return window.__sb.from('client_news').update({ price: Number(prix) }).eq('item_id', itemId).select('id');
+        return res;
+      })
+      .then(function(res){
+        const fait = !!(res && !res.error && res.data && res.data.length);
+        if(fait) renderCommunityNews();
+        return fait;
+      }, function(){ return false; });
+  };
 
   // La fiche remplie reste sur l'article : la prochaine annonce du même
   // article la retrouve telle quelle.
@@ -2447,6 +2487,7 @@
       if(!message && !pendingNewsImages.length){ alert('Soraty ny vaovao na alao sary aloha.'); return; }
       if(!window.__sb){ alert('Tsy misy fifandraisana amin\'ny serveur.'); return; }
       const article = entana ? articleChoisi() : null;
+      const prixAnnonce = (entana && newsPrice && Number(newsPrice.value) > 0) ? Number(newsPrice.value) : null;
       // L'annonce d'un article s'efface avec lui, et seule la base sait qui
       // peut effacer : il faut un compte pour qu'elle ait un auteur.
       if(article && !(currentUser && currentUser.email)){ alert('Midira aloha amin\'ny kaontinao.'); return; }
@@ -2461,10 +2502,10 @@
       const billet = {
         client_name: clientName, network: 'Autre', message: message, link: '',
         // Une annonce marquée « entana amidy » porte son prix, et c'est elle
-        // qui fera apparaître le bouton Acheter chez les autres. Le prix d'un
-        // article est celui du stock, et nul autre.
+        // qui fera apparaître le bouton Acheter chez les autres. Corrigé ici,
+        // il devient aussi celui du stock (plus bas).
         type: entana ? 'entana' : 'vaovao',
-        price: article ? Number(article.price) : null,
+        price: prixAnnonce,
         image: pendingNewsImages.length ? JSON.stringify(pendingNewsImages) : null
       };
       const avecAuteur = Object.assign({}, billet, {
@@ -2477,7 +2518,10 @@
       window.__sb.from('client_news').insert(avecAuteur)
         .then(function(res){ return (res && res.error) ? window.__sb.from('client_news').insert(billet) : res; })
         .then(function(){
-        if(article) garderLaFicheSurLArticle();
+        if(article){
+          changerLePrixDeLArticle(article, prixAnnonce);
+          garderLaFicheSurLArticle();
+        }
         document.getElementById('newsMessage').value = '';
         if(newsIsGoods){ newsIsGoods.checked = false; }
         if(newsPrice){ newsPrice.value = ''; newsPrice.style.display = 'none'; }

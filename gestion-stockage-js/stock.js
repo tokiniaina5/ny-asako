@@ -170,6 +170,10 @@
     // on l'a mis à zéro, pas effacé.
     if(Number(before.qty) > 0 && Number(item.qty) <= 0) retirerLesBillets(item.id);
     saveItems(items);
+    // Le prix changé ici suit dans son annonce en ligne : l'article et
+    // l'annonce disent le même prix.
+    if(Number(before.price) !== Number(item.price) && Number(item.qty) > 0 &&
+       typeof window.__majLePrixDuBillet === 'function') window.__majLePrixDuBillet(item.id, item.price);
 
     // enregistre la modification dans l'historique des mouvements + notification
     const changes = [];
