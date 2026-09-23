@@ -26,8 +26,10 @@
         '<td>' + formatAr(item.qty * item.price) + '</td>' +
         '<td>' + (item.seuil != null ? item.seuil : 5) + '</td>' +
         '<td>' + escapeHtml(item.supplier || '—') + '</td>' +
+        // Navoaka na tsia : l'état est demandé à la base juste après (voir
+        // majLesBoutonsFil) ; en attendant, le bouton se tait.
+        '<td><button type="button" class="bouton-fil" data-publier="' + idx + '" aria-pressed="false" disabled>…</button></td>' +
         '<td style="white-space:nowrap;">' +
-          '<button class="btn btn-primary btn-icon" data-publier="' + idx + '" title="Publier" aria-label="Publier dans le fil" style="margin-right:0.35rem;">📢</button>' +
           '<button class="btn btn-violet btn-icon" data-edit="' + idx + '" title="Modifier" aria-label="Modifier" style="margin-right:0.35rem;">✏️</button>' +
           '<button class="btn btn-amber btn-icon" data-sortie="' + idx + '" title="Sortie" aria-label="Sortie" style="margin-right:0.35rem;">📤</button>' +
           '<button class="btn btn-red btn-icon" data-idx="' + idx + '" title="Supprimer" aria-label="Supprimer">🗑️</button>' +
@@ -64,25 +66,50 @@
       btn.addEventListener('click', function(){
         const item = items[Number(btn.dataset.publier)];
         if(!item) return;
-        // L'annonce s'écrit dans la boîte « Écrire », fiche comprise : le nom,
-        // le prix et la quantité y viennent d'ici, le reste se complète là.
-        if(typeof window.__ouvrirLaFicheDeLEntana === 'function' && window.__ouvrirLaFicheDeLEntana(item)) return;
-        if(typeof window.__publierLEntana !== 'function') return;
-        // Le bouton se tait le temps de l'envoi : deux pressions pendant que
-        // le serveur répond feraient deux annonces pour une marchandise.
-        btn.disabled = true;
-        window.__publierLEntana(item).then(function(r){
-          btn.disabled = false;
-          alert(r && r.deja
-            ? 'Efa navoaka tao amin\'ny fil ity entana ity.'
-            : 'Navoaka tao amin\'ny fil : « ' + item.name + ' ».');
-        }, function(err){
-          btn.disabled = false;
-          alert((err && err.message) || 'Tsy voaray ny fanambarana.');
-        });
+        // Navoaka : on le retire du fil. Il part à la corbeille de son auteur,
+        // d'où il peut revenir ; l'article, lui, reste au stock.
+        if(btn.getAttribute('aria-pressed') === 'true'){
+          if(typeof window.__retirerLEntanaDuFil !== 'function') return;
+          if(!confirm('Esorina ao amin\'ny fil ve ny « ' + item.name + ' » ? (Ho any amin\'ny 🗑️ Corbeille ilay publication.)')) return;
+          btn.disabled = true;
+          window.__retirerLEntanaDuFil(item.id).then(majLesBoutonsFil, function(){
+            alert('Tsy voaesotra ao amin\'ny fil. Andramo indray.');
+            majLesBoutonsFil();
+          });
+          return;
+        }
+        // Tsy navoaka : l'annonce s'écrit dans la boîte « Écrire », fiche
+        // comprise — le nom, le prix et la quantité y viennent d'ici.
+        if(typeof window.__ouvrirLaFicheDeLEntana === 'function') window.__ouvrirLaFicheDeLEntana(item);
       });
     });
+    majLesBoutonsFil();
   }
+
+  // ---- Navoaka na tsia ----
+  // Le stock vit dans l'appareil, l'annonce dans la base : c'est elle qu'on
+  // interroge, en une seule question pour toute la liste.
+  function majLesBoutonsFil(){
+    const boutons = document.querySelectorAll('#stockTableBody button[data-publier]');
+    if(!boutons.length) return;
+    const poser = function(navoaka, connu){
+      boutons.forEach(function(btn){
+        const item = items[Number(btn.dataset.publier)];
+        const oui = !!(item && navoaka && navoaka.has(String(item.id)));
+        btn.disabled = !connu;
+        btn.setAttribute('aria-pressed', oui ? 'true' : 'false');
+        btn.classList.toggle('navoaka', oui);
+        btn.textContent = connu ? (oui ? '✅ Navoaka' : '⬜ Tsy navoaka') : '…';
+        btn.title = oui ? 'Esorina ao amin\'ny fil' : 'Avoaka ao amin\'ny fil';
+      });
+    };
+    if(typeof window.__lireLesEntanaNavoaka !== 'function'){ poser(null, false); return; }
+    window.__lireLesEntanaNavoaka().then(function(navoaka){ poser(navoaka, true); },
+      function(){ poser(new Set(), true); });
+  }
+  window.__majLesBoutonsFil = majLesBoutonsFil;
+  // Une annonce qui vient de partir : son article passe à « Navoaka ».
+  document.addEventListener('billet-publie', majLesBoutonsFil);
 
   // Une marchandise épuisée, ou retirée du stock : son annonce n'a plus
   // d'objet, et la laisser, c'est proposer à la vente ce qu'on n'a plus.
@@ -297,6 +324,16 @@
     renderMovementsHistory();
     renderFilters();
     renderDashboard();
+
+    // « 📢 Avoaka ao amin'ny fil » coché : on passe tout de suite à la fiche
+    // de cet article. La case se décoche : le prochain article choisira pour
+    // lui-même.
+    const publier = document.getElementById('itemPublier');
+    if(publier && publier.checked){
+      publier.checked = false;
+      const ajoute = items.find(function(it){ return it.id === id; });
+      if(ajoute && typeof window.__ouvrirLaFicheDeLEntana === 'function') window.__ouvrirLaFicheDeLEntana(ajoute);
+    }
   });
 
   function movementTypeLabel(type){

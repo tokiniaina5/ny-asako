@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="2933c8ed">
+<meta name="ny-asako-version" content="29faf735">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -136,7 +136,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=3c7a1283">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=e288d70b">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=d696317b">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
@@ -918,7 +918,7 @@
           <div class="table-scroll">
             <table id="stockTable">
               <thead>
-                <tr><th>Réf.</th><th>Nom</th><th>Catégorie</th><th>Quantité</th><th>Unité</th><th>Prix unitaire</th><th>Valeur</th><th>Seuil</th><th>Fournisseur</th><th></th></tr>
+                <tr><th>Réf.</th><th>Nom</th><th>Catégorie</th><th>Quantité</th><th>Unité</th><th>Prix unitaire</th><th>Valeur</th><th>Seuil</th><th>Fournisseur</th><th title="Navoaka ao amin'ny fil ve?">Fil</th><th></th></tr>
               </thead>
               <tbody id="stockTableBody"></tbody>
             </table>
@@ -1620,6 +1620,12 @@
                   <label>Fournisseur (optionnel)</label>
                   <input id="itemSupplier" type="text" placeholder="Ex: Grossiste Analakely">
                 </div>
+                <!-- Coché : la boîte « Écrire » s'ouvre sur la fiche de l'article
+                     dès qu'il est ajouté (stock.js). Décoché : il reste au stock,
+                     sans annonce. -->
+                <label class="case-publier" for="itemPublier">
+                  <input type="checkbox" id="itemPublier"> 📢 Avoaka ao amin'ny fil
+                </label>
                 <button class="btn btn-primary" id="addItemBtn" style="width:auto;">Ajouter</button>
               </div>
             </div>
@@ -2946,7 +2952,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
 <script src="gestion-stockage-js/common.js?v=80e17225"></script>
-<script src="gestion-stockage-js/stock.js?v=b65f89d4"></script>
+<script src="gestion-stockage-js/stock.js?v=ba1dba0a"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
 <script src="gestion-stockage-js/factures.js?v=3c5eba5b"></script>
@@ -2958,7 +2964,7 @@
 <script src="gestion-stockage-js/zara-rehetra.js?v=dfde1af2"></script>
 <script src="gestion-stockage-js/live.js?v=accde37b"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=9ffc256a"></script>
+<script src="gestion-stockage-js/parametres.js?v=dd464291"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>

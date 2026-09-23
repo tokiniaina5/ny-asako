@@ -2570,6 +2570,43 @@
   // qui le tient, et elle compare les deux adresses sans tenir compte de la
   // casse. Le faire ici avec « eq » les comparerait lettre à lettre, et une
   // majuscule de différence laisserait l'annonce en place.
+  // Les articles qui ont une annonce en ligne, pour la colonne « Fil » de la
+  // page des articles (stock.js). Une seule question pour toute la liste. Les
+  // annonces à la corbeille ne comptent pas : elles ne sont plus en ligne.
+  // Sans la colonne deleted_at (supabase-corbeille.sql pas encore passé), on
+  // redemande sans ce filtre.
+  window.__lireLesEntanaNavoaka = function(){
+    if(!window.__sb) return Promise.resolve(new Set());
+    const demander = function(enLigne){
+      let q = window.__sb.from('client_news').select('item_id').not('item_id', 'is', null);
+      if(enLigne) q = q.is('deleted_at', null);
+      return q.limit(1000);
+    };
+    return demander(true)
+      .then(function(res){ return (res && res.error) ? demander(false) : res; })
+      .then(function(res){
+        const navoaka = new Set();
+        ((res && !res.error && res.data) || []).forEach(function(r){ if(r.item_id) navoaka.add(String(r.item_id)); });
+        return navoaka;
+      });
+  };
+
+  // Retirer un article du fil sans le retirer du stock : son annonce part à
+  // la corbeille, comme quand on l'efface depuis le fil lui-même.
+  window.__retirerLEntanaDuFil = function(itemId){
+    if(!itemId || !window.__sb) return Promise.reject(new Error('serveur'));
+    return window.__sb.from('client_news').update({ deleted_at: new Date().toISOString() })
+      .eq('item_id', itemId).is('deleted_at', null).select('id')
+      .then(function(res){
+        if(!res || res.error || !res.data || !res.data.length) throw (res && res.error) || new Error('refus');
+        renderCommunityNews();
+        return true;
+      });
+  };
+  // La page des articles a pu se dessiner avant ce fichier : ses boutons
+  // attendaient ces deux fonctions.
+  if(typeof window.__majLesBoutonsFil === 'function') window.__majLesBoutonsFil();
+
   window.__effacerLesBilletsDeLEntana = function(itemId){
     if(!itemId || !window.__sb) return Promise.resolve(false);
     if(!(currentUser && currentUser.email)) return Promise.resolve(false);
