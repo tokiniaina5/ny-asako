@@ -507,26 +507,102 @@
     return !!(adresse && moi && adresse === moi && n.id);
   }
 
-  function effacerMonBillet(n, div, bouton){
-    if(!window.__sb || !estMonBillet(n)) return;
-    if(!confirm('Hofafana ve ity publication ity? Tsy azo averina intsony izany.')) return;
-    bouton.style.pointerEvents = 'none';
-    bouton.textContent = '⏳ Mamafa…';
+  // Le billet part du côté où on l'a poussé (sens : -1 gauche, 1 droite), puis
+  // la place se referme. Refusé ou manqué, il revient.
+  function effacerMonBillet(n, div, bouton, sens){
+    const remettre = function(){
+      div.style.transition = 'transform 0.2s, opacity 0.2s';
+      div.style.transform = '';
+      div.style.opacity = '';
+    };
+    if(!window.__sb || !estMonBillet(n)){ remettre(); return; }
+    if(!confirm('Hofafana ve ity publication ity? Tsy azo averina intsony izany.')){ remettre(); return; }
+    if(bouton){
+      bouton.style.pointerEvents = 'none';
+      bouton.textContent = '⏳ Mamafa…';
+    }
     // « select » après « delete » : une règle qui refuse n'est pas une
     // erreur, elle efface zéro ligne. Seule la ligne rendue dit que c'est fait.
     window.__sb.from('client_news').delete().eq('id', n.id).select('id')
       .then(function(res){
-        if(res && !res.error && res.data && res.data.length){
-          div.remove();
-          return;
-        }
-        throw new Error('refus');
+        if(!(res && !res.error && res.data && res.data.length)) throw new Error('refus');
+        div.style.transition = 'transform 0.25s ease-in, opacity 0.25s ease-in';
+        div.style.transform = 'translateX(' + ((sens || 1) * 110) + '%)';
+        div.style.opacity = '0';
+        setTimeout(function(){
+          // La place se referme doucement au lieu de sauter.
+          div.style.overflow = 'hidden';
+          div.style.maxHeight = div.offsetHeight + 'px';
+          div.offsetHeight;
+          div.style.transition = 'max-height 0.2s, margin 0.2s, padding 0.2s';
+          div.style.maxHeight = '0';
+          div.style.marginTop = div.style.marginBottom = '0';
+          div.style.paddingTop = div.style.paddingBottom = '0';
+          setTimeout(function(){ div.remove(); }, 220);
+        }, 250);
       })
       .catch(function(){
-        bouton.style.pointerEvents = '';
-        bouton.textContent = '🗑️ Hamafa';
+        if(bouton){
+          bouton.style.pointerEvents = '';
+          bouton.textContent = '🗑️ Hamafa';
+        }
+        remettre();
         alert('Tsy voafafa ilay publication. Andramo indray.');
       });
+  }
+
+  // Glisser son billet à gauche ou à droite l'efface, comme le bouton. Le
+  // geste ne commence qu'une fois franchement horizontal : un doigt qui fait
+  // défiler le fil ne doit rien déplacer.
+  const GLISSE_SEUIL = 0.35;
+  function glisserPourEffacer(n, div){
+    if(!estMonBillet(n)) return;
+    div.style.touchAction = 'pan-y';
+    // À la souris, une image se laisserait tirer hors de la page à la place.
+    div.addEventListener('dragstart', function(e){ e.preventDefault(); });
+    let depart = null, glisse = false, dx = 0;
+    div.addEventListener('pointerdown', function(e){
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      // Les champs, boutons, liens et vidéos gardent leurs propres gestes.
+      if(e.target.closest('input, textarea, button, a, video, select, [data-comments]')) return;
+      depart = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      glisse = false; dx = 0;
+    });
+    div.addEventListener('pointermove', function(e){
+      if(!depart || e.pointerId !== depart.id) return;
+      dx = e.clientX - depart.x;
+      const dy = e.clientY - depart.y;
+      if(!glisse){
+        if(Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)){ depart = null; return; }
+        if(Math.abs(dx) < 10) return;
+        glisse = true;
+        div.style.transition = 'none';
+        try { div.setPointerCapture(e.pointerId); } catch(err){}
+      }
+      const part = Math.min(Math.abs(dx) / div.offsetWidth, 1);
+      div.style.transform = 'translateX(' + dx + 'px)';
+      div.style.opacity = String(1 - part * 0.6);
+    });
+    const finir = function(e){
+      if(!depart || e.pointerId !== depart.id) return;
+      depart = null;
+      if(!glisse) return;
+      glisse = false;
+      // Un clic suit parfois la fin du geste : il ne doit rien ouvrir. S'il
+      // ne vient pas, la garde tombe d'elle-même.
+      const arreter = function(ev){ ev.stopPropagation(); ev.preventDefault(); };
+      div.addEventListener('click', arreter, true);
+      setTimeout(function(){ div.removeEventListener('click', arreter, true); }, 300);
+      if(Math.abs(dx) >= div.offsetWidth * GLISSE_SEUIL){
+        effacerMonBillet(n, div, div.querySelector('[data-delete-post]'), dx < 0 ? -1 : 1);
+      } else {
+        div.style.transition = 'transform 0.2s, opacity 0.2s';
+        div.style.transform = '';
+        div.style.opacity = '';
+      }
+    };
+    div.addEventListener('pointerup', finir);
+    div.addEventListener('pointercancel', finir);
   }
 
   // Le nom et le visage à montrer : ceux de la marque pour la maison, ceux du
@@ -1665,6 +1741,7 @@
           if(deleteEl){
             deleteEl.addEventListener('click', function(){ effacerMonBillet(n, div, deleteEl); });
           }
+          glisserPourEffacer(n, div);
           const buyEl = div.querySelector('[data-buy]');
           if(buyEl){
             buyEl.addEventListener('click', function(){ buyFromPost(n); });

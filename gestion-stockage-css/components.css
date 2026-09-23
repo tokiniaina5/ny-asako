@@ -600,7 +600,8 @@
   .fb-composer-extra input:focus, .fb-composer-extra select:focus{ outline:none; border-color:var(--cyan); }
   .fb-composer-extra select{ flex:0 0 auto; min-width:140px; }
 
-  .fb-feed{ display:flex; flex-direction:column; gap:0.9rem; }
+  /* Un billet glissé pour être effacé sort du fil sans faire défiler la page de côté. */
+  .fb-feed{ display:flex; flex-direction:column; gap:0.9rem; overflow-x:clip; }
   .fb-post{
     background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:1.1rem;
   }
