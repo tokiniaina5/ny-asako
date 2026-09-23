@@ -317,6 +317,9 @@
   // Pas de « Ny anao » ici, contrairement aux boutiques : la liste ne se
   // complète pas depuis la page, et rien n'est à poser dans la base. Le jour
   // où il en faudra, c'est "marketplace_links" qu'il faudra imiter.
+  //
+  // La même liste est recopiée dans supabase/functions/vaovao-boutique
+  // (TRANSPORTEURS), qui les publie dans le fil : l'une bouge, l'autre suit.
   const DEFAULT_TRANSPORTEURS = [
     {
       // Le cas de presque tout le monde : un colis, quelques kilos, de porte

@@ -1,4 +1,5 @@
-// Les quatre publications du jour, tirées des boutiques d'achats internationaux.
+// Les quatre publications du jour, tirées des boutiques d'achats internationaux
+// et des transporteurs de la livraison internationale, tour à tour.
 //
 // Le fil vivait de ce que les gens y écrivaient : les jours où personne
 // n'écrivait, il ne disait rien, et l'on n'y revenait plus. La maison y prend
@@ -60,8 +61,8 @@ function memeSecret(a: string, b: string): boolean {
 // billets repartent avec des initiales.
 const MARQUE_NOM = "Ny asako";
 // L'étiquette du billet, à la place de « Autre » : on doit voir d'un coup
-// d'œil ce qui vient de la maison et ce qui vient de quelqu'un.
-const RESEAU = "Boutique";
+// d'œil ce qui vient de la maison et ce qui vient de quelqu'un. Elle dépend de
+// la sorte d'adresse (SORTES, plus bas).
 
 // Les boutiques, avec le rayon sous lequel la page les range. Le rangement ne
 // sert pas ici, mais garder la même forme qu'à la page rend la comparaison
@@ -99,10 +100,70 @@ const BOUTIQUES: { groupe: string; nom: string; url: string }[] = [
   { groupe: "Fitaovana sy fiara", nom: "AUTODOC", url: "https://www.autodoc.fr" },
 ];
 
+// Acheter à l'étranger est la moitié du chemin ; faire venir la marchandise
+// est l'autre. Les transporteurs passent donc dans le fil comme les boutiques,
+// sous leur propre étiquette.
+//
+// LA LISTE EST LA MÊME QUE DEFAULT_TRANSPORTEURS (parametres.js), pour la même
+// raison que celle des boutiques.
+const TRANSPORTEURS: { groupe: string; nom: string; url: string }[] = [
+  { groupe: "Kolisy haingana (express)", nom: "DHL Express", url: "https://www.dhl.com" },
+  { groupe: "Kolisy haingana (express)", nom: "FedEx", url: "https://www.fedex.com" },
+  { groupe: "Kolisy haingana (express)", nom: "UPS", url: "https://www.ups.com" },
+  { groupe: "Kolisy haingana (express)", nom: "TNT", url: "https://www.tnt.com" },
+  { groupe: "Kolisy haingana (express)", nom: "Chronopost", url: "https://www.chronopost.fr" },
+  { groupe: "Kolisy haingana (express)", nom: "Colissimo", url: "https://www.laposte.fr/colissimo" },
+  { groupe: "Kolisy haingana (express)", nom: "Aramex", url: "https://www.aramex.com" },
+  { groupe: "Kolisy haingana (express)", nom: "DPD", url: "https://www.dpd.com" },
+  { groupe: "Kolisy haingana (express)", nom: "GLS", url: "https://gls-group.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "CMA CGM", url: "https://www.cma-cgm.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "MSC", url: "https://www.msc.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "Maersk", url: "https://www.maersk.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "Hapag-Lloyd", url: "https://www.hapag-lloyd.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "Evergreen", url: "https://www.evergreen-line.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "COSCO", url: "https://lines.coscoshipping.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "ONE", url: "https://www.one-line.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "PIL", url: "https://www.pilship.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "ZIM", url: "https://www.zim.com" },
+  { groupe: "An-dranomasina (maritime)", nom: "Messina Line", url: "https://www.messinaline.it" },
+  { groupe: "An'habakabaka (aérien)", nom: "Emirates SkyCargo", url: "https://www.skycargo.com" },
+  { groupe: "An'habakabaka (aérien)", nom: "Turkish Cargo", url: "https://www.turkishcargo.com" },
+  { groupe: "An'habakabaka (aérien)", nom: "Qatar Airways Cargo", url: "https://www.qrcargo.com" },
+  { groupe: "An'habakabaka (aérien)", nom: "Lufthansa Cargo", url: "https://lufthansa-cargo.com" },
+  { groupe: "An'habakabaka (aérien)", nom: "Ethiopian Airlines", url: "https://www.ethiopianairlines.com" },
+  { groupe: "An'habakabaka (aérien)", nom: "Kenya Airways", url: "https://www.kenya-airways.com" },
+  { groupe: "An'habakabaka (aérien)", nom: "Air Austral", url: "https://www.air-austral.com" },
+  { groupe: "An'habakabaka (aérien)", nom: "Corsair", url: "https://www.corsair.fr" },
+  { groupe: "Transitaires (groupage)", nom: "Kuehne+Nagel", url: "https://home.kuehne-nagel.com" },
+  { groupe: "Transitaires (groupage)", nom: "DB Schenker", url: "https://www.dbschenker.com" },
+  { groupe: "Transitaires (groupage)", nom: "DSV", url: "https://www.dsv.com" },
+  { groupe: "Transitaires (groupage)", nom: "Geodis", url: "https://geodis.com" },
+  { groupe: "Transitaires (groupage)", nom: "AGL", url: "https://www.aglgroup.com" },
+  { groupe: "Eto Madagasikara", nom: "Paositra Malagasy", url: "https://www.paositramalagasy.mg" },
+  { groupe: "Eto Madagasikara", nom: "Madagascar Airlines", url: "https://www.madagascarairlines.com" },
+  { groupe: "Eto Madagasikara", nom: "Douanes Malagasy", url: "https://www.douanes.gov.mg" },
+  { groupe: "Fanarahana entana", nom: "17TRACK", url: "https://www.17track.net" },
+  { groupe: "Fanarahana entana", nom: "Parcels App", url: "https://parcelsapp.com" },
+];
+
+type Adresse = { groupe: string; nom: string; url: string; sorte: "boutique" | "livraison" };
+
+// L'étiquette et l'invitation changent avec la sorte : on ne « regarde pas ce
+// qui se vend » chez un transporteur.
+const SORTES = {
+  boutique: { reseau: "Boutique", icone: "🛍️", invite: "Tsindrio ny rohy hijerena izay amidy any." },
+  livraison: { reseau: "Livraison international", icone: "🚚", invite: "Tsindrio ny rohy hijerena ny fomba handefasany entana." },
+};
+
+const TOUTES: Adresse[] = [
+  ...BOUTIQUES.map((b) => ({ ...b, sorte: "boutique" as const })),
+  ...TRANSPORTEURS.map((b) => ({ ...b, sorte: "livraison" as const })),
+];
+
 // Sept jours : c'est la fenêtre du fil lui-même. Une boutique déjà passée
 // pendant ces jours-là y est encore affichée ; la remontrer ferait deux fois
-// la même carte dans la même page. Trente boutiques et quatre billets par jour
-// font un tour complet en sept jours et demi — la file se vide juste à temps.
+// la même carte dans la même page. Avec les transporteurs, la liste dépasse
+// ce que sept jours publient : la file ne se vide plus, elle tourne.
 const FENETRE_JOURS = 7;
 
 // Une boutique qui se referme devant un robot ne donne ni phrase ni image :
@@ -145,11 +206,12 @@ async function lApercu(base: string, clef: string, url: string): Promise<Apercu>
 // Le texte du billet : le nom de la boutique et son rayon, ce qu'elle dit
 // d'elle-même, et l'invitation. La carte du lien porte les images ; le texte
 // n'a pas à les décrire.
-function leTexte(nom: string, groupe: string, a: Apercu): string {
-  const lignes = ["🛍️ " + nom + " — " + groupe];
+function leTexte(b: Adresse, a: Apercu): string {
+  const sorte = SORTES[b.sorte];
+  const lignes = [sorte.icone + " " + b.nom + " — " + b.groupe];
   const phrase = (a.description || a.titre || "").trim();
   if (phrase) lignes.push(phrase.slice(0, 220));
-  lignes.push("Tsindrio ny rohy hijerena izay amidy any.");
+  lignes.push(sorte.invite);
   return lignes.join("\n");
 }
 
@@ -179,35 +241,50 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(supabaseUrl, serviceKey);
 
-  // Les boutiques déjà passées dans la fenêtre du fil.
+  // Les adresses déjà passées dans la fenêtre du fil, la plus récente d'abord.
   const depuis = new Date(Date.now() - FENETRE_JOURS * 24 * 60 * 60 * 1000).toISOString();
   const { data: deja, error: erreurLecture } = await admin
     .from("client_news")
-    .select("link")
+    .select("link,network")
     .eq("client_name", MARQUE_NOM)
     .gte("created_at", depuis)
+    .order("created_at", { ascending: false })
     .limit(200);
   if (erreurLecture) return json({ error: erreurLecture.message }, 500);
 
-  const vues = new Set((deja ?? []).map((r: { link?: string }) => String(r.link ?? "")));
-  let file = BOUTIQUES.filter((b) => !vues.has(b.url));
-  // Toutes passées : le tour est fini, on le recommence. Sans cela la maison
-  // se tairait le jour où la liste serait épuisée.
-  if (!file.length) file = BOUTIQUES.slice();
+  const lignes = (deja ?? []) as { link?: string; network?: string }[];
+  const vues = new Set(lignes.map((r) => String(r.link ?? "")));
+  // Chaque sorte a sa file. Une file vide recommence son tour seule : sans
+  // cela la maison se tairait le jour où la liste serait épuisée.
+  const files: Record<Adresse["sorte"], Adresse[]> = { boutique: [], livraison: [] };
+  for (const sorte of ["boutique", "livraison"] as const) {
+    const toutes = TOUTES.filter((b) => b.sorte === sorte);
+    files[sorte] = toutes.filter((b) => !vues.has(b.url));
+    if (!files[sorte].length) files[sorte] = toutes.slice();
+  }
 
-  // Chaque billet tire une boutique au hasard dans ce qui reste, va voir ce
-  // qu'elle dit, et passe à la suivante si elle ne dit rien. La boutique
-  // essayée sort de la file dans les deux cas : une boutique muette à
-  // l'instant le sera encore dans la minute, et l'on ne va pas y revenir deux
-  // fois dans le même passage. Elle revient au passage d'après.
-  const choisies: { groupe: string; nom: string; url: string }[] = [];
+  // Une boutique, un transporteur, une boutique : les deux sortes se
+  // succèdent, et l'on part de celle qui n'a pas parlé la dernière.
+  const derniere = lignes.find((r) => r.network === SORTES.livraison.reseau || r.network === SORTES.boutique.reseau);
+  let sorte: Adresse["sorte"] = derniere && derniere.network === SORTES.boutique.reseau ? "livraison" : "boutique";
+
+  // Chaque billet tire une adresse au hasard dans sa file, va voir ce
+  // qu'elle dit, et passe à la suivante si elle ne dit rien. L'adresse
+  // essayée sort de la file dans les deux cas : muette à l'instant, elle le
+  // sera encore dans la minute. Elle revient au passage d'après.
+  const choisies: Adresse[] = [];
   const billets: Record<string, unknown>[] = [];
   const muettes: string[] = [];
 
-  for (let i = 0; i < combien && file.length; i++) {
-    let retenue: { groupe: string; nom: string; url: string } | null = null;
+  for (let i = 0; i < combien; i++) {
+    // La sorte voulue n'a plus rien à ce passage : l'autre parle à sa place.
+    if (!files[sorte].length) sorte = sorte === "boutique" ? "livraison" : "boutique";
+    const file = files[sorte];
+    if (!file.length) break;
+
+    let retenue: Adresse | null = null;
     let apercu: Apercu = {};
-    let repli: { groupe: string; nom: string; url: string } | null = null;
+    let repli: Adresse | null = null;
     let apercuRepli: Apercu = {};
 
     for (let tentative = 0; tentative < ESSAIS_MUETS && file.length; tentative++) {
@@ -228,8 +305,8 @@ Deno.serve(async (req: Request) => {
     choisies.push(b);
     billets.push({
       client_name: MARQUE_NOM,
-      network: RESEAU,
-      message: leTexte(b.nom, b.groupe, a),
+      network: SORTES[b.sorte].reseau,
+      message: leTexte(b, a),
       link: b.url,
       type: "vaovao",
       price: null,
@@ -239,13 +316,15 @@ Deno.serve(async (req: Request) => {
       // n'est pas passé, pour un résultat identique à l'écran.
       image: null,
     });
+    sorte = b.sorte === "boutique" ? "livraison" : "boutique";
   }
+  const restantes = files.boutique.length + files.livraison.length;
 
   // « muettes » n'est pas une erreur : c'est la liste de celles qui se sont
   // refusées à ce passage-là, et qui reviendront au suivant. La voir permet
   // de reconnaître une boutique qui ne parle jamais, et de la retirer des
   // deux listes si elle ne sert à rien.
-  if (essai) return json({ essai: true, restantes: file.length, muettes, billets });
+  if (essai) return json({ essai: true, restantes, muettes, billets });
   if (!billets.length) return json({ publies: 0, muettes });
 
   const { error } = await admin.from("client_news").insert(billets);
@@ -255,6 +334,6 @@ Deno.serve(async (req: Request) => {
     publies: billets.length,
     boutiques: choisies.map((b) => b.nom),
     muettes,
-    restantes: file.length,
+    restantes,
   });
 });
