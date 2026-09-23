@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="a6e38f7d">
+<meta name="ny-asako-version" content="dc518348">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -633,6 +633,9 @@
         <div class="nav-item" data-section="livreur">🛵 Livreur</div>
         <div class="nav-item" data-section="abonnement">💳 Abonnement</div>
         <div class="nav-item" data-section="fond">🖼️ Fond d'écran</div>
+        <!-- Les publications effacées attendent ici : on les reprend, ou on les
+             efface pour de bon (corbeille, parametres.js). -->
+        <div class="nav-item" data-section="corbeille">🗑️ Corbeille</div>
         <div class="nav-item" data-section="connexions" id="navParametres">⚙️ Paramètres</div>
         <!-- Espace du propriétaire : masqué pour tous les clients -->
         <div class="nav-item" data-section="admin" id="navAdmin" style="display:none;">🛡️ Espace admin</div>
@@ -1785,6 +1788,25 @@
         </div>
       </section>
 
+      <!-- ---- CORBEILLE : les publications effacées par leur auteur ---- -->
+      <section class="section" id="section-corbeille">
+        <div class="section-head">
+          <div>
+            <h2>🗑️ Corbeille</h2>
+            <p>Ireo publication nofafanao. Tsy hita eo amin'ny site intsony izy ireo, fa azonao averina eto, na fafana tanteraka.</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.8rem;">
+            <h3 style="margin:0;">Publications nofafana</h3>
+            <button type="button" class="btn btn-red btn-sm" id="corbeilleVider" style="width:auto; display:none;">🧹 Fafana tanteraka daholo</button>
+          </div>
+          <p id="corbeilleStatut" style="font-size:0.8rem; color:var(--muted); margin:0 0 0.6rem;"></p>
+          <div id="corbeilleListe" class="fb-feed"></div>
+          <p class="empty-hint" id="corbeilleVide" style="display:none;">Foana ny Corbeille.</p>
+        </div>
+      </section>
+
       <!-- ---- NOUS CONTACTER (visible aux clients ET à l'admin) ---- -->
       <section class="section" id="section-contact">
         <div class="section-head">
@@ -2851,7 +2873,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=3212bdb7"></script>
+<script src="gestion-stockage-js/common.js?v=ac157e4c"></script>
 <script src="gestion-stockage-js/stock.js?v=f9ee9706"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
@@ -2864,7 +2886,7 @@
 <script src="gestion-stockage-js/zara-rehetra.js?v=dfde1af2"></script>
 <script src="gestion-stockage-js/live.js?v=accde37b"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=0272ca16"></script>
+<script src="gestion-stockage-js/parametres.js?v=168c3ea4"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>

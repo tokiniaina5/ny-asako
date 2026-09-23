@@ -157,11 +157,19 @@
   // existe encore. Les deux chiffres changent ensemble, ou aucun.
   var depuis = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+  // Un billet à la corbeille ne se montre pas ici, même à son auteur connecté
+  // (supabase-corbeille.sql). Tant que la colonne n'existe pas, le filtre
+  // ferait échouer la lecture : on le retire alors.
+  function requete(enLigne) {
+    var q = window.__sb.from('client_news').select(COLONNES).gte('created_at', depuis);
+    if (enLigne) q = q.is('deleted_at', null);
+    return q.order('created_at', { ascending: false }).limit(30);
+  }
+
   function lire() {
     if (!window.__sb) { $('bkVide').style.display = ''; return; }
-    window.__sb.from('client_news').select(COLONNES)
-      .gte('created_at', depuis)
-      .order('created_at', { ascending: false }).limit(30)
+    requete(true)
+      .then(function (res) { return (res && res.error) ? requete(false) : res; })
       .then(function (res) {
         if (res && res.error) { $('bkVide').style.display = ''; return; }
         dessiner((res && res.data) || []);

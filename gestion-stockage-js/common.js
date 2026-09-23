@@ -3289,6 +3289,7 @@
       'section-moi',
       'section-abonnement',
       'section-fond',
+      'section-corbeille',
       'section-connexions', 'section-admin'
     ];
     const COINS = [
@@ -5457,6 +5458,7 @@
          && typeof renderEquipe === 'function') renderEquipe();
       if(nav.dataset.section === 'live') renderLiveList();
       if(nav.dataset.section === 'appels') renderOnlineClientsForCall();
+      if(nav.dataset.section === 'corbeille' && typeof renderCorbeille === 'function') renderCorbeille();
       // ferme le menu mobile après avoir choisi une section
       if(navList && navList.classList.contains('open')){
         navList.classList.remove('open');

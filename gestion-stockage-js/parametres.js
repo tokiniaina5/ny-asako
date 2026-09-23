@@ -508,7 +508,28 @@
   }
 
   // Le billet part du côté où on l'a poussé (sens : -1 gauche, 1 droite), puis
-  // la place se referme. Refusé ou manqué, il revient.
+  // la place se referme.
+  function faireSortirLeBillet(div, sens){
+    div.style.transition = 'transform 0.25s ease-in, opacity 0.25s ease-in';
+    div.style.transform = 'translateX(' + ((sens || 1) * 110) + '%)';
+    div.style.opacity = '0';
+    setTimeout(function(){
+      // La place se referme doucement au lieu de sauter.
+      div.style.overflow = 'hidden';
+      div.style.maxHeight = div.offsetHeight + 'px';
+      div.offsetHeight;
+      div.style.transition = 'max-height 0.2s, margin 0.2s, padding 0.2s';
+      div.style.maxHeight = '0';
+      div.style.marginTop = div.style.marginBottom = '0';
+      div.style.paddingTop = div.style.paddingBottom = '0';
+      setTimeout(function(){ div.remove(); }, 220);
+    }, 250);
+  }
+
+  // Effacer n'efface plus : le billet passe à la corbeille, où son auteur peut
+  // le reprendre ou l'effacer pour de bon (supabase-corbeille.sql). Rien ne se
+  // perd sur un geste, d'où l'absence de question ici — elle est posée là où
+  // l'on efface vraiment. Refusé ou manqué, il revient à sa place.
   function effacerMonBillet(n, div, bouton, sens){
     const remettre = function(){
       div.style.transition = 'transform 0.2s, opacity 0.2s';
@@ -516,38 +537,29 @@
       div.style.opacity = '';
     };
     if(!window.__sb || !estMonBillet(n)){ remettre(); return; }
-    if(!confirm('Hofafana ve ity publication ity? Tsy azo averina intsony izany.')){ remettre(); return; }
     if(bouton){
       bouton.style.pointerEvents = 'none';
       bouton.textContent = '⏳ Mamafa…';
     }
-    // « select » après « delete » : une règle qui refuse n'est pas une
-    // erreur, elle efface zéro ligne. Seule la ligne rendue dit que c'est fait.
-    window.__sb.from('client_news').delete().eq('id', n.id).select('id')
+    // « select » après « update » : une règle qui refuse n'est pas une
+    // erreur, elle touche zéro ligne. Seule la ligne rendue dit que c'est fait.
+    window.__sb.from('client_news').update({ deleted_at: new Date().toISOString() })
+      .eq('id', n.id).select('id')
       .then(function(res){
-        if(!(res && !res.error && res.data && res.data.length)) throw new Error('refus');
-        div.style.transition = 'transform 0.25s ease-in, opacity 0.25s ease-in';
-        div.style.transform = 'translateX(' + ((sens || 1) * 110) + '%)';
-        div.style.opacity = '0';
-        setTimeout(function(){
-          // La place se referme doucement au lieu de sauter.
-          div.style.overflow = 'hidden';
-          div.style.maxHeight = div.offsetHeight + 'px';
-          div.offsetHeight;
-          div.style.transition = 'max-height 0.2s, margin 0.2s, padding 0.2s';
-          div.style.maxHeight = '0';
-          div.style.marginTop = div.style.marginBottom = '0';
-          div.style.paddingTop = div.style.paddingBottom = '0';
-          setTimeout(function(){ div.remove(); }, 220);
-        }, 250);
+        if(!(res && !res.error && res.data && res.data.length)) throw (res && res.error) || new Error('refus');
+        faireSortirLeBillet(div, sens);
       })
-      .catch(function(){
+      .catch(function(err){
         if(bouton){
           bouton.style.pointerEvents = '';
           bouton.textContent = '🗑️ Hamafa';
         }
         remettre();
-        alert('Tsy voafafa ilay publication. Andramo indray.');
+        // La colonne manque tant que supabase-corbeille.sql n'est pas passé.
+        const sansCorbeille = err && (err.code === '42703' || err.code === 'PGRST204');
+        alert(sansCorbeille
+          ? 'Tsy mbola vonona ny Corbeille (supabase-corbeille.sql tsy mbola nalefa).'
+          : 'Tsy voafafa ilay publication. Andramo indray.');
       });
   }
 
@@ -604,6 +616,132 @@
     div.addEventListener('pointerup', finir);
     div.addEventListener('pointercancel', finir);
   }
+
+  // ---------------- CORBEILLE ----------------
+  // Les publications que leur auteur a effacées. Elles ne sont plus sur le
+  // site pour personne ; ici, on les reprend ou on les efface pour de bon.
+  //
+  // Nul besoin de filtrer par auteur : la base ne rend un billet à la
+  // corbeille qu'à celui qui l'a écrit (supabase-corbeille.sql).
+  function renderCorbeille(){
+    const liste = document.getElementById('corbeilleListe');
+    const vide = document.getElementById('corbeilleVide');
+    const statut = document.getElementById('corbeilleStatut');
+    const vider = document.getElementById('corbeilleVider');
+    if(!liste) return;
+    liste.innerHTML = '';
+    vide.style.display = 'none';
+    vider.style.display = 'none';
+    if(!window.__sb || !(currentUser && currentUser.email)){
+      statut.textContent = 'Midira amin\'ny kaontinao aloha vao hahita ny Corbeille.';
+      return;
+    }
+    statut.textContent = '⏳ Mitady…';
+    window.__sb.from('client_news')
+      .select('id,message,type,created_at,deleted_at,author_email')
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false }).limit(100)
+      .then(function(res){
+        if(res && res.error){
+          const manque = res.error.code === '42703' || res.error.code === 'PGRST204';
+          statut.textContent = manque
+            ? 'Tsy mbola vonona ny Corbeille : alefaso ao amin\'ny Supabase ny supabase-corbeille.sql.'
+            : 'Tsy azo ny Corbeille. Andramo indray.';
+          return;
+        }
+        const lignes = ((res && res.data) || []).filter(estMonBillet);
+        statut.textContent = lignes.length
+          ? 'Voafafa ho azy ny publication rehefa feno 30 andro hatramin\'ny namoahana azy.'
+          : '';
+        vide.style.display = lignes.length ? 'none' : 'block';
+        vider.style.display = lignes.length ? '' : 'none';
+        lignes.forEach(function(n){ liste.appendChild(carteDeCorbeille(n)); });
+      }, function(){ statut.textContent = 'Tsy azo ny Corbeille. Andramo indray.'; });
+  }
+
+  function corbeilleApresRetrait(){
+    setTimeout(function(){
+      const liste = document.getElementById('corbeilleListe');
+      if(!liste || liste.childElementCount) return;
+      document.getElementById('corbeilleVide').style.display = 'block';
+      document.getElementById('corbeilleVider').style.display = 'none';
+      document.getElementById('corbeilleStatut').textContent = '';
+    }, 520);
+  }
+
+  function carteDeCorbeille(n){
+    const div = document.createElement('div');
+    div.className = 'fb-post';
+    const quand = function(d){ return d ? new Date(d).toLocaleString('fr-FR') : ''; };
+    const texte = String(n.message || '').trim();
+    div.innerHTML =
+      '<div class="fb-post-meta"><span>Navoaka ' + escapeHtml(quand(n.created_at)) + '</span>' +
+        '<span>· Nofafana ' + escapeHtml(quand(n.deleted_at)) + '</span></div>' +
+      '<div class="fb-post-body">' + escapeHtml(texte.length > 280 ? texte.slice(0, 280) + '…' : texte) + '</div>' +
+      '<div class="fb-post-actions">' +
+        '<span class="fb-share-action" data-restaurer style="cursor:pointer; color:var(--cyan);">↩️ Averina</span>' +
+        '<span class="fb-share-action" data-detruire style="cursor:pointer; color:var(--red);">🗑️ Fafana tanteraka</span>' +
+      '</div>';
+    const restaurer = div.querySelector('[data-restaurer]');
+    const detruire = div.querySelector('[data-detruire]');
+    const occupe = function(el, texte){ el.style.pointerEvents = texte ? 'none' : ''; if(texte) el.textContent = texte; };
+
+    restaurer.addEventListener('click', function(){
+      occupe(restaurer, '⏳ Averina…');
+      window.__sb.from('client_news').update({ deleted_at: null }).eq('id', n.id).select('id')
+        .then(function(res){
+          if(!(res && !res.error && res.data && res.data.length)) throw new Error('refus');
+          faireSortirLeBillet(div, -1);
+          corbeilleApresRetrait();
+          if(typeof renderCommunityNews === 'function') renderCommunityNews();
+        })
+        .catch(function(){
+          occupe(restaurer, '');
+          restaurer.textContent = '↩️ Averina';
+          alert('Tsy voaverina ilay publication. Andramo indray.');
+        });
+    });
+
+    detruire.addEventListener('click', function(){
+      if(!confirm('Fafana tanteraka ve ity publication ity? Tsy azo averina intsony izany.')) return;
+      occupe(detruire, '⏳ Mamafa…');
+      // Les commentaires et les « j'aime » partent avec lui (on delete cascade).
+      window.__sb.from('client_news').delete().eq('id', n.id).select('id')
+        .then(function(res){
+          if(!(res && !res.error && res.data && res.data.length)) throw new Error('refus');
+          faireSortirLeBillet(div, 1);
+          corbeilleApresRetrait();
+        })
+        .catch(function(){
+          occupe(detruire, '');
+          detruire.textContent = '🗑️ Fafana tanteraka';
+          alert('Tsy voafafa ilay publication. Andramo indray.');
+        });
+    });
+    return div;
+  }
+
+  (function(){
+    const vider = document.getElementById('corbeilleVider');
+    if(!vider) return;
+    vider.addEventListener('click', function(){
+      if(!window.__sb) return;
+      if(!confirm('Fafana tanteraka daholo ve ireo publication rehetra ao amin\'ny Corbeille? Tsy azo averina intsony izany.')) return;
+      vider.disabled = true;
+      // La base n'efface que les billets de celui qui demande : « tous ceux
+      // de la corbeille » ne vise donc que les siens.
+      window.__sb.from('client_news').delete().not('deleted_at', 'is', null).select('id')
+        .then(function(res){
+          vider.disabled = false;
+          if(res && res.error) throw res.error;
+          renderCorbeille();
+        })
+        .catch(function(){
+          vider.disabled = false;
+          alert('Tsy voafafa ny Corbeille. Andramo indray.');
+        });
+    });
+  })();
 
   // Le nom et le visage à montrer : ceux de la marque pour la maison, ceux du
   // billet pour tous les autres.
@@ -1589,15 +1727,23 @@
     // les demander ferait échouer la requête entière et le fil resterait vide.
     // On les redemande alors sans elles.
     const COLONNES = 'id,client_name,network,message,link,type,price,image,created_at';
-    function lireLeFil(avecPhoto){
-      return window.__sb.from('client_news')
+    // Les billets à la corbeille restent lisibles par leur auteur : le fil
+    // les écarte lui-même. Sans la colonne (supabase-corbeille.sql pas encore
+    // passé), le filtre ferait échouer la lecture : on le retire alors.
+    function lireLeFil(avecPhoto, enLigne){
+      let q = window.__sb.from('client_news')
         .select(COLONNES + (avecPhoto ? ',author_photo,author_email' : ''))
-        .gte('created_at', oneWeekAgo)
-        .order('created_at', { ascending: false }).limit(30);
+        .gte('created_at', oneWeekAgo);
+      if(enLigne) q = q.is('deleted_at', null);
+      return q.order('created_at', { ascending: false }).limit(30);
     }
-    lireLeFil(true)
+    lireLeFil(true, true)
       .then(function(res){
-        if(res && res.error) return lireLeFil(false);
+        if(res && res.error) return lireLeFil(true, false);
+        return res;
+      })
+      .then(function(res){
+        if(res && res.error) return lireLeFil(false, false);
         return res;
       })
       .then(function(res){
