@@ -30,6 +30,21 @@
   .bk-corps{ max-width:680px; margin:0 auto; padding:1.2rem 16px 3rem; }
   /* L'annonce qu'on est venu voir (…?a=12) : on la retrouve d'un coup d'œil. */
   .fb-post.bk-visee{ border-color:var(--cyan); box-shadow:0 0 0 1px rgba(45,212,191,0.25); }
+  /* La vitrine : les articles en vente, à part du fil où ils se perdaient
+     entre les directs et les nouvelles. */
+  .bk-vitrine{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:0.7rem; }
+  .bk-carte{
+    display:flex; flex-direction:column; border:1px solid var(--line); border-radius:12px;
+    overflow:hidden; background:var(--panel-2); cursor:pointer; text-align:left; padding:0;
+    color:inherit; font:inherit;
+  }
+  .bk-carte:hover{ border-color:var(--cyan); }
+  .bk-carte-image{ width:100%; aspect-ratio:1 / 1; object-fit:cover; display:block; background:var(--bg); }
+  .bk-carte-sans{ display:flex; align-items:center; justify-content:center; font-size:2rem; }
+  .bk-carte-corps{ padding:0.55rem 0.65rem 0.7rem; display:flex; flex-direction:column; gap:0.25rem; flex:1; }
+  .bk-carte-nom{ font-size:0.82rem; font-weight:600; line-height:1.3; overflow:hidden;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .bk-carte-prix{ font-size:0.85rem; font-weight:700; color:var(--cyan); margin-top:auto; }
 </style>
 </head>
 <body>
@@ -49,6 +64,13 @@
       Raha te hividy na hanoratra ianao, dia <strong style="color:var(--text);">mamorona kaonty</strong> eo
       amin'ny « Hiditra » ambony.
     </p>
+  </div>
+
+  <!-- Les articles en vente, en vitrine. Un appui mène à leur annonce dans
+       le fil, où sont la fiche entière et le bouton pour acheter. -->
+  <div class="panel" id="bkVitrineBoite" style="display:none;">
+    <h3 style="margin-top:0;">🛒 Entana amidy</h3>
+    <div class="bk-vitrine" id="bkVitrine"></div>
   </div>
 
   <div class="fb-feed" id="bkFil"></div>
@@ -97,13 +119,11 @@
     } catch (e) { return [brut]; }
   }
 
-  function dessiner(lignes) {
-    var fil = $('bkFil');
-    $('bkVide').style.display = lignes.length ? 'none' : '';
-    fil.innerHTML = '';
-    lignes.forEach(function (n) {
+  // Un billet du fil. Il porte son numéro : la vitrine le retrouve par là.
+  function carteBillet(n) {
       var type = n.type || 'vaovao';
       var div = document.createElement('div');
+      div.id = 'bk-' + n.id;
       div.className = 'fb-post' + (type === 'live' ? ' fb-post-live' : (type === 'entana' ? ' fb-post-entana' : '')) +
         (vise && String(n.id) === vise ? ' bk-visee' : '');
       var badge = type === 'live'
@@ -140,8 +160,14 @@
           '<a href="' + echap(entree) + '" class="fb-share-action" style="color:var(--cyan); text-decoration:none;">' +
             (type === 'entana' ? '🛒 Hividy' : '➡️ Hiditra') + '</a>' +
         '</div>';
-      fil.appendChild(div);
-    });
+      return div;
+  }
+
+  function dessiner(lignes) {
+    var fil = $('bkFil');
+    $('bkVide').style.display = lignes.length ? 'none' : '';
+    fil.innerHTML = '';
+    lignes.forEach(function (n) { fil.appendChild(carteBillet(n)); });
     if (vise) {
       var el = fil.querySelector('.bk-visee');
       if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
@@ -160,20 +186,82 @@
   // Un billet à la corbeille ne se montre pas ici, même à son auteur connecté
   // (supabase-corbeille.sql). Tant que la colonne n'existe pas, le filtre
   // ferait échouer la lecture : on le retire alors.
-  function requete(enLigne) {
+  function requete(enLigne, entanaSeuls) {
     var q = window.__sb.from('client_news').select(COLONNES).gte('created_at', depuis);
     if (enLigne) q = q.is('deleted_at', null);
-    return q.order('created_at', { ascending: false }).limit(30);
+    if (entanaSeuls) q = q.eq('type', 'entana');
+    return q.order('created_at', { ascending: false }).limit(entanaSeuls ? 60 : 30);
+  }
+  function demander(entanaSeuls) {
+    return requete(true, entanaSeuls)
+      .then(function (res) { return (res && res.error) ? requete(false, entanaSeuls) : res; });
+  }
+
+  // ---- La vitrine ----
+  // Le fil ne montre que les trente derniers billets : les directs et les
+  // nouvelles y poussaient les articles dehors. La vitrine, elle, ne montre
+  // qu'eux, tous ceux qui sont en vente.
+  var VIDEO = /\.(mp4|webm|mov|m4v|ogv)(\?|$)/i;
+
+  // Le nom de l'article : la ligne « 📦 … » de sa fiche (parametres.js), et
+  // à défaut la première ligne de l'annonce.
+  function nomDeLArticle(n) {
+    var lignes = String(n.message || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+    for (var i = 0; i < lignes.length; i++) {
+      if (lignes[i].indexOf('📦') === 0) return lignes[i].replace(/^📦\s*/, '');
+    }
+    return lignes[0] || 'Entana';
+  }
+
+  // Un appui sur la vitrine mène à l'annonce : là sont la fiche entière et le
+  // bouton pour acheter. Absente du fil (trop ancienne pour les trente
+  // derniers), elle y est posée en tête.
+  function montrerLAnnonce(n) {
+    var fil = $('bkFil');
+    var el = document.getElementById('bk-' + n.id);
+    if (!el) {
+      el = carteBillet(n);
+      fil.insertBefore(el, fil.firstChild);
+      $('bkVide').style.display = 'none';
+    }
+    [].forEach.call(fil.querySelectorAll('.bk-visee'), function (x) { x.classList.remove('bk-visee'); });
+    el.classList.add('bk-visee');
+    if (el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function dessinerLaVitrine(lignes) {
+    var boite = $('bkVitrineBoite'), vitrine = $('bkVitrine');
+    vitrine.innerHTML = '';
+    boite.style.display = lignes.length ? '' : 'none';
+    lignes.forEach(function (n) {
+      var image = imagesDe(n.image).filter(function (s) { return !VIDEO.test(s); })[0];
+      var carte = document.createElement('button');
+      carte.type = 'button';
+      carte.className = 'bk-carte';
+      carte.innerHTML =
+        (image
+          ? '<img class="bk-carte-image" src="' + echap(image) + '" alt="" loading="lazy">'
+          : '<div class="bk-carte-image bk-carte-sans">🛒</div>') +
+        '<div class="bk-carte-corps">' +
+          '<div class="bk-carte-nom">' + echap(nomDeLArticle(n)) + '</div>' +
+          (n.price ? '<div class="bk-carte-prix">' + ariary(n.price) + '</div>' : '') +
+        '</div>';
+      carte.addEventListener('click', function () { montrerLAnnonce(n); });
+      vitrine.appendChild(carte);
+    });
   }
 
   function lire() {
     if (!window.__sb) { $('bkVide').style.display = ''; return; }
-    requete(true)
-      .then(function (res) { return (res && res.error) ? requete(false) : res; })
+    demander(false)
       .then(function (res) {
         if (res && res.error) { $('bkVide').style.display = ''; return; }
         dessiner((res && res.data) || []);
       }, function () { $('bkVide').style.display = ''; });
+    demander(true)
+      .then(function (res) {
+        if (res && !res.error) dessinerLaVitrine(res.data || []);
+      }, function () {});
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lire);
   else lire();
