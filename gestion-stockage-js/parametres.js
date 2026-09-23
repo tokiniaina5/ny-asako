@@ -498,6 +498,37 @@
     return String(n.client_name || '').trim() === MARQUE_NOM;
   }
 
+  // Le billet est-il de celui qui regarde ? Même règle que la base : une
+  // adresse d'auteur, et la même que celle du compte. Un billet sans adresse
+  // n'est à personne.
+  function estMonBillet(n){
+    const adresse = String((n && n.author_email) || '').trim().toLowerCase();
+    const moi = (currentUser && currentUser.email) ? currentUser.email.trim().toLowerCase() : '';
+    return !!(adresse && moi && adresse === moi && n.id);
+  }
+
+  function effacerMonBillet(n, div, bouton){
+    if(!window.__sb || !estMonBillet(n)) return;
+    if(!confirm('Hofafana ve ity publication ity? Tsy azo averina intsony izany.')) return;
+    bouton.style.pointerEvents = 'none';
+    bouton.textContent = '⏳ Mamafa…';
+    // « select » après « delete » : une règle qui refuse n'est pas une
+    // erreur, elle efface zéro ligne. Seule la ligne rendue dit que c'est fait.
+    window.__sb.from('client_news').delete().eq('id', n.id).select('id')
+      .then(function(res){
+        if(res && !res.error && res.data && res.data.length){
+          div.remove();
+          return;
+        }
+        throw new Error('refus');
+      })
+      .catch(function(){
+        bouton.style.pointerEvents = '';
+        bouton.textContent = '🗑️ Hamafa';
+        alert('Tsy voafafa ilay publication. Andramo indray.');
+      });
+  }
+
   // Le nom et le visage à montrer : ceux de la marque pour la maison, ceux du
   // billet pour tous les autres.
   function nomAffiche(n){
@@ -1598,7 +1629,14 @@
             // La feuille de WhatsApp coche cinq personnes et s'arrête là.
             // Celui-ci passe par la liste des clients (zara-rehetra.js) :
             // tout cocher d'un coup, sans plafond.
-            '<span class="fb-share-action" data-share-all style="cursor:pointer;">📢 Rehetra</span></div>' +
+            '<span class="fb-share-action" data-share-all style="cursor:pointer;">📢 Rehetra</span>' +
+            // Effacer n'est offert qu'à qui a écrit le billet : l'adresse du
+            // billet est celle du compte. La base dit la même chose de son
+            // côté (supabase-entana-lany.sql) — le bouton ne fait que suivre.
+            (estMonBillet(n)
+              ? '<span class="fb-share-action" data-delete-post style="cursor:pointer; color:var(--red);">🗑️ Hamafa</span>'
+              : '') +
+            '</div>' +
             '<div class="fb-comments" data-comments style="display:none;"></div>';
           // La ligne du compte se glisse juste avant la rangée des actions.
           const actionsRow = div.querySelector('.fb-post-actions');
@@ -1622,6 +1660,10 @@
             const garde = apercuGarde(lienDuBillet);
             dessinerLApercu(cadreApercu, garde);
             if(garde) cadreApercu.removeAttribute('data-apercu-attendu');
+          }
+          const deleteEl = div.querySelector('[data-delete-post]');
+          if(deleteEl){
+            deleteEl.addEventListener('click', function(){ effacerMonBillet(n, div, deleteEl); });
           }
           const buyEl = div.querySelector('[data-buy]');
           if(buyEl){
