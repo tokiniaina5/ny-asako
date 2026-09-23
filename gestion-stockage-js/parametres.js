@@ -566,37 +566,49 @@
   // Glisser son billet à gauche ou à droite l'efface, comme le bouton. Le
   // geste ne commence qu'une fois franchement horizontal : un doigt qui fait
   // défiler le fil ne doit rien déplacer.
+  //
+  // Le doigt passe par touchstart / touchmove, comme les lignes du stock
+  // (stock.js) : sur téléphone, les événements « pointer » sont annulés dès
+  // que le navigateur croit à un défilement, et le billet ne bougeait pas.
+  // La souris a son propre chemin.
   const GLISSE_SEUIL = 0.35;
   function glisserPourEffacer(n, div){
     if(!estMonBillet(n)) return;
     div.style.touchAction = 'pan-y';
     // À la souris, une image se laisserait tirer hors de la page à la place.
     div.addEventListener('dragstart', function(e){ e.preventDefault(); });
+
+    // Seuls les champs, boutons et vidéos gardent leurs gestes : la carte du
+    // lien et les images, qui couvrent presque tout le billet, se glissent
+    // aussi. Le clic qui suivrait un glissement est avalé (plus bas).
+    const intouchable = function(cible){
+      return !!(cible && cible.closest && cible.closest('input, textarea, button, select, video, [contenteditable]'));
+    };
+
     let depart = null, glisse = false, dx = 0;
-    div.addEventListener('pointerdown', function(e){
-      if(e.pointerType === 'mouse' && e.button !== 0) return;
-      // Les champs, boutons, liens et vidéos gardent leurs propres gestes.
-      if(e.target.closest('input, textarea, button, a, video, select, [data-comments]')) return;
-      depart = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    function debut(x, y, cible){
+      if(intouchable(cible)) { depart = null; return; }
+      depart = { x: x, y: y };
       glisse = false; dx = 0;
-    });
-    div.addEventListener('pointermove', function(e){
-      if(!depart || e.pointerId !== depart.id) return;
-      dx = e.clientX - depart.x;
-      const dy = e.clientY - depart.y;
+    }
+    function bouge(x, y){
+      if(!depart) return false;
+      dx = x - depart.x;
+      const dy = y - depart.y;
       if(!glisse){
-        if(Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)){ depart = null; return; }
-        if(Math.abs(dx) < 10) return;
+        // Plus vertical qu'horizontal : c'est le fil qui défile.
+        if(Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)){ depart = null; return false; }
+        if(Math.abs(dx) < 12) return false;
         glisse = true;
         div.style.transition = 'none';
-        try { div.setPointerCapture(e.pointerId); } catch(err){}
       }
-      const part = Math.min(Math.abs(dx) / div.offsetWidth, 1);
+      const part = Math.min(Math.abs(dx) / (div.offsetWidth || 1), 1);
       div.style.transform = 'translateX(' + dx + 'px)';
       div.style.opacity = String(1 - part * 0.6);
-    });
-    const finir = function(e){
-      if(!depart || e.pointerId !== depart.id) return;
+      return true;
+    }
+    function fin(){
+      if(!depart){ return; }
       depart = null;
       if(!glisse) return;
       glisse = false;
@@ -604,7 +616,7 @@
       // ne vient pas, la garde tombe d'elle-même.
       const arreter = function(ev){ ev.stopPropagation(); ev.preventDefault(); };
       div.addEventListener('click', arreter, true);
-      setTimeout(function(){ div.removeEventListener('click', arreter, true); }, 300);
+      setTimeout(function(){ div.removeEventListener('click', arreter, true); }, 350);
       if(Math.abs(dx) >= div.offsetWidth * GLISSE_SEUIL){
         effacerMonBillet(n, div, div.querySelector('[data-delete-post]'), dx < 0 ? -1 : 1);
       } else {
@@ -612,9 +624,42 @@
         div.style.transform = '';
         div.style.opacity = '';
       }
-    };
-    div.addEventListener('pointerup', finir);
-    div.addEventListener('pointercancel', finir);
+    }
+    function annuler(){
+      if(!depart && !glisse) return;
+      depart = null; glisse = false;
+      div.style.transition = 'transform 0.2s, opacity 0.2s';
+      div.style.transform = '';
+      div.style.opacity = '';
+    }
+
+    // ---- doigt ----
+    div.addEventListener('touchstart', function(e){
+      if(e.touches.length !== 1){ annuler(); return; }
+      debut(e.touches[0].clientX, e.touches[0].clientY, e.target);
+    }, { passive: true });
+    div.addEventListener('touchmove', function(e){
+      if(!depart) return;
+      // Une fois le geste reconnu comme horizontal, la page ne défile plus.
+      if(bouge(e.touches[0].clientX, e.touches[0].clientY) && e.cancelable) e.preventDefault();
+    }, { passive: false });
+    div.addEventListener('touchend', fin);
+    div.addEventListener('touchcancel', annuler);
+
+    // ---- souris ----
+    div.addEventListener('mousedown', function(e){
+      if(e.button !== 0) return;
+      debut(e.clientX, e.clientY, e.target);
+      if(!depart) return;
+      function suivre(ev){ bouge(ev.clientX, ev.clientY); }
+      function lacher(){
+        document.removeEventListener('mousemove', suivre);
+        document.removeEventListener('mouseup', lacher);
+        fin();
+      }
+      document.addEventListener('mousemove', suivre);
+      document.addEventListener('mouseup', lacher);
+    });
   }
 
   // ---------------- CORBEILLE ----------------
