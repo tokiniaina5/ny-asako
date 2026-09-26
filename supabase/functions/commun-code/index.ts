@@ -209,7 +209,7 @@ Deno.serve(async (req: Request) => {
 
   const envoi = pourLeProprietaire
     ? await envoyer(ownerEmail, "Demande d'accès à « Administratif Fokontany » — " + (anarana || cible), texteProprietaire)
-    : await envoyer(cible, "Votre accès à « Administratif Fokontany » — Gestion de Stockage", texte);
+    : await envoyer(cible, "Votre accès à « Administratif Fokontany » — Ny asako", texte);
 
   // Le code revient au propriétaire : si le mail n'est pas parti, il peut le
   // dire lui-même plutôt que de laisser la personne dehors.

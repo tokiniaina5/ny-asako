@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
   const text = [
     "Bonjour,",
     "",
-    "Voici votre code pour choisir un nouveau mot de passe sur Gestion de Stockage :",
+    "Voici votre code pour choisir un nouveau mot de passe sur Ny asako :",
     "",
     "    " + code,
     "",
@@ -140,7 +140,7 @@ Deno.serve(async (req: Request) => {
       to: [ownerEmail],
       // Un sujet distinct de l'ancien « lien de connexion » : la messagerie
       // rangeait sinon le code dans la même conversation que les vieux liens.
-      subject: "Votre code de connexion — Gestion de Stockage",
+      subject: "Votre code de connexion — Ny asako",
       text,
     }),
   });
