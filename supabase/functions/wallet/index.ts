@@ -46,6 +46,12 @@ function tarifParrainage(email: string): number {
   return proprio && email === proprio ? AR_PER_REFERRAL_OWNER : AR_PER_REFERRAL;
 }
 const MIN_PAYOUT_AR = Number(Deno.env.get("MIN_PAYOUT_AR") ?? "10000");
+// Frais de retrait, en pourcentage, ajoutés à la somme demandée : la personne
+// reçoit ce qu'elle a demandé, et son solde baisse de la somme + les frais.
+const PAYOUT_FEE_PCT = Number(Deno.env.get("PAYOUT_FEE_PCT") ?? "5");
+function fraisRetrait(montant: number): number {
+  return PAYOUT_FEE_PCT > 0 ? Math.ceil(montant * PAYOUT_FEE_PCT / 100) : 0;
+}
 
 // L'argent sort par le canal que la personne indique. La liste n'a pas à être
 // fermée : elle le serait pour rien, puisque c'est un humain qui exécute
@@ -325,6 +331,21 @@ async function executerLeRetrait(
 
 type Admin = ReturnType<typeof createClient>;
 
+// Ce que les parrainages ont rapporté, sur toutes les installations
+// rattachées à ce compte.
+async function gainsParrainage(admin: Admin, email: string, installs?: string[]): Promise<number> {
+  let ids = installs;
+  if (!ids) {
+    const { data: owners } = await admin.from("wallet_owners").select("install_id").eq("email", email);
+    ids = (owners ?? []).map((o: { install_id: string }) => o.install_id);
+  }
+  if (!ids.length) return 0;
+  const { count } = await admin.from("referrals")
+    .select("id", { count: "exact", head: true })
+    .in("inviter_id", ids);
+  return (count ?? 0) * tarifParrainage(email);
+}
+
 // ---- Le solde, déduit de la base ----
 async function balanceFor(admin: Admin, email: string): Promise<number> {
   // 1) ce que les parrainages ont rapporté, sur toutes les installations
@@ -333,19 +354,14 @@ async function balanceFor(admin: Admin, email: string): Promise<number> {
     .select("install_id").eq("email", email);
   const installs = (owners ?? []).map((o: { install_id: string }) => o.install_id);
 
-  let earned = 0;
-  if (installs.length) {
-    const { count } = await admin.from("referrals")
-      .select("id", { count: "exact", head: true })
-      .in("inviter_id", installs);
-    earned = (count ?? 0) * tarifParrainage(email);
-  }
+  const earned = await gainsParrainage(admin, email, installs);
 
   // 2) ce qui est parti ou est réservé pour partir
   const { data: payouts } = await admin.from("wallet_payouts")
-    .select("amount_ar,status").eq("email", email).in("status", ["pending", "sent"]);
+    .select("amount_ar,fee_ar,status").eq("email", email).in("status", ["pending", "sent"]);
   const withdrawn = (payouts ?? []).reduce(
-    (sum: number, p: { amount_ar: number }) => sum + (Number(p.amount_ar) || 0), 0);
+    (sum: number, p: { amount_ar: number; fee_ar: number }) =>
+      sum + (Number(p.amount_ar) || 0) + (Number(p.fee_ar) || 0), 0);
 
   // 3) ce qui a servi à rouvrir un accès. « amount » y est compté en
   //    crédits, et un crédit vaut AR_PER_REFERRAL — le tarif de BASE, pas
@@ -366,6 +382,34 @@ async function balanceFor(admin: Admin, email: string): Promise<number> {
     (sum: number, d: { amount_ar: number }) => sum + (Number(d.amount_ar) || 0), 0);
 
   return Math.max(0, earned + deposited - withdrawn - spent);
+}
+
+// ---- Ce qui peut sortir en vrai argent ----
+// Le solde mêle deux choses. Les sommes que l'application inscrit d'elle-même
+// (« fokontany », « visiteur », « essai ») ne sont que des chiffres :
+// personne n'a rien payé, et il n'y a rien derrière. Elles se dépensent DANS
+// l'application (abonnement, déblocage…), jamais au dehors.
+//
+// Peut sortir : ce qui est vraiment entré (versements payés chez Papi ou reçus
+// en Mobile Money / PayPal) et les parrainages — ceux-là, le propriétaire a
+// décidé (26/09/2026) de les payer en vrai argent, de sa poche. Moins ce qui
+// est déjà sorti vers le dehors, et jamais plus que le solde lui-même.
+const PROVIDERS_REELS = ["papi", "mvola", "orange", "airtel", "paypal"];
+
+async function retirableFor(admin: Admin, email: string, balance: number): Promise<number> {
+  const { data: depots } = await admin.from("wallet_deposits")
+    .select("amount_ar").eq("email", email).eq("status", "confirme").in("provider", PROVIDERS_REELS);
+  const entre = (depots ?? []).reduce(
+    (sum: number, d: { amount_ar: number }) => sum + (Number(d.amount_ar) || 0), 0) +
+    await gainsParrainage(admin, email);
+  // Les achats dans l'application (« insite ») ne sortent rien au dehors.
+  const { data: sorties } = await admin.from("wallet_payouts")
+    .select("amount_ar,fee_ar,kind").eq("email", email).in("status", ["pending", "sent"]);
+  const sorti = (sorties ?? [])
+    .filter((p: { kind: string }) => p.kind !== "insite")
+    .reduce((sum: number, p: { amount_ar: number; fee_ar: number }) =>
+      sum + (Number(p.amount_ar) || 0) + (Number(p.fee_ar) || 0), 0);
+  return Math.max(0, Math.min(balance, entre - sorti));
 }
 
 Deno.serve(async (req: Request) => {
@@ -412,7 +456,7 @@ Deno.serve(async (req: Request) => {
 
     const balance = await balanceFor(admin, email);
     const { data: mine } = await admin.from("wallet_payouts")
-      .select("id,amount_ar,method,kind,destination,link,instructions,currency,amount_out,status,note,created_at,settled_at,auto_provider,auto_ref")
+      .select("id,amount_ar,fee_ar,method,kind,destination,link,instructions,currency,amount_out,status,note,created_at,settled_at,auto_provider,auto_ref")
       .eq("email", email).order("created_at", { ascending: false }).limit(20);
 
     let queue = null;
@@ -429,8 +473,9 @@ Deno.serve(async (req: Request) => {
       .select("id,amount_ar,provider,provider_ref,status,note,created_at,confirmed_at")
       .eq("email", email).order("created_at", { ascending: false }).limit(20);
 
+    const retirable = await retirableFor(admin, email, balance);
     return json({
-      balanceAr: balance, arPerReferral: tarifParrainage(email), minPayoutAr: MIN_PAYOUT_AR,
+      balanceAr: balance, retirableAr: retirable, arPerReferral: tarifParrainage(email), minPayoutAr: MIN_PAYOUT_AR, payoutFeePct: PAYOUT_FEE_PCT,
       payouts: mine ?? [], deposits: depots ?? [], queue, isOwner, items: SITE_ITEMS,
     });
   }
@@ -498,8 +543,17 @@ Deno.serve(async (req: Request) => {
     }
 
     const balance = await balanceFor(admin, email);
-    if (amount > balance) {
-      return json({ error: `Votre solde est de ${balance.toLocaleString("fr-FR")} Ar.` }, 400);
+    const frais = fraisRetrait(amount);
+    // Ce qui sort doit être du vrai argent : pas les parrainages ni les
+    // sommes inscrites par l'application (voir retirableFor).
+    const retirable = await retirableFor(admin, email, balance);
+    if (amount + frais > retirable) {
+      return json({
+        error: `Vola azo alaina : ${retirable.toLocaleString("fr-FR")} Ar (ny vola tena naloa sy ny parrainage — ` +
+          `ny vola nampidirin'ny appli ho azy dia ampiasaina ato anatiny ihany). Il faut ` +
+          `${(amount + frais).toLocaleString("fr-FR")} Ar (${amount.toLocaleString("fr-FR")} Ar + ` +
+          `${frais.toLocaleString("fr-FR")} Ar de frais, ${PAYOUT_FEE_PCT} %).`,
+      }, 400);
     }
 
     const rate = await rateFromAr(currency);
@@ -509,8 +563,8 @@ Deno.serve(async (req: Request) => {
       email: email, name: name, amount_ar: amount, method: method, kind: kind,
       destination: destination, link: link || null, instructions: instructions || null,
       currency: currency, amount_out: amountOut, rate: rate || null,
-      status: "pending",
-    }).select("id,amount_ar,currency,amount_out").single();
+      status: "pending", fee_ar: frais,
+    }).select("id,amount_ar,fee_ar,currency,amount_out").single();
 
     if (error) return json({ error: error.message }, 500);
 
@@ -571,7 +625,7 @@ Deno.serve(async (req: Request) => {
     // Le solde est déjà amputé : un retrait en attente compte comme parti,
     // sinon la même somme pourrait être demandée deux fois. Un refus, lui,
     // la rend — « balanceFor » ne compte que 'pending' et 'sent'.
-    const soldeApres = etatFinal === "refused" ? balance : balance - amount;
+    const soldeApres = etatFinal === "refused" ? balance : balance - amount - frais;
     return json({
       payout: data,
       balanceAr: soldeApres,

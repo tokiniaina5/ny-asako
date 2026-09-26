@@ -2182,6 +2182,9 @@
                 <div class="plan-note">Solde disponible</div>
                 <div class="plan-price" id="walletBalance" style="font-size:1.4rem; color:var(--cyan);">0 Ar</div>
                 <div class="plan-note" id="walletBalanceCredits" style="margin-top:0.2rem;">—</div>
+                <!-- Seul l'argent vraiment payé sort en retrait (wallet, « retirableFor ») :
+                     les parrainages et les sommes inscrites par l'application se dépensent ici. -->
+                <div class="plan-note" id="walletRetirable" style="margin-top:0.2rem;"></div>
               </div>
               <div>
                 <div class="plan-note">PayPal</div>
@@ -2326,22 +2329,6 @@
                 <div class="plan-price">+7 jours</div>
                 <div class="plan-note">20 000 Ar — ajoutés au prochain paiement</div>
                 <button type="button" class="btn btn-sm buy-site-item" data-item="sub_days" style="width:100%; margin-top:0.7rem;">Payer</button>
-              </div>
-            </div>
-
-            <h3 style="font-size:0.95rem; margin-top:1.4rem;">Achat dans le site</h3>
-            <div class="line-grid" style="margin-top:0.7rem;">
-              <div class="plan-card" style="cursor:default;">
-                <div class="plan-name">Essai gratuit</div>
-                <div class="plan-price">+1 jour</div>
-                <div class="plan-note">10 000 Ar</div>
-                <button type="button" class="btn btn-sm buy-site-item" data-item="trial_day" style="width:100%; margin-top:0.7rem;">Payer</button>
-              </div>
-              <div class="plan-card" style="cursor:default;">
-                <div class="plan-name">Booster</div>
-                <div class="plan-price">Live 24 h</div>
-                <div class="plan-note">5 000 Ar</div>
-                <button type="button" class="btn btn-sm buy-site-item" data-item="booster" style="width:100%; margin-top:0.7rem;">Payer</button>
               </div>
             </div>
 
