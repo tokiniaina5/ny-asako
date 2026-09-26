@@ -37,8 +37,8 @@ const SOCLE = [
   '/fokontany/icone-192.png',
   // L'Administratif Commun aussi : la même page, sous son adresse.
   '/commun/',
-  '/commun/manifest.webmanifest',
-  '/commun/icone-192.png',
+  '/fokontany/commun/manifest.webmanifest',
+  '/fokontany/commun/icone-192.png',
   // La boutique publique : c'est elle que trouve un lien partagé, et elle
   // doit s'ouvrir même quand le réseau hésite.
   '/botika/',

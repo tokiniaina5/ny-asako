@@ -589,6 +589,9 @@
              (theme.js). L'icône montre le mode en cours. -->
         <button type="button" class="nav-action" id="menuTheme" aria-label="Mode andro / alina" aria-expanded="false">🌙 Andro / Alina</button>
         <button type="button" class="nav-action" id="menuArticles">📋 Articles</button>
+        <!-- Le tableau de bord du stock, en page à lui : il n'était qu'un
+             onglet des Articles, posé à nu dans la page. -->
+        <button type="button" class="nav-action" id="menuTableauBord">📊 Tableau de bord</button>
         <button type="button" class="nav-action" id="menuCommun">🗂️ Administratif Fokontany</button>
         <button type="button" class="nav-action" id="menuCommunAdmin">🏛️ Administratif Commun</button>
         <!-- Installer les deux applications : le propriétaire seul, et d'ici
@@ -1482,6 +1485,18 @@
 
         <!-- ===== DASHBOARD ===== -->
         <div class="dash-view" id="dash-dashboard">
+          <!-- Une fenêtre comme les Articles : son titre, et les onglets pour
+               passer aux autres vues du stock sans repasser par le menu. -->
+          <div class="section-head" style="margin-bottom:0.6rem;">
+            <div><h2>📊 Tableau de bord</h2></div>
+          </div>
+          <div class="dash-tabs">
+            <div class="dash-tab" data-dash="articles">📋 Articles</div>
+            <div class="dash-tab" data-dash="dashboard">📊 Tableau de bord</div>
+            <div class="dash-tab" data-dash="historique">📜 Historique des mouvements</div>
+            <div class="dash-tab" data-dash="ajouter">➕ Ajouter</div>
+            <div class="dash-tab" data-dash="comptes">👥 Gestion de compte</div>
+          </div>
 
           <div class="filters-panel">
             <div class="filter-group">
