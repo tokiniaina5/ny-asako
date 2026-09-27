@@ -41,6 +41,11 @@
 //   — Instagram, TikTok, WeChat n'offrent aucune adresse qui écrive le
 //     message d'avance : on le copie, l'application s'ouvre, on colle.
 //
+// Telegram, Facebook (Page), Threads et X peuvent aussi partir TOUT SEULS :
+// quand leurs clefs sont posées côté serveur (fonction « tambajotra »), ils
+// sont marqués « ⚡ ho azy » et publiés par le serveur au lieu d'ouvrir une
+// fenêtre. Sans clefs, ils restent à la main, comme avant.
+//
 // wa.me et les autres liens ne portent que du texte. Une annonce avec photo
 // part donc sans sa photo ; le lien, lui, la montre. C'est écrit dans la
 // fenêtre pour qu'on ne le découvre pas après coup.
@@ -187,8 +192,9 @@
           '<h3>🌐 Tambajotra</h3>' +
           '<p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0 0 0.9rem;">' +
             'Ireto dia <strong style="color:var(--text);">indray mandeha ihany</strong> : mamoaka ho hitan\'ny olona rehetra izy, ' +
-            'fa tsy mandefa isaky ny client. Ny Instagram, TikTok ary WeChat tsy mandray hafatra voasoratra mialoha : ' +
-            'adika ny hafatra, dia apetakao ao.' +
+            'fa tsy mandefa isaky ny client. Ireo misy <strong style="color:var(--text);">⚡ ho azy</strong> dia ' +
+            'ny serveur no mamoaka azy, tsy misy tsindriana. Ny Instagram, TikTok ary WeChat tsy mandray hafatra ' +
+            'voasoratra mialoha : adika ny hafatra, dia apetakao ao.' +
           '</p>' +
           '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.8rem; flex-wrap:wrap; ' +
             'padding:0.5rem 0; border-bottom:1px solid var(--line); margin-bottom:0.4rem;">' +
@@ -197,6 +203,7 @@
             '<span data-reseaux-isa style="font-size:0.78rem; color:var(--muted);"></span>' +
           '</div>' +
           '<div data-reseaux></div>' +
+          '<p data-auto-statut style="font-size:0.78rem; color:var(--muted); margin:0.6rem 0 0; line-height:1.6;"></p>' +
         '</div>' +
 
         // 3) L'email : le seul qui parte vraiment, sans que personne
@@ -216,18 +223,30 @@
         '</div>' +
 
         // 4) Le soir : tout ce qui a paru dans la journée part tout seul par
-        //    email, à 18 h (fonction « fandefasana-hariva », tâche du soir).
-        //    Le bouton fait la même chose tout de suite.
+        //    email et sur les réseaux prêts, à l'heure choisie ici, entre les
+        //    deux dates s'il y en a (fonction « fandefasana-hariva », tâche
+        //    qui passe chaque minute et ne part qu'une fois par jour).
         '<div class="panel">' +
-          '<h3>⏰ Fandefasana ho azy — isak\'andro amin\'ny 18:00</h3>' +
+          '<h3>⏰ Fandefasana ho azy — isak\'andro amin\'ny <span data-hariva-ora-titre>18:00</span></h3>' +
           '<p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0 0 0.9rem;">' +
-            'Isaky ny 6 ora hariva, ny publication rehetra nivoaka androany ao amin\'ny Botika dia ' +
-            '<strong style="color:var(--text);">alefa ho azy amin\'ny mailaka</strong> any amin\'ny client rehetra, ' +
-            'tsy misy tsindriana. Ny WhatsApp sy ny tambajotra kosa tsy mety mandeha ho azy : ' +
-            'tsy avelan\'izy ireo hisy site handefa ho anao.' +
+            'Amin\'ny ora voafidy eto, ny publication rehetra nivoaka androany ao amin\'ny Botika dia ' +
+            '<strong style="color:var(--text);">alefa ho azy amin\'ny mailaka</strong> any amin\'ny client rehetra ' +
+            '(sy amin\'ireo tambajotra ⚡), tsy misy tsindriana. Raha misy daty, ao anatin\'io fotoana io ihany ' +
+            'no mandeha ; raha foana, tsy misy fetra.' +
           '</p>' +
-          '<button type="button" class="btn btn-sm" data-hariva style="width:auto;">📧 Alefa izao ny publication androany</button>' +
-          '<p data-hariva-statut style="font-size:0.78rem; color:var(--muted); margin:0.6rem 0 0; min-height:1.1em;"></p>' +
+          '<div style="display:flex; gap:0.8rem; flex-wrap:wrap; align-items:flex-end;">' +
+            '<div class="field" style="margin:0;"><label for="zrOra">Ora sy minitra</label>' +
+              '<input type="time" id="zrOra" data-hariva-ora step="60" value="18:00" style="width:auto;"></div>' +
+            '<div class="field" style="margin:0;"><label for="zrManomboka">Manomboka ny</label>' +
+              '<input type="date" id="zrManomboka" data-hariva-manomboka style="width:auto;"></div>' +
+            '<div class="field" style="margin:0;"><label for="zrHatramin">Hatramin\'ny</label>' +
+              '<input type="date" id="zrHatramin" data-hariva-hatramin style="width:auto;"></div>' +
+            '<button type="button" class="btn btn-sm" data-hariva-tehirizo style="width:auto;">💾 Tehirizo</button>' +
+          '</div>' +
+          '<p data-hariva-statut style="font-size:0.78rem; color:var(--muted); margin:0.6rem 0 0; min-height:1.1em;">Mamaky…</p>' +
+          // Le carnet : à qui sont partis les derniers envois.
+          '<h3 style="font-size:0.9rem; margin-top:1rem;">📋 Lasa tany amin\'iza ?</h3>' +
+          '<div data-hariva-tantara style="font-size:0.78rem; color:var(--muted); line-height:1.6;">Mamaky…</div>' +
         '</div>' +
 
         '<button type="button" class="btn btn-primary" data-alefa>📨 Alefa</button>' +
@@ -260,23 +279,132 @@
     var fermer = function () { page.remove(); };
     page.querySelector('[data-hidio]').addEventListener('click', fermer);
 
-    // Ce que la tâche du soir fera à 18 h, tout de suite.
-    var bHariva = page.querySelector('[data-hariva]');
+    // L'heure et les dates de la tâche du soir.
+    var bTehirizo = page.querySelector('[data-hariva-tehirizo]');
+    var champOra = page.querySelector('[data-hariva-ora]');
+    var champManomboka = page.querySelector('[data-hariva-manomboka]');
+    var champHatramin = page.querySelector('[data-hariva-hatramin]');
+    var oraTitre = page.querySelector('[data-hariva-ora-titre]');
     var statutHariva = page.querySelector('[data-hariva-statut]');
-    bHariva.addEventListener('click', function () {
-      if (!window.__sb || !window.__sb.functions) { statutHariva.textContent = 'Tsy tafiditra ny serveur.'; return; }
-      if (!confirm('Halefa amin\'ny client rehetra manana email ny publication rehetra androany. Tsy azo averina. Hitohy?')) return;
-      bHariva.disabled = true;
-      statutHariva.textContent = 'Mandefa…';
-      window.__sb.functions.invoke('fandefasana-hariva', { body: {} }).then(function (res) {
+    var boiteTantara = page.querySelector('[data-hariva-tantara]');
+
+    function echapper(t) {
+      return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function listeClients(liste) {
+      return (liste || []).map(function (c) {
+        return '<div style="padding:0.15rem 0;">' +
+          (c.name ? '<strong style="color:var(--text);">' + echapper(c.name) + '</strong> · ' : '') +
+          echapper(c.email) + '</div>';
+      }).join('');
+    }
+    // Chaque envoi, le plus récent d'abord, et sous lui la liste des clients.
+    function afficherTantara(lignes) {
+      if (!lignes.length) {
+        boiteTantara.textContent = 'Mbola tsy nisy fandefasana voarakitra.';
+        return;
+      }
+      boiteTantara.innerHTML = lignes.map(function (l, i) {
+        var voaray = l.voaray || [];
+        var tsy = l.tsy_lasa || [];
+        return '<details style="border:1px solid var(--line); border-radius:8px; padding:0.5rem 0.7rem; margin-bottom:0.5rem;"' +
+            (i === 0 ? ' open' : '') + '>' +
+          '<summary style="cursor:pointer; color:var(--text);">' +
+            new Date(l.created_at).toLocaleString('fr-FR') + ' · ' +
+            (l.loharano === 'hariva' ? '⏰ ho azy' : '📧 bokotra') + ' · ' +
+            'publication ' + (l.billets || 0) + ' · <strong>client ' + voaray.length + '</strong>' +
+            (tsy.length ? ' · <span style="color:var(--amber);">tsy lasa ' + tsy.length + '</span>' : '') +
+          '</summary>' +
+          '<div style="margin-top:0.4rem; max-height:30vh; overflow-y:auto;">' +
+            (l.tambajotra && Object.keys(l.tambajotra).length
+              ? '<div style="margin-bottom:0.4rem;">' + Object.keys(l.tambajotra).map(function (k) {
+                  var r = l.tambajotra[k] || {};
+                  return (r.ok ? '✅ ' : '⚠ ') + echapper(k) + (r.ok ? '' : ' (' + echapper(r.detail) + ')');
+                }).join(' · ') + '</div>'
+              : '') +
+            (voaray.length ? listeClients(voaray) : 'Tsy nisy client.') +
+            (tsy.length ? '<div style="color:var(--amber); margin-top:0.4rem;">Tsy lasa' +
+              (l.fahadisoana ? ' (' + echapper(l.fahadisoana) + ')' : '') + ' :</div>' + listeClients(tsy) : '') +
+          '</div>' +
+        '</details>';
+      }).join('');
+    }
+    function chargerTantara() {
+      if (!window.__sb || !window.__sb.functions) { boiteTantara.textContent = 'Tsy tafiditra ny serveur.'; return; }
+      window.__sb.functions.invoke('fandefasana-hariva', { body: { action: 'tantara' } }).then(function (res) {
         var d = (res && res.data) || {};
-        bHariva.disabled = false;
-        statutHariva.textContent = d.sent
-          ? '✓ Publication ' + d.billets + ' lasa any amin\'ny client ' + d.sent + (d.error ? ' (' + d.error + ')' : '') + '.'
-          : 'Tsy lasa : ' + (d.error || (res && res.error && res.error.message) || 'antony tsy fantatra');
-      }, function (err) {
-        bHariva.disabled = false;
-        statutHariva.textContent = 'Tsy tratra ny fonction : ' + ((err && err.message) || 'réseau');
+        if (d.tantara) { afficherTantara(d.tantara); return; }
+        var ctx = res && res.error && res.error.context;
+        if (ctx && typeof ctx.json === 'function') {
+          ctx.json().then(function (b) { boiteTantara.textContent = (b && b.error) || 'Tsy voavaky ny tantara.'; },
+            function () { boiteTantara.textContent = 'Tsy voavaky ny tantara.'; });
+        } else {
+          boiteTantara.textContent = d.error || 'Tsy voavaky ny tantara.';
+        }
+      }, function () { boiteTantara.textContent = 'Tsy tratra ny serveur.'; });
+    }
+    chargerTantara();
+    // Appelle la fonction du soir ; rend ses données, ou le message d'erreur
+    // qu'elle a renvoyé (dans le corps de la réponse, pas dans res.error).
+    function appelerHariva(corps) {
+      return window.__sb.functions.invoke('fandefasana-hariva', { body: corps }).then(function (res) {
+        var d = (res && res.data) || null;
+        if (d && !d.error) return d;
+        var ctx = res && res.error && res.error.context;
+        if (ctx && typeof ctx.json === 'function') {
+          return ctx.json().then(function (b) { throw new Error((b && b.error) || 'antony tsy fantatra'); },
+            function () { throw new Error((res.error && res.error.message) || 'antony tsy fantatra'); });
+        }
+        throw new Error((d && d.error) || (res && res.error && res.error.message) || 'antony tsy fantatra');
+      });
+    }
+    function dateFr(iso) {
+      return iso ? iso.split('-').reverse().join('/') : '';
+    }
+    // Ce que la tâche fera, dit en une phrase.
+    function direFikirana(f) {
+      oraTitre.textContent = f.ora;
+      var fetra = f.manomboka && f.hatramin ? ', ' + dateFr(f.manomboka) + ' hatramin\'ny ' + dateFr(f.hatramin)
+        : f.manomboka ? ', manomboka ny ' + dateFr(f.manomboka)
+        : f.hatramin ? ', hatramin\'ny ' + dateFr(f.hatramin)
+        : ', tsy misy fetra';
+      var androany = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+      var lany = f.hatramin && f.hatramin < androany;
+      statutHariva.innerHTML = (lany ? '<span style="color:var(--amber);">⚠ Lany ny daty : tsy mandeha intsony.</span> ' : '✓ ') +
+        'Isak\'andro amin\'ny <strong style="color:var(--text);">' + echapper(f.ora) + '</strong>' + echapper(fetra) + '.' +
+        (f.farany_nalefa ? ' Farany : ' + echapper(dateFr(f.farany_nalefa)) + '.' : '');
+    }
+    function chargerFikirana() {
+      if (!window.__sb || !window.__sb.functions) { statutHariva.textContent = 'Tsy tafiditra ny serveur.'; return; }
+      appelerHariva({ action: 'fikirana' }).then(function (d) {
+        var f = d.fikirana || {};
+        champOra.value = f.ora || '18:00';
+        champManomboka.value = f.manomboka || '';
+        champHatramin.value = f.hatramin || '';
+        direFikirana(f);
+      }, function (e) { statutHariva.textContent = 'Tsy voavaky ny ora : ' + e.message; });
+    }
+    chargerFikirana();
+    bTehirizo.addEventListener('click', function () {
+      if (!window.__sb || !window.__sb.functions) { statutHariva.textContent = 'Tsy tafiditra ny serveur.'; return; }
+      var ora = String(champOra.value || '').slice(0, 5);
+      if (!/^\d{2}:\d{2}$/.test(ora)) { statutHariva.textContent = 'Fidio ny ora sy ny minitra.'; return; }
+      var manomboka = champManomboka.value || null;
+      var hatramin = champHatramin.value || null;
+      if (manomboka && hatramin && hatramin < manomboka) {
+        statutHariva.textContent = 'Tsy maintsy aorian\'ny « Manomboka » ny « Hatramin\'ny ».';
+        return;
+      }
+      bTehirizo.disabled = true;
+      statutHariva.textContent = 'Mitahiry…';
+      appelerHariva({ action: 'tehirizo', ora: ora, manomboka: manomboka, hatramin: hatramin }).then(function (d) {
+        bTehirizo.disabled = false;
+        direFikirana(d.fikirana || { ora: ora, manomboka: manomboka, hatramin: hatramin });
+      }, function (e) {
+        bTehirizo.disabled = false;
+        statutHariva.textContent = 'Tsy voatahiry : ' + e.message;
       });
     });
 
@@ -348,7 +476,7 @@
             '<input type="checkbox" data-r="' + i + '"' + (r.coche ? ' checked' : '') + '>' +
             '<span style="color:' + r.couleur + ';">' + echap(r.nom) + '</span></span>' +
           '<span style="color:var(--muted); font-size:0.74rem; white-space:nowrap;">' +
-            (r.copie ? 'adika ny hafatra' : 'indray mandeha') + '</span>' +
+            (r.auto ? '<span style="color:var(--cyan);">⚡ ho azy</span>' : (r.copie ? 'adika ny hafatra' : 'indray mandeha')) + '</span>' +
         '</label>';
       }).join('');
       boiteR.querySelectorAll('input[type="checkbox"]').forEach(function (b) {
@@ -383,6 +511,32 @@
     mailaka.addEventListener('change', direLIsa);
 
     dessinerReseaux();
+    var statutAuto = page.querySelector('[data-auto-statut]');
+    if (window.__sb && window.__sb.functions) {
+      window.__sb.functions.invoke('tambajotra', { body: { action: 'canaux' } }).then(function (res) {
+        var c = (res && res.data && res.data.canaux) || {};
+        reseaux.forEach(function (r) { r.auto = !!c[r.cle]; });
+        dessinerReseaux();
+      }, function () { /* fonction absente : tout reste à la main */ });
+    }
+
+    // Les réseaux « ⚡ ho azy » partent du serveur, d'un seul appel.
+    var NOMS = { telegram: 'Telegram', facebook: 'Facebook', threads: 'Threads', x: 'X' };
+    function publierAuto(liste) {
+      statutAuto.textContent = '⚡ Mamoaka amin\'ny ' + liste.map(function (r) { return r.nom; }).join(', ') + '…';
+      window.__sb.functions.invoke('tambajotra', {
+        body: { action: 'alefa', texte: texte, rohy: rohy, reseaux: liste.map(function (r) { return r.cle; }) }
+      }).then(function (res) {
+        var v = (res && res.data && res.data.vokatra) || {};
+        var lignes = Object.keys(v).map(function (k) {
+          return (v[k].ok ? '✅ ' : '⚠ ') + (NOMS[k] || k) + (v[k].ok ? ' : lasa' : ' : ' + echap(v[k].detail));
+        });
+        statutAuto.innerHTML = lignes.length ? lignes.join('<br>') : 'Tsy nisy lasa.';
+      }, function (err) {
+        statutAuto.textContent = 'Tsy tratra ny serveur : ' + ((err && err.message) || 'réseau');
+      });
+    }
+
     lireLesClients().then(function (res) {
       mailakaIsa.textContent = res.mails + ' email';
       var liste = res.clients;
@@ -599,10 +753,15 @@
     }
 
     page.querySelector('[data-alefa]').addEventListener('click', function () {
+      var autos = cochesR().filter(function (r) { return r.auto; });
       attente = cochesC().map(function (c) { return { client: c }; })
-        .concat(cochesR().map(function (r) { return { reseau: r }; }))
+        .concat(cochesR().filter(function (r) { return !r.auto; }).map(function (r) { return { reseau: r }; }))
         .concat(mailaka.checked ? [{ mail: true }] : []);
-      if (!attente.length) { alert('Tsy misy voamarika.'); return; }
+      if (autos.length) publierAuto(autos);
+      if (!attente.length) {
+        if (!autos.length) alert('Tsy misy voamarika.');
+        return;
+      }
       attente.forEach(function (e) { e.coche = true; e.fait = false; });
       rang = 0;
       nalefa = 0;
