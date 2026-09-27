@@ -622,6 +622,8 @@
              Le style la retire pour tout autre que lui. -->
         <div class="nav-item seulement-mpiasa" id="navMoi" data-section="moi">🙋 Ny momba ahy</div>
         <div class="nav-item" data-section="factures">🧾 Factures</div>
+        <!-- Les PDF : les factures s'y rangent avant l'impression (pdf.js). -->
+        <div class="nav-item" data-section="pdf">📄 PDF</div>
         <!-- Scan, photos et photocopies (photocopie.js). -->
         <div class="nav-item" data-section="photocopie">📠 Photocopie</div>
         <!-- Les outils de bureau : ils ne gardent rien ailleurs que dans ce
@@ -1774,7 +1776,7 @@
         </div>
 
         <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1rem;">
-          <button class="btn btn-primary" id="generateInvoiceBtn" style="width:auto;">Générer la facture (PDF)</button>
+          <button class="btn btn-primary" id="generateInvoiceBtn" style="width:auto;">Générer et imprimer (PDF)</button>
           <button class="btn btn-amber" id="mailInvoiceBtn" style="width:auto;">Envoyer par mail</button>
         </div>
       </section>
@@ -2953,6 +2955,7 @@
       <section class="section" id="section-calendrier"><div class="fitaovana" data-outil="calendrier"></div></section>
       <section class="section" id="section-horaire"><div class="fitaovana" data-outil="horaire"></div></section>
       <!-- Vide : photocopie.js la remplit. -->
+      <section class="section" id="section-pdf"><div class="pdf-tahiry"></div></section>
       <section class="section" id="section-photocopie"><div class="photocopie"></div></section>
 
     </main>
@@ -2987,6 +2990,7 @@
 <script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=bf90a8a5"></script>
 <script src="gestion-stockage-js/photocopie.js?v=362c711f"></script>
+<script src="gestion-stockage-js/pdf.js"></script>
 <script src="gestion-stockage-js/commun-alalana.js?v=682d598c"></script>
 <script src="gestion-stockage-js/taratasy.js?v=08c97553"></script>
 <script src="gestion-stockage-js/fianakaviana.js?v=7620b9e5"></script>
