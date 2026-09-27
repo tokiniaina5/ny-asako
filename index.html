@@ -1763,6 +1763,8 @@
               <input id="invoiceCustomerEmail" type="email" placeholder="client@exemple.com">
             </div>
           </div>
+          <!-- Le modèle Excel propre à ce client, s'il en a un (factures-modely.js). -->
+          <div id="invoiceModelyBox" style="margin-top:0.9rem; padding-top:0.8rem; border-top:1px dashed var(--line);"></div>
         </div>
 
         <div class="panel">
@@ -1778,6 +1780,7 @@
         <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1rem;">
           <button class="btn btn-primary" id="generateInvoiceBtn" style="width:auto;">Générer et imprimer (PDF)</button>
           <button class="btn btn-amber" id="mailInvoiceBtn" style="width:auto;">Envoyer par mail</button>
+          <button class="btn" id="excelInvoiceBtn" style="width:auto; display:none;">⬇ Facture Excel</button>
         </div>
       </section>
 
@@ -2970,6 +2973,7 @@
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
 <script src="gestion-stockage-js/factures.js?v=3c5eba5b"></script>
+<script src="gestion-stockage-js/factures-modely.js"></script>
 <script src="gestion-stockage-js/inviter.js?v=437d899c"></script>
 <script src="gestion-stockage-js/contact.js?v=b7517b12"></script>
 <!-- Montre au client qui vient de s'inscrire, à sa première entrée, tous les
