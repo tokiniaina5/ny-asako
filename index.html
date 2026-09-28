@@ -780,7 +780,8 @@
         <div class="dash-tabs" id="stockSubTabs">
           <div class="dash-tab" data-dash="dashboard">📊 Tableau de bord</div>
           <div class="dash-tab" data-dash="historique">📜 Historique des mouvements</div>
-          <div class="dash-tab" data-dash="ajouter">➕ Ajouter</div>
+          <div class="dash-tab" data-dash="ajouter">📦 Entrée en stock</div>
+          <div class="dash-tab" data-dash="nouveau">🆕 Nouvel article</div>
           <div class="dash-tab" data-dash="comptes">👥 Gestion de compte</div>
         </div>
 
@@ -907,7 +908,8 @@
           <div class="dash-tabs">
             <div class="dash-tab" data-dash="dashboard">📊 Tableau de bord</div>
             <div class="dash-tab" data-dash="historique">📜 Historique des mouvements</div>
-            <div class="dash-tab" data-dash="ajouter">➕ Ajouter</div>
+            <div class="dash-tab" data-dash="ajouter">📦 Entrée en stock</div>
+            <div class="dash-tab" data-dash="nouveau">🆕 Nouvel article</div>
             <div class="dash-tab" data-dash="comptes">👥 Gestion de compte</div>
           </div>
           <div class="global-search" style="position:relative; margin:0 0 1.2rem;">
@@ -1490,13 +1492,17 @@
           <!-- Une fenêtre comme les Articles : son titre, et les onglets pour
                passer aux autres vues du stock sans repasser par le menu. -->
           <div class="section-head" style="margin-bottom:0.6rem;">
-            <div><h2>📊 Tableau de bord</h2></div>
+            <!-- Ouvert depuis un onglet « Nouvel article » (stock.js), le
+                 tableau ne compte que ses articles et prend son nom. -->
+            <div><h2 id="titreTableauBord">📊 Tableau de bord</h2></div>
+            <button type="button" class="btn btn-sm" id="tableauToutBtn" style="display:none; width:auto;">✕ Entana rehetra</button>
           </div>
           <div class="dash-tabs">
             <div class="dash-tab" data-dash="articles">📋 Articles</div>
             <div class="dash-tab" data-dash="dashboard">📊 Tableau de bord</div>
             <div class="dash-tab" data-dash="historique">📜 Historique des mouvements</div>
-            <div class="dash-tab" data-dash="ajouter">➕ Ajouter</div>
+            <div class="dash-tab" data-dash="ajouter">📦 Entrée en stock</div>
+            <div class="dash-tab" data-dash="nouveau">🆕 Nouvel article</div>
             <div class="dash-tab" data-dash="comptes">👥 Gestion de compte</div>
           </div>
 
@@ -1593,7 +1599,7 @@
         <!-- ===== AJOUTER ===== -->
         <div class="dash-view" id="dash-ajouter">
             <div class="panel">
-              <h3>Ajouter un article (entrée en stock)</h3>
+              <h3>📦 Entrée en stock</h3>
               <div class="form-grid">
                 <div class="field" style="margin-bottom:0;">
                   <label>Référence (automatique)</label>
@@ -1637,13 +1643,83 @@
                   <label>Fournisseur (optionnel)</label>
                   <input id="itemSupplier" type="text" placeholder="Ex: Grossiste Analakely">
                 </div>
-                <!-- Tout article ajouté paraît dans la Botika (stock.js). Coché :
-                     la boîte « Écrire » s'ouvre d'abord sur sa fiche, pour une
-                     annonce complète (marque, photo, description). -->
-                <label class="case-publier" for="itemPublier">
-                  <input type="checkbox" id="itemPublier"> 📝 Hameno famaritana
-                </label>
+                <!-- On choisit si l'article paraît dans la Botika (stock.js) :
+                     non, tout de suite, ou après la boîte « Écrire » ouverte sur
+                     sa fiche, pour une annonce complète (marque, photo,
+                     description). Le choix reste pour les articles suivants. -->
+                <div class="field" style="margin-bottom:0;">
+                  <label for="itemPublier">Botika</label>
+                  <select id="itemPublier">
+                    <option value="tsia">🚫 Tsy avoaka</option>
+                    <option value="eny">🛒 Avoaka ao amin'ny Botika</option>
+                    <option value="famaritana">📝 Avoaka + hameno famaritana</option>
+                  </select>
+                </div>
                 <button class="btn btn-primary" id="addItemBtn" style="width:auto;">Ajouter</button>
+              </div>
+            </div>
+
+        </div>
+
+        <!-- ===== NOUVEL ARTICLE ===== -->
+        <!-- Pour une marchandise qui n'existe pas encore : elle reçoit sa
+             propre référence. Un nom déjà dans le stock est refusé (stock.js) :
+             celle-là se réapprovisionne par « Ajouter ». -->
+        <div class="dash-view" id="dash-nouveau">
+            <div class="panel">
+              <h3>🆕 Nouvel article (entana vaovao)</h3>
+              <div class="form-grid">
+                <div class="field" style="margin-bottom:0;">
+                  <label>Référence (automatique)</label>
+                  <input id="itemRefNouveau" type="text" readonly>
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Nom</label>
+                  <input id="itemNameNouveau" type="text" placeholder="Ex: Câble USB">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Catégorie</label>
+                  <input id="itemCategoryNouveau" type="text" placeholder="Ex: Électronique">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Quantité</label>
+                  <input id="itemQtyNouveau" type="number" min="0" value="1">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Unité</label>
+                  <select id="itemUnitNouveau">
+                    <option value="pièce">Pièce</option>
+                    <option value="kg">Kg</option>
+                    <option value="g">g</option>
+                    <option value="l">Litre</option>
+                    <option value="m">Mètre</option>
+                    <option value="boîte">Boîte</option>
+                    <option value="carton">Carton</option>
+                    <option value="sac">Sac</option>
+                    <option value="paire">Paire</option>
+                  </select>
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Prix unitaire (Ar)</label>
+                  <input id="itemPriceNouveau" type="number" min="0" value="0">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Seuil d'alerte</label>
+                  <input id="itemSeuilNouveau" type="number" min="0" value="5">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label>Fournisseur (optionnel)</label>
+                  <input id="itemSupplierNouveau" type="text" placeholder="Ex: Grossiste Analakely">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label for="itemPublierNouveau">Botika</label>
+                  <select id="itemPublierNouveau">
+                    <option value="tsia">🚫 Tsy avoaka</option>
+                    <option value="eny">🛒 Avoaka ao amin'ny Botika</option>
+                    <option value="famaritana">📝 Avoaka + hameno famaritana</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" id="addItemBtnNouveau" style="width:auto;">Créer l'article</button>
               </div>
             </div>
 
