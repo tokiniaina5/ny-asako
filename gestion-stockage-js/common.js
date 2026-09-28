@@ -3373,10 +3373,10 @@
       'dash-accueil',
       'dash-articles', 'dash-dashboard', 'dash-commun', 'dash-communadmin', 'section-factures', 'section-inviter', 'section-contact',
       // Les outils de bureau (fitaovana.js).
-      'section-word', 'section-excel', 'section-notes', 'section-kajy',
+      'section-notes', 'section-kajy',
       'section-calendrier', 'section-horaire',
-      // Scan, photos, photocopies (photocopie.js).
-      'section-photocopie',
+      // Scan, photos, photocopies (photocopie.js), et les PDF rangés (pdf.js).
+      'section-photocopie', 'section-pdf',
       'section-live', 'section-appels', 'section-wallet',
       'section-mpiasa', 'section-livreur', 'section-personne',
       // « Ny momba ahy », la page de l'employé entré par son lien : posée
