@@ -702,7 +702,14 @@
            pas demander de savoir d'avance dans laquelle des trois listes il se
            trouve. -->
       <div class="panneau-flottant panneau-boite" id="recherchePanel" style="display:none;">
-        <input type="search" id="rechercheChamp" class="menu-recherche" placeholder="Karohy: entana, pejy, vaovao, hevitra..." aria-label="Rechercher" autocomplete="off">
+        <!-- Le scan : une photo de l'entana (son code-barres, son étiquette),
+             lue dans le navigateur, devient ce qu'on cherche. -->
+        <div class="recherche-ligne">
+          <input type="search" id="rechercheChamp" class="menu-recherche" placeholder="Karohy: entana, pejy, vaovao, hevitra..." aria-label="Rechercher" autocomplete="off">
+          <button type="button" class="recherche-scan" id="rechercheScan" title="Scanner un entana" aria-label="Scanner un entana"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/></svg></button>
+          <input type="file" id="rechercheScanFichier" accept="image/*" capture="environment" hidden>
+        </div>
+        <p class="panneau-note" id="rechercheScanStatut" hidden></p>
         <div id="rechercheResultats" class="recherche-resultats"></div>
         <p class="panneau-note" id="rechercheVide" style="display:none;">Tsy misy hita.</p>
       </div>
