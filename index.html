@@ -2361,6 +2361,16 @@
             </div>
           </div>
 
+          <!-- ---- ACHATS DU FIL ---- -->
+          <!-- Payés avec le portefeuille depuis le panier : l'argent est tenu
+               jusqu'à ce que l'acheteur ait reçu l'entana (fonction wallet,
+               « achat » ; common.js, « renderAchats »). -->
+          <div class="panel" id="walletAchatsPanel">
+            <h3>🛒 Fividianana sy fivarotana</h3>
+            <p class="plan-note" style="line-height:1.5;">Voatazona ny vola raha tsy mbola voaray ny entana. Rehefa voarainao ny entana, tsindrio « Voaraiko » : amin'izay vao tonga any amin'ny mpivarotra ny vola.</p>
+            <div id="achatList" style="margin-top:0.7rem;"></div>
+            <p class="empty-hint" id="achatEmpty" style="display:none;">Tsy mbola nisy fividianana na fivarotana.</p>
+          </div>
           <!-- ---- FILE DES RETRAITS À ENVOYER (propriétaire uniquement) ---- -->
           <div class="panel" id="walletQueuePanel" style="display:none;">
             <h3>📤 Retraits à envoyer</h3>

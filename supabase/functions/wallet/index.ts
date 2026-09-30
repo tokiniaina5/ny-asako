@@ -53,13 +53,27 @@ function fraisRetrait(montant: number): number {
   return PAYOUT_FEE_PCT > 0 ? Math.ceil(montant * PAYOUT_FEE_PCT / 100) : 0;
 }
 
-// L'argent sort par le canal que la personne indique. La liste n'a pas à être
-// fermée : elle le serait pour rien, puisque c'est un humain qui exécute
-// l'envoi et qu'un canal inconnu s'accompagne de ses consignes.
-const METHODS = new Set(["paypal", "card", "mobile", "cash", "wallet", "merchant"]);
-// Payer un achat, c'est envoyer chez un marchand plutôt que chez le client :
-// seule la destination change, la somme sort du solde de la même façon.
-const PURCHASE_METHODS = new Set(["merchant"]);
+// L'argent sort vers un vrai compte, et seulement vers ceux-là :
+//   wise, payoneer, skrill   portefeuilles internationaux, envoyés par le
+//             propriétaire depuis son propre compte sur ces services ;
+//   mobile    MVola / Orange Money / Airtel Money, en ariary ;
+//   card      virement vers un compte bancaire.
+// PayPal est retiré (26/09/2026 : il ne fonctionnait pas), comme les
+// anciennes sorties « cash », « wallet », « merchant » : leurs lignes
+// passées gardent leur nom à l'affichage, rien de neuf ne s'y ouvre.
+// Depuis le 26/09/2026 au soir, seul le Mobile Money reste ouvert : c'est
+// là que partent les dépôts et les parrainages (Papi n'envoie pas d'argent,
+// le propriétaire exécute). Wise, Payoneer, Skrill et banque sont fermés.
+const METHODS = new Set(["mobile"]);
+// Les portefeuilles internationaux ne connaissent pas l'ariary.
+const METHODES_EN_DEVISE = new Set(["wise", "payoneer", "skrill"]);
+const PURCHASE_METHODS = new Set<string>();
+
+// Frais de dépôt, retirés de ce qui est crédité — le même taux que Papi.
+const DEPOSIT_FEE_PCT = Number(Deno.env.get("DEPOSIT_FEE_PCT") ?? "5");
+function fraisDepot(brut: number): number {
+  return DEPOSIT_FEE_PCT > 0 ? Math.ceil(brut * DEPOSIT_FEE_PCT / 100) : 0;
+}
 
 // Ce qui s'achète à l'intérieur de l'application, et à quel prix. Les prix
 // vivent ici et nulle part ailleurs : dans la page, chacun pourrait décider
@@ -70,6 +84,8 @@ const SITE_ITEMS: Record<string, { label: string; priceAr: number; days?: number
   trial_day: { label: "Un jour d'essai en plus", priceAr: 10000, grant: "trial_day" },
   booster: { label: "Booster — direct Facebook 24 h", priceAr: 5000, grant: "booster" },
   sub_days: { label: "7 jours mis de côté pour l'abonnement", priceAr: 20000, grant: "sub_days" },
+  // Le déblocage payé par carte Visa (via Papi) : même prix que les 20 crédits.
+  unlock: { label: "Déblocage du compte", priceAr: 20000, grant: "unlock" },
 };
 
 function norm(value: unknown): string {
@@ -92,243 +108,6 @@ async function rateFromAr(currency: string): Promise<number> {
   }
 }
 
-// ============================================================
-// L'ENVOI AUTOMATIQUE
-//
-// Un retrait était une demande : la ligne entrait en « pending », le
-// propriétaire allait envoyer l'argent lui-même, puis la marquait « sent ».
-// Un canal dont les clefs sont posées en secrets s'exécute maintenant tout
-// seul, à la seconde où la demande est faite.
-//
-// Un canal sans clefs ne change pas d'un iota : il reste une demande que
-// quelqu'un exécute. C'est le défaut, et il le reste.
-//
-// Trois règles, et elles ne se négocient pas :
-//
-//   1. On n'invente jamais un succès. Si la réponse du fournisseur ne dit
-//      pas clairement que l'argent est parti, la ligne reste « pending » et
-//      un humain tranche. Marquer « sent » à tort, c'est perdre la somme ;
-//      marquer « refused » à tort, c'est la rendre deux fois.
-//
-//   2. L'identifiant de la ligne sert de clef au fournisseur. Rejouer le
-//      même retrait lui présente la même clef, et c'est LUI qui refuse le
-//      doublon — une garantie qui ne dépend pas de notre code.
-//
-//   3. La ligne existe en base AVANT qu'on tente quoi que ce soit. Si
-//      l'envoi part et que notre réponse se perd, la trace est déjà là :
-//      c'est ce qui permet de retrouver l'argent plutôt que de le chercher.
-// ============================================================
-
-type Envoi =
-  | { etat: "accepte"; ref: string; brut: unknown }
-  | { etat: "refuse"; raison: string; brut: unknown }
-  | { etat: "incertain"; raison: string; brut: unknown };
-
-// ---- PayPal Payouts ----
-// Secrets attendus, et rien dans le code :
-//   PAYPAL_CLIENT_ID, PAYPAL_SECRET, PAYPAL_ENV ("sandbox" ou "live").
-// Sans les deux premiers, le canal reste manuel.
-function paypalConfigure(): boolean {
-  return !!(Deno.env.get("PAYPAL_CLIENT_ID") && Deno.env.get("PAYPAL_SECRET"));
-}
-
-function paypalBase(): string {
-  return (Deno.env.get("PAYPAL_ENV") ?? "sandbox").toLowerCase() === "live"
-    ? "https://api-m.paypal.com"
-    : "https://api-m.sandbox.paypal.com";
-}
-
-async function paypalJeton(): Promise<string | null> {
-  const cle = btoa(
-    (Deno.env.get("PAYPAL_CLIENT_ID") ?? "") + ":" + (Deno.env.get("PAYPAL_SECRET") ?? ""),
-  );
-  try {
-    const res = await fetch(paypalBase() + "/v1/oauth2/token", {
-      method: "POST",
-      headers: {
-        "Authorization": "Basic " + cle,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: "grant_type=client_credentials",
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.access_token ?? null;
-  } catch {
-    return null;
-  }
-}
-
-// Déposer l'ordre. « accepte » ne veut pas dire « arrivé » : PayPal prend
-// l'ordre et le traite ensuite. C'est paypalEtat() qui dira s'il a abouti.
-async function paypalEnvoyer(
-  idLigne: string,
-  destination: string,
-  montant: number,
-  devise: string,
-): Promise<Envoi> {
-  // PayPal ne connaît pas l'ariary. Partir dans une devise qu'il refuse,
-  // c'est un retrait qui échoue à l'arrivée sans qu'on sache pourquoi.
-  if (!devise || devise === "MGA") {
-    return {
-      etat: "refuse",
-      raison: "PayPal n'accepte pas l'ariary : choisissez une devise d'arrivée (EUR, USD…).",
-      brut: null,
-    };
-  }
-  if (!(montant > 0)) {
-    return {
-      etat: "refuse",
-      raison: "conversion indisponible : le taux du jour n'a pas été trouvé.",
-      brut: null,
-    };
-  }
-
-  const jeton = await paypalJeton();
-  if (!jeton) {
-    return { etat: "incertain", raison: "PayPal n'a pas rendu de jeton.", brut: null };
-  }
-
-  // « sender_batch_id » est la clef : PayPal refuse deux fois la même. C'est
-  // ce qui empêche un même retrait de partir deux fois, même si notre appel
-  // est rejoué — et c'est ce qui rend le bouton « Envoyer » sans danger.
-  const corps = {
-    sender_batch_header: {
-      sender_batch_id: idLigne,
-      email_subject: "Ny asako — retrait",
-      email_message: "Votre retrait depuis Ny asako.",
-    },
-    items: [{
-      recipient_type: "EMAIL",
-      amount: { value: montant.toFixed(2), currency: devise },
-      receiver: destination,
-      sender_item_id: idLigne,
-    }],
-  };
-
-  let res: Response;
-  try {
-    res = await fetch(paypalBase() + "/v1/payments/payouts", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + jeton,
-        "Content-Type": "application/json",
-        "PayPal-Request-Id": idLigne,
-      },
-      body: JSON.stringify(corps),
-    });
-  } catch (e) {
-    // Le réseau a lâché : on ne sait pas si PayPal a reçu l'ordre. C'est
-    // exactement le cas où l'on ne décide rien.
-    return { etat: "incertain", raison: "réseau : " + String(e), brut: null };
-  }
-
-  let brut: unknown = null;
-  try { brut = await res.json(); } catch { brut = null; }
-  const rep = brut as Record<string, unknown> | null;
-
-  if (res.status === 201 || res.status === 200) {
-    const entete = (rep?.batch_header ?? {}) as Record<string, unknown>;
-    const ref = String(entete.payout_batch_id ?? "");
-    if (!ref) return { etat: "incertain", raison: "PayPal a répondu sans référence.", brut };
-    return { etat: "accepte", ref, brut };
-  }
-
-  // Clef déjà vue : l'ordre est DÉJÀ déposé. Ce n'est pas un échec — c'est la
-  // preuve que la clef a joué, et il ne faut surtout pas redéposer. On ne
-  // connaît pas sa référence ici : la ligne garde celle qu'elle avait.
-  const nom = String(rep?.name ?? "");
-  if (res.status === 400 && nom.indexOf("DUPLICATE") >= 0) {
-    return { etat: "accepte", ref: "", brut };
-  }
-
-  // 4xx : PayPal a compris et refuse (adresse invalide, solde marchand
-  // insuffisant…). 5xx : c'est chez lui que ça cloche, on ne conclut pas.
-  const raison = String(rep?.message ?? rep?.name ?? ("HTTP " + res.status));
-  if (res.status >= 500) return { etat: "incertain", raison, brut };
-  return { etat: "refuse", raison, brut };
-}
-
-// Où en est un ordre déposé. C'est ici, et seulement ici, qu'on apprend que
-// l'argent est ARRIVÉ — le dépôt de l'ordre ne le disait pas.
-type EtatLot =
-  | { etat: "arrive"; detail: string; brut: unknown }
-  | { etat: "echoue"; detail: string; brut: unknown }
-  | { etat: "en_cours"; detail: string; brut: unknown };
-
-// Ce que PayPal dit d'un versement, et ce qu'on en conclut.
-//   SUCCESS                      il est arrivé.
-//   FAILED RETURNED BLOCKED      il ne partira pas : la somme est rendue.
-//   REFUNDED REVERSED
-//   UNCLAIMED                    déposé, mais le destinataire n'a pas encore
-//                                de compte PayPal. Il a trente jours ; on
-//                                attend, on ne rend rien.
-//   PENDING ONHOLD NEW           en cours.
-const PAYPAL_ECHECS = ["FAILED", "RETURNED", "BLOCKED", "REFUNDED", "REVERSED", "DENIED", "CANCELED"];
-
-async function paypalEtat(refLot: string): Promise<EtatLot> {
-  const jeton = await paypalJeton();
-  if (!jeton) return { etat: "en_cours", detail: "PayPal n'a pas rendu de jeton.", brut: null };
-
-  let res: Response;
-  try {
-    res = await fetch(paypalBase() + "/v1/payments/payouts/" + encodeURIComponent(refLot), {
-      headers: { "Authorization": "Bearer " + jeton },
-    });
-  } catch (e) {
-    return { etat: "en_cours", detail: "réseau : " + String(e), brut: null };
-  }
-
-  let brut: unknown = null;
-  try { brut = await res.json(); } catch { brut = null; }
-  const rep = brut as Record<string, unknown> | null;
-
-  if (!res.ok) {
-    // On ne conclut pas sur une réponse qu'on n'a pas comprise : la ligne
-    // reste où elle est, et l'on redemandera.
-    return { etat: "en_cours", detail: "HTTP " + res.status, brut };
-  }
-
-  const entete = (rep?.batch_header ?? {}) as Record<string, unknown>;
-  const etatLot = String(entete.batch_status ?? "").toUpperCase();
-  const items = (rep?.items ?? []) as Array<Record<string, unknown>>;
-  const premier = (items[0] ?? {}) as Record<string, unknown>;
-  const etatItem = String(premier.transaction_status ?? "").toUpperCase();
-
-  if (etatItem === "SUCCESS") {
-    return { etat: "arrive", detail: "SUCCESS", brut };
-  }
-  if (PAYPAL_ECHECS.indexOf(etatItem) >= 0 || PAYPAL_ECHECS.indexOf(etatLot) >= 0) {
-    const pourquoi = String(premier.errors ? JSON.stringify(premier.errors) : (etatItem || etatLot));
-    return { etat: "echoue", detail: pourquoi, brut };
-  }
-  return { etat: "en_cours", detail: etatItem || etatLot || "sans état", brut };
-}
-
-// ---- L'aiguillage ----
-// Rendre null, c'est dire « ce canal n'est pas automatique » : la demande
-// suit alors l'ancien chemin, sans rien tenter.
-async function executerLeRetrait(
-  methode: string,
-  idLigne: string,
-  destination: string,
-  montantSortie: number | null,
-  devise: string,
-): Promise<{ fournisseur: string; envoi: Envoi } | null> {
-  if (methode === "paypal" && paypalConfigure()) {
-    return {
-      fournisseur: "paypal",
-      envoi: await paypalEnvoyer(idLigne, destination, Number(montantSortie ?? 0), devise),
-    };
-  }
-  // MVola, Orange Money, Airtel Money : leurs interfaces existent, mais
-  // elles répondent « reçu » et se concluent plus tard, par une seconde
-  // question. Les écrire sans pouvoir les éprouver sur un compte marchand
-  // réel reviendrait à confier de l'argent à du code que personne n'a jamais
-  // vu fonctionner. Elles restent manuelles jusque-là.
-  return null;
-}
-
 type Admin = ReturnType<typeof createClient>;
 
 // Ce que les parrainages ont rapporté, sur toutes les installations
@@ -344,6 +123,23 @@ async function gainsParrainage(admin: Admin, email: string, installs?: string[])
     .select("id", { count: "exact", head: true })
     .in("inviter_id", ids);
   return (count ?? 0) * tarifParrainage(email);
+}
+
+// ---- Les achats du fil (supabase-wallet-achats.sql) ----
+// Comme acheteur : ce qui est tenu (« tazonina ») ou déjà passé au vendeur
+// (« voaray ») a quitté le solde ; ce qui a été rendu (« naverina ») y revient.
+// Comme vendeur : seul ce que l'acheteur a reçu (« voaray ») entre, et c'est
+// de l'argent vraiment payé — il se retire comme un dépôt.
+async function achatsFor(admin: Admin, email: string): Promise<{ depense: number; recu: number }> {
+  const { data: achats } = await admin.from("wallet_achats")
+    .select("amount_ar,status").eq("buyer_email", email).in("status", ["tazonina", "voaray"]);
+  const depense = (achats ?? []).reduce(
+    (sum: number, a: { amount_ar: number }) => sum + (Number(a.amount_ar) || 0), 0);
+  const { data: ventes } = await admin.from("wallet_achats")
+    .select("amount_ar").eq("seller_email", email).eq("status", "voaray");
+  const recu = (ventes ?? []).reduce(
+    (sum: number, a: { amount_ar: number }) => sum + (Number(a.amount_ar) || 0), 0);
+  return { depense, recu };
 }
 
 // ---- Le solde, déduit de la base ----
@@ -381,7 +177,10 @@ async function balanceFor(admin: Admin, email: string): Promise<number> {
   const deposited = (depots ?? []).reduce(
     (sum: number, d: { amount_ar: number }) => sum + (Number(d.amount_ar) || 0), 0);
 
-  return Math.max(0, earned + deposited - withdrawn - spent);
+  // 5) les achats du fil : payés comme acheteur, reçus comme vendeur.
+  const achats = await achatsFor(admin, email);
+
+  return Math.max(0, earned + deposited + achats.recu - withdrawn - spent - achats.depense);
 }
 
 // ---- Ce qui peut sortir en vrai argent ----
@@ -409,7 +208,46 @@ async function retirableFor(admin: Admin, email: string, balance: number): Promi
     .filter((p: { kind: string }) => p.kind !== "insite")
     .reduce((sum: number, p: { amount_ar: number; fee_ar: number }) =>
       sum + (Number(p.amount_ar) || 0) + (Number(p.fee_ar) || 0), 0);
-  return Math.max(0, Math.min(balance, entre - sorti));
+  // Les ventes reçues sont de l'argent payé ; les achats en sont sortis.
+  const achats = await achatsFor(admin, email);
+  return Math.max(0, Math.min(balance, entre + achats.recu - sorti - achats.depense));
+}
+
+// ---- L'argent vraiment payé qui reste, pour l'abonnement ----
+// Depuis le 26/09/2026, l'abonnement ne se paie plus avec les parrainages :
+// seulement avec de l'argent vraiment entré (dépôts Papi confirmés).
+//
+//   dépôts réels
+//   − abonnements déjà payés AVEC cet argent (method « papi » ; les achats
+//     d'avant, réglés avec n'importe quel solde, ne comptent pas contre lui)
+//   − les retraits, pour la part que les parrainages n'ont pas couverte
+//     (un retrait puise d'abord dans les parrainages, qui ne servent qu'à ça)
+// Jamais plus que le solde lui-même.
+async function argentPapiFor(admin: Admin, email: string, balance: number): Promise<number> {
+  const { data: depots } = await admin.from("wallet_deposits")
+    .select("amount_ar").eq("email", email).eq("status", "confirme").in("provider", PROVIDERS_REELS);
+  const entre = (depots ?? []).reduce(
+    (sum: number, d: { amount_ar: number }) => sum + (Number(d.amount_ar) || 0), 0);
+
+  const { data: sorties } = await admin.from("wallet_payouts")
+    .select("amount_ar,fee_ar,kind,method").eq("email", email).in("status", ["pending", "sent"]);
+  let abonnements = 0;
+  let retraits = 0;
+  for (const p of (sorties ?? []) as Array<{ amount_ar: number; fee_ar: number; kind: string; method: string }>) {
+    const somme = (Number(p.amount_ar) || 0) + (Number(p.fee_ar) || 0);
+    if (p.kind === "insite") {
+      if (p.method === "papi") abonnements += somme;
+    } else {
+      retraits += somme;
+    }
+  }
+  // Les ventes reçues entrent comme de l'argent payé ; les achats sortent
+  // comme un retrait (d'abord sur les parrainages, comme lui).
+  const achats = await achatsFor(admin, email);
+  retraits += achats.depense;
+  const parrainage = await gainsParrainage(admin, email);
+  const reste = entre + achats.recu - abonnements - Math.max(0, retraits - parrainage);
+  return Math.max(0, Math.min(balance, reste));
 }
 
 Deno.serve(async (req: Request) => {
@@ -473,11 +311,117 @@ Deno.serve(async (req: Request) => {
       .select("id,amount_ar,provider,provider_ref,status,note,created_at,confirmed_at")
       .eq("email", email).order("created_at", { ascending: false }).limit(20);
 
+    // Les achats du fil, comme acheteur et comme vendeur. Le propriétaire
+    // voit aussi ceux qui attendent, pour trancher s'il le faut.
+    const { data: achats } = await admin.from("wallet_achats")
+      .select("id,buyer_email,buyer_name,seller_email,seller_name,news_id,titre,isa,prix_ar,amount_ar,status,note,created_at,settled_at")
+      .or(`buyer_email.eq.${email},seller_email.eq.${email}`)
+      .order("created_at", { ascending: false }).limit(30);
+    let achatsEnAttente = null;
+    if (isOwner) {
+      const { data: attente } = await admin.from("wallet_achats")
+        .select("id,buyer_email,buyer_name,seller_email,seller_name,news_id,titre,isa,prix_ar,amount_ar,status,created_at")
+        .eq("status", "tazonina").order("created_at", { ascending: true }).limit(50);
+      achatsEnAttente = attente ?? [];
+    }
+
     const retirable = await retirableFor(admin, email, balance);
     return json({
-      balanceAr: balance, retirableAr: retirable, arPerReferral: tarifParrainage(email), minPayoutAr: MIN_PAYOUT_AR, payoutFeePct: PAYOUT_FEE_PCT,
+      balanceAr: balance, retirableAr: retirable, papiAr: await argentPapiFor(admin, email, balance), arPerReferral: tarifParrainage(email), minPayoutAr: MIN_PAYOUT_AR, payoutFeePct: PAYOUT_FEE_PCT,
+      depositFeePct: DEPOSIT_FEE_PCT,
+      // Ce qui marche vraiment sur ce serveur, pour que la page ne propose
+      // pas un canal dont les clefs manquent.
+      canaux: { depotPapi: !!Deno.env.get("PAPI_TOKEN") },
       payouts: mine ?? [], deposits: depots ?? [], queue, isOwner, items: SITE_ITEMS,
+      achats: achats ?? [], achatsEnAttente, email,
     });
+  }
+
+  // ---- Acheter un entana du fil, l'argent tenu ----
+  // Le prix vient de la base, jamais de la page : la page ne dit que QUOI
+  // (le billet) et COMBIEN (la quantité). L'argent doit être de l'argent
+  // vraiment payé — le même que celui qui se retire. Il quitte l'acheteur
+  // tout de suite, mais n'arrive chez le vendeur que quand l'acheteur a reçu
+  // l'entana (« achat_voaray ») ; rendu sinon (« achat_averina »).
+  if (action === "achat") {
+    const newsId = Number(body.newsId);
+    const isa = Math.floor(Number(body.isa ?? 1));
+    if (!Number.isFinite(newsId) || newsId <= 0) return json({ error: "entana tsy fantatra" }, 400);
+    if (!(isa >= 1 && isa <= 99)) return json({ error: "isa tsy mety (1 hatramin'ny 99)" }, 400);
+
+    const { data: billet, error: errBillet } = await admin.from("client_news")
+      .select("id,type,price,message,author_email,client_name,deleted_at").eq("id", newsId).maybeSingle();
+    if (errBillet) return json({ error: errBillet.message }, 500);
+    if (!billet || billet.deleted_at) return json({ error: "Tsy hita intsony io entana io." }, 404);
+    if (billet.type !== "entana") return json({ error: "Tsy entana amidy io publication io." }, 400);
+    const prix = Math.floor(Number(String(billet.price ?? "").replace(/[^\d.]/g, "")) || 0);
+    if (!(prix > 0)) return json({ error: "Tsy misy vidiny io entana io : resaho mivantana ny mpivarotra." }, 400);
+
+    // Le vendeur : l'auteur du billet ; les billets de la maison, sans
+    // adresse, sont au propriétaire.
+    const vendeur = norm(billet.author_email) || ownerEmail;
+    if (!vendeur) return json({ error: "Tsy fantatra ny mpivarotra." }, 400);
+    if (vendeur === email) return json({ error: "Tsy afaka mividy ny entanao ianao." }, 400);
+
+    const montant = prix * isa;
+    const balance = await balanceFor(admin, email);
+    const reel = await retirableFor(admin, email, balance);
+    if (montant > reel) {
+      return json({
+        error: `Tsy ampy ny vola ao amin'ny portefeuille : ${reel.toLocaleString("fr-FR")} Ar ` +
+          `(vola tena naloa sy parrainage), ilaina ${montant.toLocaleString("fr-FR")} Ar. ` +
+          `Ampidiro vola amin'ny Papi na Mobile Money aloha.`,
+        disponibleAr: reel, manque: montant - reel,
+      }, 400);
+    }
+
+    const titre = String(billet.message ?? "").split("\n")[0].trim().slice(0, 80) || "Entana";
+    const { data, error } = await admin.from("wallet_achats").insert({
+      buyer_email: email, buyer_name: String(body.name ?? "").trim().slice(0, 80) || null,
+      seller_email: vendeur, seller_name: String(billet.client_name ?? "").trim().slice(0, 80) || null,
+      news_id: newsId, titre, isa, prix_ar: prix, amount_ar: montant, status: "tazonina",
+    }).select("id,titre,isa,prix_ar,amount_ar,status,created_at").single();
+    if (error) return json({ error: error.message }, 500);
+
+    return json({ achat: data, balanceAr: balance - montant });
+  }
+
+  // ---- L'acheteur a reçu l'entana : l'argent passe au vendeur ----
+  if (action === "achat_voaray") {
+    const id = String(body.id ?? "").trim();
+    if (!id) return json({ error: "fividianana tsy fantatra" }, 400);
+    // Seul l'acheteur le dit, et une seule fois : le filtre sur
+    // « tazonina » rend un second clic sans effet.
+    const { data, error } = await admin.from("wallet_achats")
+      .update({ status: "voaray", settled_at: new Date().toISOString() })
+      .eq("id", id).eq("buyer_email", email).eq("status", "tazonina")
+      .select("id,status,amount_ar").maybeSingle();
+    if (error) return json({ error: error.message }, 500);
+    if (!data) return json({ error: "Efa voavaha na tsy anao io fividianana io." }, 409);
+    return json({ achat: data });
+  }
+
+  // ---- Rendre l'argent à l'acheteur ----
+  // Le vendeur (il ne peut pas livrer) ou le propriétaire (litige). Jamais
+  // l'acheteur seul : il pourrait reprendre son argent après avoir reçu.
+  if (action === "achat_averina") {
+    const id = String(body.id ?? "").trim();
+    if (!id) return json({ error: "fividianana tsy fantatra" }, 400);
+    const { data: ligne } = await admin.from("wallet_achats")
+      .select("id,seller_email,status").eq("id", id).maybeSingle();
+    if (!ligne) return json({ error: "Tsy hita io fividianana io." }, 404);
+    if (norm(ligne.seller_email) !== email && !isOwner) {
+      return json({ error: "Ny mpivarotra na ny tompon'ny Ny asako ihany no afaka mamerina ny vola." }, 403);
+    }
+    const note = String(body.note ?? "").trim().slice(0, 300);
+    const { data, error } = await admin.from("wallet_achats")
+      .update({ status: "naverina", note: note || (isOwner ? "Naverin'ny tompony" : "Naverin'ny mpivarotra"),
+        settled_at: new Date().toISOString() })
+      .eq("id", id).eq("status", "tazonina")
+      .select("id,status,amount_ar").maybeSingle();
+    if (error) return json({ error: error.message }, 500);
+    if (!data) return json({ error: "Efa voavaha io fividianana io." }, 409);
+    return json({ achat: data });
   }
 
   // ---- Acheter à l'intérieur de l'application ----
@@ -490,16 +434,21 @@ Deno.serve(async (req: Request) => {
     if (!item) return json({ error: "article inconnu" }, 400);
 
     const balance = await balanceFor(admin, email);
-    if (item.priceAr > balance) {
+    // Seulement l'argent vraiment payé par Papi : les parrainages ne paient
+    // plus l'abonnement (ils se retirent en Mobile Money).
+    const papi = await argentPapiFor(admin, email, balance);
+    if (item.priceAr > papi) {
       return json({
-        error: `Votre solde est de ${balance.toLocaleString("fr-FR")} Ar, il en faut ` +
-          `${item.priceAr.toLocaleString("fr-FR")} Ar.`,
+        error: `Vola avy amin'ny Papi : ${papi.toLocaleString("fr-FR")} Ar, ilaina ` +
+          `${item.priceAr.toLocaleString("fr-FR")} Ar. Tsy aloa amin'ny parrainage intsony ny abonnement : ` +
+          `mandoava amin'ny Papi.`,
+        papiAr: papi, manque: item.priceAr - papi,
       }, 400);
     }
 
     const { data, error } = await admin.from("wallet_payouts").insert({
       email: email, name: String(body.name ?? "").trim(),
-      amount_ar: item.priceAr, method: "site", kind: "insite",
+      amount_ar: item.priceAr, method: "papi", kind: "insite",
       destination: item.label, currency: "MGA", amount_out: item.priceAr, rate: 1,
       status: "sent", settled_at: new Date().toISOString(),
     }).select("id").single();
@@ -508,7 +457,7 @@ Deno.serve(async (req: Request) => {
     return json({
       bought: itemId, label: item.label, priceAr: item.priceAr, days: item.days ?? 0,
       grant: item.grant ?? null,
-      balanceAr: balance - item.priceAr, receipt: data.id,
+      balanceAr: balance - item.priceAr, papiAr: papi - item.priceAr, receipt: data.id,
     });
   }
 
@@ -532,10 +481,16 @@ Deno.serve(async (req: Request) => {
 
     if (!METHODS.has(method)) return json({ error: "moyen de retrait inconnu" }, 400);
     if (!destination) return json({ error: "indiquez où envoyer l'argent" }, 400);
-    // Un canal que l'application ne connaît pas ne se devine pas : sans la
-    // marche à suivre, la somme partirait au hasard.
-    if ((method === "wallet" || method === "merchant" || method === "cash") && !instructions) {
-      return json({ error: "expliquez comment procéder : sans consigne, l'envoi ne peut pas se faire." }, 400);
+    // Wise, Payoneer et Skrill ne tiennent pas de compte en ariary :
+    // une somme annoncée en MGA n'y arriverait jamais telle quelle.
+    if (METHODES_EN_DEVISE.has(method) && (currency === "MGA" || !currency)) {
+      return json({ error: "Ce portefeuille ne reçoit pas d'ariary : choisissez EUR, USD…" }, 400);
+    }
+    if (METHODES_EN_DEVISE.has(method) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destination)) {
+      return json({ error: "Indiquez l'email du compte " + method + "." }, 400);
+    }
+    if (method === "mobile" && currency !== "MGA") {
+      return json({ error: "Le Mobile Money reçoit en ariary (MGA)." }, 400);
     }
     if (!(amount > 0)) return json({ error: "montant invalide" }, 400);
     if (amount < MIN_PAYOUT_AR) {
@@ -568,196 +523,17 @@ Deno.serve(async (req: Request) => {
 
     if (error) return json({ error: error.message }, 500);
 
-    // La ligne existe avant qu'on tente quoi que ce soit : si l'envoi part et
-    // que notre réponse se perd, la trace est déjà en base.
-    const tentative = await executerLeRetrait(
-      method,
-      String(data.id),
-      destination,
-      amountOut,
-      currency,
-    );
-
-    let etatFinal = "pending";
-    let motAuClient = "";
-
-    if (tentative) {
-      const e = tentative.envoi;
-      const commun = {
-        auto_provider: tentative.fournisseur,
-        auto_attempts: 1,
-        auto_raw: e.brut ?? null,
-      };
-      const maintenant = new Date().toISOString();
-
-      if (e.etat === "accepte") {
-        // Déposé, pas arrivé : la ligne reste en attente, et c'est
-        // « verifier » qui la fera passer à « envoyé » le moment venu.
-        await admin.from("wallet_payouts").update({
-          ...commun,
-          ...(e.ref ? { auto_ref: e.ref } : {}),
-          note: "Ordre déposé chez " + tentative.fournisseur + " — en cours d'acheminement",
-        }).eq("id", data.id).eq("status", "pending");
-        motAuClient = "Lasa any amin'ny " + tentative.fournisseur +
-          " ny baiko. Hampandrenesina ianao rehefa tonga ny vola.";
-      } else if (e.etat === "refuse") {
-        // Refusé pour une raison comprise : le solde revient, et on dit
-        // laquelle — un refus sans motif ne se corrige pas.
-        etatFinal = "refused";
-        await admin.from("wallet_payouts").update({
-          ...commun,
-          status: "refused",
-          note: "Refusé par " + tentative.fournisseur + " : " + e.raison,
-          settled_at: maintenant,
-        }).eq("id", data.id).eq("status", "pending");
-        motAuClient = "Tsy lasa : " + e.raison;
-      } else {
-        // On ne sait pas. On ne décide donc rien : la ligne reste en attente,
-        // avec ce qu'on sait écrit dessus, et le propriétaire tranche.
-        await admin.from("wallet_payouts").update({
-          ...commun,
-          note: "À vérifier chez " + tentative.fournisseur + " : " + e.raison,
-        }).eq("id", data.id).eq("status", "pending");
-        motAuClient = "Mbola tsy voamarina : hojeren'ny tompon'ny appli.";
-      }
-    }
-
+    // Aucun canal ne part tout seul : la demande attend le propriétaire.
     // Le solde est déjà amputé : un retrait en attente compte comme parti,
     // sinon la même somme pourrait être demandée deux fois. Un refus, lui,
     // la rend — « balanceFor » ne compte que 'pending' et 'sent'.
-    const soldeApres = etatFinal === "refused" ? balance : balance - amount - frais;
     return json({
       payout: data,
-      balanceAr: soldeApres,
-      etat: etatFinal,
-      message: motAuClient,
-      auto: tentative ? { fournisseur: tentative.fournisseur, etat: tentative.envoi.etat } : null,
+      balanceAr: balance - amount - frais,
+      etat: "pending",
+      message: "",
+      auto: null,
     });
-  }
-
-  // ---- Déposer l'ordre chez le fournisseur, maintenant ----
-  // Le dépôt se tente déjà au moment de la demande. Ce bouton le rejoue :
-  // quand les clefs n'étaient pas encore posées, quand le réseau avait lâché,
-  // quand on veut simplement s'y remettre.
-  //
-  // Le rejouer est sans danger : la clef présentée au fournisseur est
-  // l'identifiant de la ligne, et c'est LUI qui refuse le doublon. Un ordre
-  // déjà déposé revient en « déjà vu », jamais en second versement.
-  if (action === "envoyer") {
-    const id = String(body.id ?? "").trim();
-    if (!id) return json({ error: "la page n'a pas dit quelle demande envoyer" }, 400);
-
-    const { data: ligne, error: erreurLecture } = await admin.from("wallet_payouts")
-      .select("id,email,name,status,method,destination,currency,amount_out,auto_provider,auto_ref,auto_attempts")
-      .eq("id", id).maybeSingle();
-
-    if (erreurLecture) return json({ error: "La demande n'a pas pu être lue : " + erreurLecture.message }, 500);
-    if (!ligne) return json({ error: "demande introuvable (" + id + ")" }, 404);
-
-    // Envoyer de l'argent est l'acte du propriétaire : c'est son compte
-    // marchand qui se vide. Personne d'autre ne déclenche cela à la main.
-    if (!isOwner) return json({ error: "réservé au propriétaire" }, 403);
-    if (ligne.status !== "pending") return json({ error: "Cette demande est déjà tranchée." }, 409);
-
-    const tentative = await executerLeRetrait(
-      String(ligne.method ?? ""),
-      String(ligne.id),
-      String(ligne.destination ?? ""),
-      ligne.amount_out === null || ligne.amount_out === undefined ? null : Number(ligne.amount_out),
-      String(ligne.currency ?? ""),
-    );
-
-    if (!tentative) {
-      return json({
-        error: "Ce canal ne s'envoie pas tout seul : " +
-          (String(ligne.method ?? "") === "paypal"
-            ? "les clefs PayPal ne sont pas posées (PAYPAL_CLIENT_ID, PAYPAL_SECRET)."
-            : "seul PayPal est automatique pour l'instant ; celui-ci s'envoie à la main."),
-      }, 409);
-    }
-
-    const e = tentative.envoi;
-    const maintenant = new Date().toISOString();
-    const essais = Number(ligne.auto_attempts ?? 0) + 1;
-
-    if (e.etat === "accepte") {
-      // Déposé, PAS arrivé. La ligne reste en attente : c'est « verifier »
-      // qui la fera passer à « envoyé », quand PayPal dira que c'est fait.
-      await admin.from("wallet_payouts").update({
-        auto_provider: tentative.fournisseur,
-        auto_attempts: essais,
-        auto_raw: e.brut ?? null,
-        ...(e.ref ? { auto_ref: e.ref } : {}),
-        note: "Ordre déposé chez " + tentative.fournisseur + " — en cours d'acheminement",
-      }).eq("id", id).eq("status", "pending");
-      return json({ etat: "depose", ref: e.ref || ligne.auto_ref || null,
-        message: "Lasa any amin'ny PayPal ny baiko. Hampandrenesina ianao rehefa tonga ny vola." });
-    }
-
-    if (e.etat === "refuse") {
-      await admin.from("wallet_payouts").update({
-        auto_provider: tentative.fournisseur,
-        auto_attempts: essais,
-        auto_raw: e.brut ?? null,
-        status: "refused",
-        note: "Refusé par " + tentative.fournisseur + " : " + e.raison,
-        settled_at: maintenant,
-      }).eq("id", id).eq("status", "pending");
-      return json({ etat: "refuse", message: e.raison });
-    }
-
-    // On ne sait pas. On ne décide rien.
-    await admin.from("wallet_payouts").update({
-      auto_provider: tentative.fournisseur,
-      auto_attempts: essais,
-      auto_raw: e.brut ?? null,
-      note: "À vérifier chez " + tentative.fournisseur + " : " + e.raison,
-    }).eq("id", id).eq("status", "pending");
-    return json({ etat: "incertain", message: e.raison });
-  }
-
-  // ---- L'argent est-il arrivé ? ----
-  // Le dépôt de l'ordre ne le disait pas : PayPal le traite ensuite. On le
-  // lui redemande pour chaque ligne déposée et encore en attente.
-  //
-  // Appelée à l'ouverture de l'application. Chacun demande pour ses propres
-  // lignes ; le propriétaire, pour toutes.
-  if (action === "verifier") {
-    let requete = admin.from("wallet_payouts")
-      .select("id,email,amount_ar,auto_provider,auto_ref")
-      .eq("status", "pending").not("auto_ref", "is", null).limit(25);
-    if (!isOwner) requete = requete.eq("email", email);
-
-    const { data: lignes, error: erreurLecture } = await requete;
-    if (erreurLecture) return json({ error: erreurLecture.message }, 500);
-
-    const arrivees: string[] = [];
-    const echecs: string[] = [];
-    for (const l of lignes ?? []) {
-      if (String(l.auto_provider ?? "") !== "paypal") continue;
-      const etat = await paypalEtat(String(l.auto_ref));
-      if (etat.etat === "arrive") {
-        await admin.from("wallet_payouts").update({
-          status: "sent",
-          note: "Arrivé chez le destinataire (paypal) — réf. " + l.auto_ref,
-          settled_at: new Date().toISOString(),
-          auto_raw: etat.brut ?? null,
-        }).eq("id", l.id).eq("status", "pending");
-        arrivees.push(String(l.id));
-      } else if (etat.etat === "echoue") {
-        // Il ne partira pas : la somme revient au solde, et l'on dit pourquoi.
-        await admin.from("wallet_payouts").update({
-          status: "refused",
-          note: "Non abouti chez paypal : " + etat.detail + " — solde rendu",
-          settled_at: new Date().toISOString(),
-          auto_raw: etat.brut ?? null,
-        }).eq("id", l.id).eq("status", "pending");
-        echecs.push(String(l.id));
-      }
-      // « en_cours » : on ne touche à rien, on redemandera.
-    }
-
-    return json({ verifies: (lignes ?? []).length, arrivees: arrivees.length, echecs: echecs.length });
   }
 
   // ---- Reprendre une demande qui n'est jamais partie ----
