@@ -2239,27 +2239,6 @@
           </form>
           <p id="walletAuthStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem;"></p>
 
-          <div style="margin-top:1.4rem; padding-top:1.2rem; border-top:1px solid var(--line);">
-            <h3 style="font-size:0.95rem;">Paiement en ligne — PayPal</h3>
-            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin:0.4rem 0 1rem;">
-              Reliez un compte PayPal pour pouvoir payer en ligne depuis votre portefeuille.
-            </p>
-            <div id="paypalNoAccountBlock">
-              <a class="btn btn-sm" href="https://www.paypal.com/signup" target="_blank" rel="noopener">
-                Je n'ai pas de compte PayPal — Créer un compte
-              </a>
-            </div>
-            <div style="margin-top:0.8rem;">
-              <form id="paypalConnectForm" style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:flex-end;">
-                <div class="field" style="margin-bottom:0; flex:1; min-width:200px;">
-                  <label for="paypalEmailInput">J'ai déjà un compte — email PayPal</label>
-                  <input id="paypalEmailInput" type="email" placeholder="votre-email@paypal.com" required>
-                </div>
-                <button type="submit" class="btn btn-sm" id="paypalConnectBtn">Connecter</button>
-              </form>
-              <p id="paypalConnectStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.6rem;"></p>
-            </div>
-          </div>
         </div>
 
         <!-- vue connectée -->
@@ -2278,10 +2257,6 @@
                 <!-- Seul l'argent vraiment payé sort en retrait (wallet, « retirableFor ») :
                      les parrainages et les sommes inscrites par l'application se dépensent ici. -->
                 <div class="plan-note" id="walletRetirable" style="margin-top:0.2rem;"></div>
-              </div>
-              <div>
-                <div class="plan-note">PayPal</div>
-                <div class="plan-price" id="walletPaypalStatus" style="font-size:1rem;">Non relié</div>
               </div>
             </div>
 

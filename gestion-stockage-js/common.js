@@ -862,7 +862,6 @@
 
   // ---------------- PORTEFEUILLE : vérification par correspondance nom/email ----------------
   const WALLET_SESSION_KEY = 'wallet_session_v1';
-  const WALLET_PAYPAL_KEY = 'wallet_paypal_v1';
   let walletSession = null;
 
   function loadWalletSession(){
@@ -873,17 +872,6 @@
     try{
       if(session) localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify(session));
       else localStorage.removeItem(WALLET_SESSION_KEY);
-    }catch(e){}
-  }
-
-  function loadWalletPaypal(){
-    try{ return JSON.parse(localStorage.getItem(WALLET_PAYPAL_KEY) || 'null'); }
-    catch(e){ return null; }
-  }
-  function saveWalletPaypal(data){
-    try{
-      if(data) localStorage.setItem(WALLET_PAYPAL_KEY, JSON.stringify(data));
-      else localStorage.removeItem(WALLET_PAYPAL_KEY);
     }catch(e){}
   }
 
@@ -915,17 +903,6 @@
     walletSession = { user: { name: currentUser.name, email: currentUser.email } };
     saveWalletSession(walletSession);
     if(statusEl) statusEl.textContent = '';
-    renderWallet();
-  });
-
-  document.getElementById('paypalConnectForm').addEventListener('submit', function(e){
-    e.preventDefault();
-    const statusEl = document.getElementById('paypalConnectStatus');
-    const email = document.getElementById('paypalEmailInput').value.trim();
-    if(!email){ return; }
-    saveWalletPaypal({ email: email, connectedAt: new Date().toISOString() });
-    document.getElementById('paypalEmailInput').value = '';
-    if(statusEl) statusEl.textContent = 'Compte PayPal relié (' + email + ') ✓';
     renderWallet();
   });
 
@@ -1632,12 +1609,6 @@
     // Le solde en ariary vient du serveur : c'est lui qui fait foi. En
     // attendant sa réponse, l'estimation locale évite un écran vide.
     refreshWalletFromServer();
-
-    const paypal = loadWalletPaypal();
-    const paypalStatusEl = document.getElementById('walletPaypalStatus');
-    if(paypalStatusEl){
-      paypalStatusEl.textContent = paypal && paypal.email ? paypal.email : 'Non relié';
-    }
 
     const boosterPanel = document.getElementById('walletBoosterPanel');
     const boosterActive = sub.boosterActiveUntil && new Date(sub.boosterActiveUntil) > new Date();
