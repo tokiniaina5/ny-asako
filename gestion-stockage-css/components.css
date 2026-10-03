@@ -30,9 +30,13 @@
   /* L'Administratif Commun regarde, il ne touche pas : rien de ce qui s'y
      montre ne répond au doigt, sauf les graphiques qu'on survole. */
   .lecture-seule button, .lecture-seule input, .lecture-seule select,
-  .lecture-seule textarea, .lecture-seule a, .lecture-seule [contenteditable]{
+  .lecture-seule textarea, .lecture-seule a, .lecture-seule [contenteditable],
+  .lecture-seule label{
     pointer-events:none;
   }
+  /* Sauf ce qui ne fait que montrer : ouvrir un livre de famille pour en
+     lire les membres ne change rien. */
+  .lecture-seule [data-fam-sokafy]{ pointer-events:auto; }
   /* Administratif Fokontany et Administratif Commun : le propriétaire seul
      les voit (parametres.js pose .est-proprietaire). Les clients n'en voient
      ni l'entrée, ni l'icône épinglée, ni la fenêtre. La page /fokontany/
@@ -668,6 +672,8 @@
   /* La photo remplit le rond sans se déformer : recadrée au centre plutôt
      qu’étirée, un portrait reste un portrait. */
   .fb-avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+  /* L'auteur du billet est là en ce moment : un anneau vert autour. */
+  .fb-avatar.en-ligne{ box-shadow:0 0 0 2px var(--panel), 0 0 0 4px #16e05a, 0 0 10px rgba(22,224,90,0.7); }
   .fb-composer-row{ display:flex; align-items:center; gap:0.7rem; }
   .fb-composer-input{
     flex-grow:1; padding:0.75rem 1rem; border-radius:999px;
@@ -819,6 +825,10 @@
   .fb-logo-partage.fafana{ margin-right:0.15em; }
   .fb-logo-partage.fafana svg{ background:var(--red, #e5484d); }
   .fb-comment-fafana .fb-logo-partage{ font-size:0.95rem; }
+  /* « Ovay » : la même pastille que « Fafana », un crayon jaune dessus. */
+  .fb-logo-partage.ovay{ margin-right:0.15em; }
+  .fb-logo-partage.ovay svg{ background:#f5a524; }
+  .fb-comment-ovay .fb-logo-partage{ font-size:0.95rem; }
   .fb-comment-fafana:hover{ text-decoration:none; }
 
   /* « J'aime » : la pastille est grise tant qu'on n'a pas aimé, bleue ensuite. */
@@ -882,6 +892,22 @@
     color:var(--red, #e5484d); cursor:pointer; opacity:0.8;
   }
   .fb-comment-fafana:hover{ opacity:1; text-decoration:underline; }
+  /* « Ovay », juste avant « Fafana », au bout de la ligne. */
+  .fb-comment-ovay{
+    margin-left:auto; font-size:0.7rem; font-weight:600;
+    color:var(--cyan); cursor:pointer; opacity:0.85;
+  }
+  .fb-comment-ovay:hover{ opacity:1; text-decoration:underline; }
+  .fb-comment-ovay + .fb-comment-fafana{ margin-left:0; }
+  .fb-comment-texte[hidden]{ display:none; }
+  .fb-comment-edition{ margin:0.2rem 0 0.1rem; }
+  .fb-comment-edition textarea{
+    width:100%; box-sizing:border-box; resize:vertical; min-height:2.6rem;
+    font:inherit; font-size:0.8rem; color:var(--text);
+    background:var(--panel); border:1px solid var(--cyan); border-radius:8px; padding:0.35rem 0.5rem;
+  }
+  .fb-comment-edition-btns{ display:flex; justify-content:flex-end; gap:0.4rem; margin-top:0.3rem; }
+  .fb-comment-edition-btns .btn{ width:auto; padding:0.3rem 0.8rem; font-size:0.75rem; }
   .fb-comment-like .fb-reaction-emoji{ font-size:1.1em !important; }
   .fb-comment-compte{ align-items:center; }
   .fb-comment-compte .fb-reaction-compte{ padding:0.05rem 0.4rem 0.05rem 0.1rem; }
@@ -1334,11 +1360,24 @@
     text-shadow: none;
   }
 
-/* Les logos des actions (J'aime, Commenter, Panier, Partager, Rehetra) :
-   plus grands que le mot qui les suit, qui garde sa taille. En fin de
-   fichier, pour passer devant les « font-size:inherit » des actions. */
-.fb-post-actions span.fb-logo-partage{ font-size:1.2rem; }
-.fb-post-actions .fb-logo-maison{ width:1.6rem; height:1.6rem; }
+/* Les actions d'un billet (J'aime, Commenter, Panier, Partager, Groupe) :
+   le logo seul, sans le mot, à taille normale — au double, ils écrasaient
+   la ligne sur un téléphone. Rien ne suit le logo : pas de marge à droite.
+   En fin de fichier, pour passer devant les « font-size:inherit ». */
+.fb-post-actions span.fb-logo-partage{ font-size:1.05rem; margin-right:0; }
+.fb-post-actions .fb-like-action .fb-logo-partage{ margin-right:0; }
+@media (max-width: 480px){
+  .fb-post-actions span.fb-logo-partage{ font-size:0.95rem; }
+}
+/* Bien alignés : les cinq logos dans cinq colonnes égales, et la place de
+   « Hamafa » gardée à droite même quand il n'y est pas — d'un billet à
+   l'autre, chaque logo tombe au même endroit. */
+.fb-post-actions{ display:grid; grid-template-columns:minmax(0, 1fr) 2rem; gap:0.4rem; align-items:center; }
+.fb-actions-milieu{ display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); justify-items:center; gap:0; }
+.fb-actions-milieu > *{ justify-content:center; }
+.fb-post-actions > [data-delete-post]{ grid-column:2; margin-left:0; justify-self:end; }
+/* « Groupe » : un petit groupe de personnes sur la pastille violette. */
+.fb-logo-partage.groupe svg{ background:#8b5cf6; }
 
 /* Le logo du menu, au bord gauche de la rangée : il remplit sa tuile, comme
    celui du bouton flottant, au lieu d'un petit N au milieu d'un carré. */
@@ -1388,9 +1427,11 @@
   align-items:center; justify-content:center; background:var(--cyan); color:#fff;
   font-size:0.72rem; font-weight:700;
 }
+/* Le visage, en haut à gauche de la carte : son seul liseré ; l'anneau
+   violet ne vient que si l'auteur est là (plus bas). */
 .story-anneau{
   position:absolute; left:0.4rem; top:0.4rem; z-index:1;
-  padding:2px; border-radius:50%; background:var(--cyan); display:inline-flex;
+  border-radius:50%; display:inline-flex;
 }
 .story-anneau .story-avatar{ box-shadow:0 0 0 2px var(--panel); }
 /* « Hanampy story » : son visage en haut, le « + » à la jointure. */
@@ -1479,6 +1520,18 @@ body.story-ouverte .fb-reaction-avis{ z-index:413; }
 /* Une story en vidéo : sa première image sert de fond à la carte, et un
    petit ▶ dit qu'elle bouge. */
 .story-carte-video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none; }
+/* Chaque carte à son tour : le sary grossit doucement, la vidéo joue, et
+   son ▶ s'efface le temps qu'elle bouge. */
+.story-carte-fond{
+  position:absolute; inset:0; background:center/cover no-repeat;
+  transition:transform 4s ease-out; pointer-events:none;
+}
+.story-carte.story-joue .story-carte-fond{ transform:scale(1.15); }
+.story-carte.story-joue .story-carte-play{ opacity:0; }
+@media (prefers-reduced-motion: reduce){
+  .story-carte-fond{ transition:none; }
+  .story-carte.story-joue .story-carte-fond{ transform:none; }
+}
 .story-carte-play{
   position:absolute; right:0.4rem; top:0.45rem; z-index:1; font-size:0.7rem;
   width:20px; height:20px; border-radius:50%; background:rgba(0,0,0,0.55); line-height:20px; text-align:center;
@@ -1600,15 +1653,153 @@ body.story-ouverte .fb-reaction-avis{ z-index:413; }
 .story-mpijery-vide{ color:var(--muted); font-size:0.85rem; margin:0.4rem 0; }
 .story-mpijery-olona .story-avatar{ flex:none; width:36px; height:36px; }
 
-/* Le client est en ligne : sa story a un bord vert vif, et l'anneau de son
-   visage aussi. */
-.story-carte.en-ligne{ box-shadow:0 0 0 4px #16e05a, 0 0 14px rgba(22,224,90,0.7); }
-.story-carte.en-ligne .story-anneau{ background:#16e05a; }
+/* Le client est en ligne : un anneau violet autour de son visage, et non
+   autour de la carte. 4px de marge : le liseré sombre du visage (2px) en
+   couvre la moitié, il reste 2px de violet. */
+.story-carte.en-ligne .story-anneau{ padding:4px; background:#a259ff; box-shadow:0 0 8px rgba(162,89,255,0.8); }
 
 /* Une carte de story qu'on tient pour la déplacer : soulevée, devant les
    autres. Pas de sélection ni de menu d'image au doigt long. */
 .story-carte{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+/* La rangée pleine : deux flèches pour la faire glisser. */
+.story-cadre{ position:relative; }
+.story-fleche{
+  position:absolute; top:calc(75px - 0.35rem); transform:translateY(-50%); z-index:6;
+  width:34px; height:34px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,0.6); color:#fff; font-size:1.5rem; line-height:30px; padding:0;
+  box-shadow:0 2px 8px rgba(0,0,0,0.35);
+}
+.story-fleche[hidden]{ display:none; }
+/* « Hanampy story » reste en tête quand la rangée défile ; la flèche de
+   gauche se pose juste après lui. */
+.story-rangee .story-ajouter{ position:sticky; left:0; z-index:4; }
+.story-fleche-g{ left:calc(92px + 0.55rem + 4px); }
+.story-fleche-d{ right:4px; }
+.story-rangee.story-glisse{ cursor:grabbing; }
 .story-carte.story-tiree{
   position:relative; z-index:5; opacity:0.92; cursor:grabbing;
   box-shadow:0 12px 28px rgba(0,0,0,0.45); transition:none;
+}
+
+/* ---- Les stories en ronds 3D ----
+   Chaque story est une bulle ronde en relief : ombre portée dessous, ombre
+   intérieure sur le bas, reflet en haut à gauche. Un anneau en hélice tourne
+   autour ; le petit visage se pose sur le bord, le nom passe dessous. */
+.story-rangee{ padding-top:0.35rem; }
+.story-carte{
+  width:88px; height:124px; border-radius:0; overflow:visible;
+  background:transparent; box-shadow:none;
+}
+.story-carte::after{ display:none; }
+.story-rond{
+  position:absolute; left:4px; top:4px; width:80px; height:80px; z-index:0;
+  border-radius:50%; overflow:hidden; background:var(--panel-2);
+  box-shadow:0 9px 14px rgba(0,0,0,0.45), 0 2px 3px rgba(0,0,0,0.35);
+  transition:transform 0.25s ease;
+}
+/* Le relief, par-dessus le sary : sombre en bas, reflet en haut. */
+.story-rond::after{
+  content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none; z-index:2;
+  background:radial-gradient(circle at 32% 26%, rgba(255,255,255,0.45), rgba(255,255,255,0.08) 28%, transparent 46%);
+  box-shadow:inset 0 -10px 16px rgba(0,0,0,0.5), inset 0 5px 8px rgba(255,255,255,0.2);
+}
+.story-carte:hover .story-rond{ transform:translateY(-3px) scale(1.04); }
+.story-rond .story-carte-play{ left:50%; top:50%; right:auto; transform:translate(-50%,-50%); z-index:3; }
+/* L'hélice : des rubans violets, cyan et blancs qui tournent autour. */
+.story-helice{
+  position:absolute; inset:auto; left:0; top:0; width:88px; height:88px; z-index:1;
+  border-radius:50%; padding:3px; pointer-events:none;
+  background:repeating-conic-gradient(#a259ff 0 14deg, #3ee6ff 14deg 28deg, #ffffff 28deg 31deg, #a259ff 31deg 36deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+  animation:story-helice 6s linear infinite;
+}
+@keyframes story-helice{ to{ transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce){ .story-helice{ animation:none; } .story-rond{ transition:none; } }
+/* Le petit visage sur le bord de la bulle, en bas à droite. */
+.story-carte .story-anneau{ left:58px; top:58px; z-index:3; }
+.story-carte .story-anneau .story-avatar{ width:26px; height:26px; font-size:0.6rem; }
+.story-carte .story-nom{
+  top:94px; bottom:auto; left:0; right:0; text-align:center;
+  color:var(--text); font-size:0.7rem; line-height:1.15;
+}
+/* « Hanampy story » : une bulle aussi, le « + » sur son bord. Un fond
+   opaque, puisqu'il reste en tête quand la rangée défile. */
+.story-ajouter{ background:var(--panel); box-shadow:none; }
+.story-ajouter .story-ajouter-fond{ left:4px; top:4px; right:auto; width:80px; height:80px; }
+.story-ajouter .story-ajouter-fond .story-avatar{ border-radius:50%; }
+.story-ajouter .story-plus{
+  left:60px; top:60px; transform:none; width:26px; height:26px; line-height:26px; font-size:1.1rem; z-index:3;
+}
+.story-carte.story-tiree{ box-shadow:none; filter:drop-shadow(0 12px 16px rgba(0,0,0,0.5)); }
+.story-fleche{ top:calc(44px + 0.35rem); }
+
+/* Une story posée sur l'écran, comme les petites icônes, mais au-dessus des
+   fenêtres (sous la rangée du bas) : posée sur la fenêtre du Botika — sur un
+   téléphone, elle couvre tout l'écran — elle y disparaissait. Au-dessus du
+   fond, son nom lisible sur n'importe quelle image.
+   Tenue, elle passe devant tout. Rien de tout cela sur la page d'entrée. */
+.story-carte.story-bureau{
+  position:fixed; z-index:105; touch-action:none; cursor:grab;
+}
+.story-carte.story-bureau .story-nom{ color:#fff; text-shadow:0 1px 5px rgba(0,0,0,0.9); }
+.story-carte.story-bureau.story-tiree{ z-index:150; cursor:grabbing; }
+.story-carte.story-fantome{ z-index:420; pointer-events:none; opacity:0.95; }
+body:not(.appli-ouverte) .story-bureau{ display:none !important; }
+
+/* ⏻ « Herinaratra » : la petite liste qui monte au-dessus du N quand on le
+   tient appuyé, comme le menu d'arrêt de Windows (herinaratra.js la place). */
+.menu-herinaratra-lisitra{
+  position:fixed; z-index:180; width:200px;
+  display:flex; flex-direction:column; padding:0.3rem;
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  box-shadow:0 10px 26px rgba(0,0,0,0.4);
+}
+.menu-herinaratra-lisitra[hidden]{ display:none; }
+.menu-herinaratra-lisitra button{
+  display:flex; align-items:center; gap:0.7rem; width:100%;
+  padding:0.55rem 0.7rem; border:none; border-radius:7px; background:none;
+  color:var(--text); font:inherit; font-size:0.88rem; text-align:left; cursor:pointer;
+}
+.menu-herinaratra-lisitra button:hover,
+.menu-herinaratra-lisitra button:focus-visible{ background:var(--panel-2); outline:none; }
+.menu-herinaratra-lisitra button span{ width:1.2rem; text-align:center; display:inline-flex; justify-content:center; }
+
+/* 🔒 L'écran verrouillé : l'heure en grand, et de quoi le rouvrir. */
+.ecran-hidy{
+  position:fixed; inset:0; z-index:2000;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem;
+  background:linear-gradient(160deg, #0b1d26, #05090c 70%);
+  color:#fff; padding:16px; text-align:center;
+}
+.ecran-hidy-ora{ font-size:clamp(3.5rem, 16vw, 6rem); font-weight:300; line-height:1; font-variant-numeric:tabular-nums; }
+.ecran-hidy-daty{ font-size:1rem; opacity:0.8; text-transform:capitalize; margin-bottom:2rem; }
+.ecran-hidy-boaty{ display:flex; flex-direction:column; gap:0.6rem; width:min(300px, 100%); }
+.ecran-hidy-anarana{ font-weight:600; }
+.ecran-hidy-teny{
+  width:100%; box-sizing:border-box; padding:0.65rem 0.8rem; border-radius:10px;
+  border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.08); color:#fff; font:inherit;
+}
+.ecran-hidy-hadisoana{ min-height:1.2em; color:#ff8a8a; font-size:0.85rem; }
+
+/* 🌙 L'écran en veille : tout noir, un appui le rallume. */
+.ecran-atory{ position:fixed; inset:0; z-index:2000; background:#000; cursor:none; }
+.ecran-hidy-toro{ font-size:0.85rem; opacity:0.85; }
+.ecran-hidy-hadino{
+  border:none; background:none; color:#fff; opacity:0.7; font:inherit; font-size:0.8rem;
+  text-decoration:underline; cursor:pointer; padding:0.2rem;
+}
+.ecran-hidy-hadino:hover{ opacity:1; }
+
+/* Sur le N de la rangée : combien de sites sont encore ouverts. Dans le coin
+   de la tuile, qui coupe ce qui la dépasse. */
+#stockMainTabs #menuToggle .n-ouvertes{
+  position:absolute; top:2px; right:2px; z-index:1;
+  min-width:15px; height:15px; padding:0 3px; box-sizing:border-box;
+  border-radius:999px; background:#16e05a; color:#04140a;
+  font-size:0.6rem; font-weight:800; line-height:15px; text-align:center;
+  box-shadow:0 0 0 2px var(--panel);
+  pointer-events:none;
 }

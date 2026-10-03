@@ -1579,21 +1579,31 @@
   }
 
   // En ligne : son compte est dans la présence (live.js), qui porte son
-  // identifiant. La carte de sa story prend alors un bord vert vif.
+  // identifiant. Le visage sur la carte de sa story prend alors un anneau
+  // violet.
   function auteurEnLigne(id){
     if(!id || typeof presenceState !== 'object' || !presenceState) return false;
     return Object.keys(presenceState).some(function(k){
       return presenceState[k] && presenceState[k].uid === id;
     });
   }
-  // La présence change sans que les stories soient relues : on repeint
-  // seulement les bords.
+  // La présence change sans que le fil ni les stories soient relus : on
+  // repeint seulement les bords et les anneaux.
   window.__storiesEnLigne = function(){
-    if(!storyRangee) return;
-    storyRangee.querySelectorAll('[data-story-auteur]').forEach(function(c){
+    document.querySelectorAll('#storyRangee [data-story-auteur], .story-bureau[data-story-auteur]').forEach(function(c){
       c.classList.toggle('en-ligne', auteurEnLigne(c.getAttribute('data-story-auteur')));
     });
+    // Et le visage des billets du Botika.
+    document.querySelectorAll('[data-en-ligne-email]').forEach(function(a){
+      a.classList.toggle('en-ligne', emailEnLigne(a.getAttribute('data-en-ligne-email')));
+    });
   };
+  // La présence est rangée par adresse : celle d'un billet suffit.
+  function emailEnLigne(email){
+    if(!email || typeof presenceState !== 'object' || !presenceState) return false;
+    const e = String(email).trim().toLowerCase();
+    return Object.keys(presenceState).some(function(k){ return String(k).trim().toLowerCase() === e; });
+  }
 
   function avatarStory(photo, nom){
     return photo
@@ -1606,26 +1616,223 @@
     const maPhoto = jeSuisLaMaison() ? MARQUE_LOGO : ((currentUser && currentUser.logo) || '');
     let html =
       '<button type="button" class="story-carte story-ajouter" data-story-ajouter>' +
-        '<span class="story-ajouter-fond">' + avatarStory(maPhoto, (currentUser && currentUser.name) || '') + '</span>' +
+        '<span class="story-rond story-ajouter-fond">' + avatarStory(maPhoto, (currentUser && currentUser.name) || '') + '</span>' +
         '<span class="story-plus" aria-hidden="true">+</span>' +
         '<span class="story-nom">Hanampy story</span>' +
       '</button>';
+    // Celles qu'on a posées sur l'écran n'y sont plus : elles vivent là-bas
+    // (dessinerStoriesBureau), comme les icônes sorties de la rangée du bas.
+    const surLEcran = lireStoriesBureau().map(function(b){ return b.id; });
     groupesDeStories().forEach(function(g, i){
+      if(surLEcran.indexOf(g.liste[0].id) >= 0) return;
+      html += htmlCarteStory(g, i, '');
+    });
+    // Le fil se relit souvent (un billet, une réaction, un live…) et relit
+    // les stories avec lui. Redessiner la rangée à l'identique couperait la
+    // vidéo qui joue et renverrait le tour à la première bulle : elle ne
+    // bouge donc que si les stories ont changé.
+    if(html !== storyRangee.__html){
+      storyRangee.__html = html;
+      storyRangee.innerHTML = html;
+      jouerVideosCartes();
+    }
+    dessinerStoriesBureau();
+    // La présence se pose à part, sans redessiner.
+    window.__storiesEnLigne();
+  }
+
+  // Une bulle de story : dans la rangée, ou posée sur l'écran (« classe »).
+  function htmlCarteStory(g, i, classe){
       const derniere = g.liste[g.liste.length - 1];
       // Une vidéo n'a pas d'image à poser en fond : sa première seconde, sans
       // le son, en tient lieu.
       const video = derniere.genre === 'video';
-      html +=
-        '<button type="button" class="story-carte' + (auteurEnLigne(g.auteur_id) ? ' en-ligne' : '') +
-          '" data-story-groupe="' + i + '" data-story-id="' + escapeHtml(g.liste[0].id) + '" data-story-auteur="' + escapeHtml(g.auteur_id) + '"' +
-          (video ? '' : ' style="background-image:url(\'' + String(derniere.media).replace(/'/g, '%27') + '\')"') + '>' +
-          (video ? '<video class="story-carte-video" src="' + escapeHtml(derniere.media) + '#t=' + ((derniere.video_debut || 0) + 0.5) + '" muted playsinline preload="metadata"></video>' +
+      return '' +
+        '<button type="button" class="story-carte' + classe + '" data-story-groupe="' + i + '" data-story-id="' + escapeHtml(g.liste[0].id) + '" data-story-auteur="' + escapeHtml(g.auteur_id) + '"' +
+          '>' +
+          // Le rond en relief qui porte le sary ou la vidéo ; le sary y a son
+          // propre calque, qui grossit doucement à son tour sans déborder.
+          '<span class="story-rond">' +
+          (video ? '' : '<span class="story-carte-fond" style="background-image:url(\'' + String(derniere.media).replace(/'/g, '%27') + '\')"></span>') +
+          (video ? '<video class="story-carte-video" src="' + escapeHtml(derniere.media) + '#t=' + ((derniere.video_debut || 0) + 0.5) + '" muted playsinline preload="metadata"' +
+              ' data-debut="' + (Number(derniere.video_debut) || 0) + '" data-fin="' + (Number(derniere.video_fin) || 0) + '"></video>' +
             '<span class="story-carte-play" aria-hidden="true">▶</span>' : '') +
+          '</span>' +
+          '<span class="story-helice" aria-hidden="true"></span>' +
           '<span class="story-anneau">' + avatarStory(g.photo, g.nom) + '</span>' +
           '<span class="story-nom">' + escapeHtml(g.auteur_id === monIdStory ? 'Ny story-nao' : (g.nom || 'Client')) + '</span>' +
         '</button>';
+  }
+
+  // ---- Les stories posées sur l'écran ----
+  // On tient une bulle, on la tire hors de la rangée et on la lâche où l'on
+  // veut : elle reste là, sur l'écran, comme les petites icônes (common.js,
+  // « Les icônes posées sur le fond »). Un appui l'ouvre ; on la déplace en
+  // la tirant ; relâchée sur la rangée, elle y retourne. Sa place est gardée
+  // en fractions de l'écran, et elle s'en va d'elle-même quand la story
+  // finit.
+  const CLE_STORIES_BUREAU = 'stockmanager_stories_bureau';
+  function lireStoriesBureau(){
+    try{ const l = JSON.parse(localStorage.getItem(CLE_STORIES_BUREAU)); return Array.isArray(l) ? l : []; }
+    catch(e){ return []; }
+  }
+  function ecrireStoriesBureau(l){
+    try{ localStorage.setItem(CLE_STORIES_BUREAU, JSON.stringify(l.slice(0, 40))); }catch(e){}
+  }
+  function placerBulleBureau(el, fx, fy){
+    const x = Math.min(Math.max(8, fx * window.innerWidth), window.innerWidth - 96);
+    const y = Math.min(Math.max(8, fy * window.innerHeight), window.innerHeight - 132);
+    el.style.left = Math.round(x) + 'px';
+    el.style.top = Math.round(y) + 'px';
+  }
+  function poserStorySurLEcran(id, x, y){
+    const l = lireStoriesBureau().filter(function(b){ return b.id !== id; });
+    // Lâchée au bord, elle reste entière à l'écran.
+    x = Math.min(Math.max(8, x), window.innerWidth - 96);
+    y = Math.min(Math.max(8, y), window.innerHeight - 132);
+    l.push({ id: id, x: x / window.innerWidth, y: y / window.innerHeight });
+    ecrireStoriesBureau(l);
+    dessinerStories();
+  }
+  function rendreStoryALaRangee(id){
+    ecrireStoriesBureau(lireStoriesBureau().filter(function(b){ return b.id !== id; }));
+    dessinerStories();
+  }
+  function surLaRangeeStory(x, y){
+    if(!storyRangee || !storyRangee.offsetParent) return false;
+    const r = storyRangee.getBoundingClientRect();
+    return x >= r.left - 10 && x <= r.right + 10 && y >= r.top - 10 && y <= r.bottom + 10;
+  }
+  function dessinerStoriesBureau(){
+    const groupes = groupesDeStories();
+    const vivantes = {};
+    groupes.forEach(function(g, i){ vivantes[g.liste[0].id] = i; });
+    // La liste n'est pas encore lue (premier passage) : on n'efface rien.
+    if(!listeStories.length) return;
+    // Une story finie quitte l'écran, et sa place est oubliée.
+    const l = lireStoriesBureau();
+    const restent = l.filter(function(b){ return vivantes[b.id] !== undefined; });
+    if(restent.length !== l.length) ecrireStoriesBureau(restent);
+    [].slice.call(document.querySelectorAll('.story-bureau:not(.story-fantome)')).forEach(function(el){
+      const id = el.getAttribute('data-story-id');
+      if(!restent.some(function(b){ return b.id === id; })) el.remove();
     });
-    storyRangee.innerHTML = html;
+    restent.forEach(function(b){
+      const i = vivantes[b.id];
+      let el = null;
+      document.querySelectorAll('.story-bureau:not(.story-fantome)').forEach(function(x){
+        if(x.getAttribute('data-story-id') === b.id) el = x;
+      });
+      if(!el){
+        const t = document.createElement('div');
+        t.innerHTML = htmlCarteStory(groupes[i], i, ' story-bureau');
+        el = t.firstChild;
+        document.body.appendChild(el);
+        armerBulleBureau(el);
+      }
+      // Le rang a pu changer (une story plus récente devant elle).
+      el.setAttribute('data-story-groupe', String(i));
+      if(!el.classList.contains('story-tiree')) placerBulleBureau(el, b.x, b.y);
+    });
+  }
+  // Tirer une bulle posée : elle suit le doigt tout de suite. Sans bouger,
+  // c'est un appui : la story s'ouvre.
+  function armerBulleBureau(el){
+    let t = null;
+    el.addEventListener('pointerdown', function(e){
+      if(e.button > 0) return;
+      const r = el.getBoundingClientRect();
+      t = { x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, bouge: false };
+      try{ el.setPointerCapture(e.pointerId); }catch(err){}
+    });
+    el.addEventListener('pointermove', function(e){
+      if(!t) return;
+      if(!t.bouge && Math.abs(e.clientX - t.x) + Math.abs(e.clientY - t.y) < 6) return;
+      t.bouge = true;
+      el.classList.add('story-tiree');
+      el.style.left = Math.round(e.clientX - t.dx) + 'px';
+      el.style.top = Math.round(e.clientY - t.dy) + 'px';
+    });
+    el.addEventListener('pointerup', function(e){
+      if(!t) return;
+      const bouge = t.bouge, dx = t.dx, dy = t.dy;
+      t = null;
+      el.classList.remove('story-tiree');
+      if(!bouge) return;
+      el.__vientDeTirer = true;
+      setTimeout(function(){ el.__vientDeTirer = false; }, 400);
+      const id = el.getAttribute('data-story-id');
+      if(surLaRangeeStory(e.clientX, e.clientY)){ rendreStoryALaRangee(id); return; }
+      poserStorySurLEcran(id, e.clientX - dx, e.clientY - dy);
+    });
+    el.addEventListener('pointercancel', function(){ t = null; el.classList.remove('story-tiree'); });
+    el.addEventListener('click', function(){
+      if(el.__vientDeTirer) return;
+      ouvrirGroupe(Number(el.getAttribute('data-story-groupe')), 0);
+    });
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  }
+  window.addEventListener('resize', function(){ dessinerStoriesBureau(); });
+
+  // ---- Les cartes s'animent, chacune son tour ----
+  // Un sary grossit doucement quatre secondes ; une vidéo joue, sans le son,
+  // de son début choisi à sa fin (quinze secondes au plus). La carte suivante
+  // prend le relais, et après la dernière on repart de la première. Rien ne
+  // bouge tant que la page est cachée, qu'une story est ouverte ou qu'une
+  // carte est tenue.
+  let tourVideos = 0;
+  function jouerVideosCartes(){
+    const tour = ++tourVideos;
+    let n = 0;
+    function suivante(){
+      if(tour !== tourVideos || !storyRangee) return;
+      const cartes = storyRangee.querySelectorAll('.story-carte[data-story-id]');
+      if(!cartes.length) return;
+      const pause = document.hidden || !storyRangee.offsetParent ||
+        document.body.classList.contains('story-ouverte') || storyRangee.querySelector('.story-tiree');
+      if(pause){ setTimeout(suivante, 1500); return; }
+      const carte = cartes[n % cartes.length];
+      n++;
+      const el = carte.querySelector('.story-carte-video');
+      if(!el){
+        carte.classList.add('story-joue');
+        setTimeout(function(){
+          carte.classList.remove('story-joue');
+          setTimeout(suivante, 300);
+        }, 4000);
+        return;
+      }
+      const debut = Number(el.getAttribute('data-debut')) || 0;
+      const finChoisie = Number(el.getAttribute('data-fin')) || 0;
+      let fini = false;
+      function arreter(){
+        if(fini) return;
+        fini = true;
+        clearTimeout(garde);
+        el.removeEventListener('timeupdate', surTemps);
+        el.removeEventListener('ended', arreter);
+        el.removeEventListener('error', arreter);
+        el.pause();
+        carte.classList.remove('story-joue');
+        setTimeout(suivante, cartes.length > 1 ? 300 : 1500);
+      }
+      function surTemps(){
+        if(tour !== tourVideos || document.hidden || document.body.classList.contains('story-ouverte')){ arreter(); return; }
+        if(finChoisie && el.currentTime >= finChoisie) arreter();
+      }
+      // Quinze secondes au plus, et une vidéo qui ne vient pas ne bloque pas
+      // les autres.
+      const garde = setTimeout(arreter, 15000);
+      el.addEventListener('timeupdate', surTemps);
+      el.addEventListener('ended', arreter);
+      el.addEventListener('error', arreter);
+      el.muted = true;
+      try{ el.currentTime = debut; }catch(err){}
+      carte.classList.add('story-joue');
+      const p = el.play();
+      if(p && p.catch) p.catch(arreter);
+    }
+    setTimeout(suivante, 600);
   }
 
   // ---- Déplacer une carte ----
@@ -1641,7 +1848,9 @@
       if(g.carte){
         g.carte.classList.remove('story-tiree');
         g.carte.style.transform = '';
+        g.carte.style.opacity = '';
       }
+      if(g.fantome) g.fantome.remove();
       g = null;
     }
     storyRangee.addEventListener('pointerdown', function(e){
@@ -1663,10 +1872,29 @@
       if(!g) return;
       if(!g.carte){
         // Bougé avant d'être soulevée : c'est un défilement.
-        if(Math.abs(e.clientX - g.x) + Math.abs(e.clientY - g.y) > 8){ clearTimeout(g.minuterie); g = null; }
+        // 14px : un doigt qui tient ne reste jamais tout à fait immobile.
+        if(Math.abs(e.clientX - g.x) + Math.abs(e.clientY - g.y) > 14){ clearTimeout(g.minuterie); g = null; }
         return;
       }
       e.preventDefault();
+      g.lx = e.clientX;
+      g.ly = e.clientY;
+      // Hors de la rangée, la fenêtre la couperait : un double la suit sur
+      // l'écran, tenu par son milieu, et se posera là où on le lâche.
+      if(!surLaRangeeStory(e.clientX, e.clientY)){
+        if(!g.fantome){
+          g.fantome = g.carte.cloneNode(true);
+          g.fantome.classList.add('story-bureau', 'story-tiree', 'story-fantome');
+          g.fantome.style.transform = '';
+          document.body.appendChild(g.fantome);
+          g.carte.style.opacity = '0.3';
+          g.carte.style.transform = '';
+        }
+        g.fantome.style.left = Math.round(e.clientX - 44) + 'px';
+        g.fantome.style.top = Math.round(e.clientY - 44) + 'px';
+        return;
+      }
+      if(g.fantome){ g.fantome.remove(); g.fantome = null; g.carte.style.opacity = ''; }
       g.carte.style.transform = 'translate(' + (e.clientX - g.dx0) + 'px,' + (e.clientY - g.dy0) + 'px) scale(1.06)';
       // La carte sous le doigt (hors celle qu'on tient) : on se glisse devant
       // ou derrière elle, selon le côté.
@@ -1694,6 +1922,16 @@
     function fin(){
       if(!g) return;
       clearTimeout(g.minuterie);
+      // Lâchée hors de la rangée : elle se pose sur l'écran, là.
+      if(g.carte && g.fantome){
+        const id = g.carte.getAttribute('data-story-id');
+        const x = g.lx - 44, y = g.ly - 44;
+        storyRangee.__vientDeTirer = true;
+        setTimeout(function(){ storyRangee.__vientDeTirer = false; }, 400);
+        annuler();
+        poserStorySurLEcran(id, x, y);
+        return;
+      }
       if(g.carte){
         const ids = [].map.call(storyRangee.querySelectorAll('.story-carte[data-story-id]'), function(c){
           return c.getAttribute('data-story-id');
@@ -2516,20 +2754,125 @@
     }, Promise.resolve([])).then(function(elements){ return { elements: elements, erreurs: erreurs }; });
   }
 
+  // Choisir sary, video ou clip (plusieurs d'un coup) depuis le « + » de la
+  // rangée.
+  function choisirFichiersStory(bouton){
+    sessionStory().then(function(session){
+      if(!session){ direPresDuBouton(bouton, 'Midira amin\'ny tenimiafinao aloha vao afaka mametraka story.'); return; }
+      storyFichier.value = '';
+      storyFichier.click();
+    });
+  }
+
+  // ---- Faire défiler une rangée pleine ----
+  // Au doigt elle glisse déjà ; à la souris, il faut les flèches, la molette
+  // ou la tirer. Les flèches ne paraissent que s'il reste à voir de ce côté.
+  function armerDefilementStories(){
+    const g = document.getElementById('storyFlecheG');
+    const d = document.getElementById('storyFlecheD');
+    function majFleches(){
+      const max = storyRangee.scrollWidth - storyRangee.clientWidth;
+      if(g) g.hidden = storyRangee.scrollLeft <= 2;
+      if(d) d.hidden = storyRangee.scrollLeft >= max - 2;
+    }
+    function pousser(sens){
+      storyRangee.scrollBy({ left: sens * Math.max(storyRangee.clientWidth * 0.8, 100), behavior: 'smooth' });
+    }
+    if(g) g.addEventListener('click', function(){ pousser(-1); });
+    if(d) d.addEventListener('click', function(){ pousser(1); });
+    storyRangee.addEventListener('scroll', majFleches, { passive: true });
+    // Cachée tant que la page Botika n'est pas ouverte : sa taille change en
+    // paraissant, et les flèches se recalculent alors.
+    if(window.ResizeObserver) new ResizeObserver(majFleches).observe(storyRangee);
+    else window.addEventListener('resize', majFleches);
+    new MutationObserver(majFleches).observe(storyRangee, { childList: true });
+    // La molette verticale fait glisser la rangée, tant qu'elle peut glisser.
+    storyRangee.addEventListener('wheel', function(e){
+      if(Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const max = storyRangee.scrollWidth - storyRangee.clientWidth;
+      if(max <= 0) return;
+      if(e.deltaY < 0 && storyRangee.scrollLeft <= 0) return;
+      if(e.deltaY > 0 && storyRangee.scrollLeft >= max) return;
+      e.preventDefault();
+      storyRangee.scrollLeft += e.deltaY;
+    }, { passive: false });
+    // Tirer à la souris : bouger avant le tiers de seconde, c'est défiler.
+    let t = null;
+    storyRangee.addEventListener('pointerdown', function(e){
+      if(e.pointerType !== 'mouse' || e.button > 0) return;
+      t = { x: e.clientX, depart: storyRangee.scrollLeft, bouge: false };
+    });
+    storyRangee.addEventListener('pointermove', function(e){
+      if(!t || storyRangee.querySelector('.story-tiree')) return;
+      const dx = e.clientX - t.x;
+      if(!t.bouge && Math.abs(dx) < 8) return;
+      t.bouge = true;
+      storyRangee.classList.add('story-glisse');
+      storyRangee.scrollLeft = t.depart - dx;
+    });
+    function lacher(){
+      if(t && t.bouge){
+        // Le relâché n'ouvre pas la story sous la souris.
+        storyRangee.__vientDeTirer = true;
+        setTimeout(function(){ storyRangee.__vientDeTirer = false; }, 400);
+      }
+      t = null;
+      storyRangee.classList.remove('story-glisse');
+    }
+    window.addEventListener('pointerup', lacher);
+    window.addEventListener('pointercancel', lacher);
+    storyRangee.addEventListener('dragstart', function(e){ e.preventDefault(); });
+    majFleches();
+  }
+
+  // ---- La rangée glisse d'elle-même ----
+  // Tant que personne n'y touche, elle avance doucement de côté ; au bout,
+  // elle marque un temps et revient au début. Un doigt, la souris ou la
+  // molette dessus l'arrêtent ; elle repart trois secondes après qu'on l'a
+  // lâchée. Même chose dans botika/index.html.
+  function defilerStoriesSeules(r){
+    if(!r || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    let pos = r.scrollLeft, attente = 0, dedans = false, avant = 0;
+    function retenir(ms){ attente = Math.max(attente, performance.now() + ms); }
+    ['pointerdown', 'touchstart', 'wheel', 'focusin'].forEach(function(t){
+      r.addEventListener(t, function(){ retenir(4000); }, { passive: true });
+    });
+    r.addEventListener('pointerenter', function(e){ if(e.pointerType === 'mouse') dedans = true; });
+    r.addEventListener('pointerleave', function(){ dedans = false; retenir(3000); });
+    ['pointerup', 'touchend', 'pointercancel'].forEach(function(t){
+      r.addEventListener(t, function(){ retenir(3000); }, { passive: true });
+    });
+    function pas(t){
+      requestAnimationFrame(pas);
+      const dt = Math.min(t - (avant || t), 50);
+      avant = t;
+      const max = r.scrollWidth - r.clientWidth;
+      if(max <= 0 || dedans || t < attente || document.hidden || !r.offsetParent ||
+        r.querySelector('.story-tiree') || r.classList.contains('story-glisse')) { pos = r.scrollLeft; return; }
+      // Quelqu'un l'a fait glisser entre-temps : on repart de là.
+      if(Math.abs(r.scrollLeft - pos) > 2) pos = r.scrollLeft;
+      if(pos >= max - 1){
+        // Un temps au bout, le retour, puis un temps au début.
+        retenir(4000);
+        setTimeout(function(){ r.scrollTo({ left: 0, behavior: 'smooth' }); }, 1500);
+        return;
+      }
+      pos = Math.min(max, pos + dt * 0.03);
+      r.scrollLeft = pos;
+    }
+    retenir(2500);
+    requestAnimationFrame(pas);
+  }
+
   if(storyRangee){
     armerDeplacementStories();
+    armerDefilementStories();
+    defilerStoriesSeules(storyRangee);
     storyRangee.addEventListener('click', function(e){
       // Le relâché d'un déplacement n'est pas un appui : rien ne s'ouvre.
       if(storyRangee.__vientDeTirer){ storyRangee.__vientDeTirer = false; e.preventDefault(); return; }
       const ajouter = e.target.closest('[data-story-ajouter]');
-      if(ajouter){
-        sessionStory().then(function(session){
-          if(!session){ direPresDuBouton(ajouter, 'Midira amin\'ny tenimiafinao aloha vao afaka mametraka story.'); return; }
-          storyFichier.value = '';
-          storyFichier.click();
-        });
-        return;
-      }
+      if(ajouter){ choisirFichiersStory(ajouter); return; }
       const carte = e.target.closest('[data-story-groupe]');
       if(carte) ouvrirGroupe(Number(carte.getAttribute('data-story-groupe')), 0);
     });
@@ -2593,6 +2936,10 @@
   // Effacer : la corbeille dans une pastille rouge, sans mot — le mot reste
   // dans title et aria-label, pour le survol et pour qui lit à voix haute.
   const LOGO_FAFANA = logoAvec('M9 3h6l1 2h4v2H4V5h4zM6 9h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z', 'fafana');
+  // « Ovay » : la même pastille, un crayon dessus.
+  const LOGO_OVAY = logoAvec('M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z', 'ovay');
+  // « Groupe » : la pastille, un petit groupe de personnes dessus.
+  const LOGO_GROUPE = logoAvec('M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 2c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4zm8 0c-.3 0-.7 0-1.1.1 1.3.9 2.1 2.1 2.1 3.9v3h7v-3c0-2.7-5.3-4-8-4z', 'groupe');
   // Le panier : un caddie dans la pastille.
   const LOGO_PANIER = logoAvec('M3 4h2.2l2.1 10.3a2 2 0 0 0 2 1.7h7.9a2 2 0 0 0 1.9-1.4L21 8H7M10 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm8 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z', 'panier');
   const BULLE_COMMENTER =logoAvec('M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z');
@@ -2673,9 +3020,16 @@
     // Le bouton dit ce qu'on a choisi ; le nombre vit à côté, et disparaît
     // quand il n'y a rien à compter.
     const r = info.mine ? reactionDe(info.mine) : null;
+    // Sous un billet, le logo (ou le visage choisi) sans le mot ; sous un
+    // commentaire, qui n'a pas de logo, le mot reste.
     el.innerHTML = (r && r.id !== 'like')
-      ? '<span class="fb-reaction-emoji">' + visage(r) + '</span><span>' + r.nom + '</span>'
-      : (s.pouce ? logoAvec(POUCE_LOGO, r ? 'aime' : '') : '') + '<span>J\'aime</span>';
+      ? '<span class="fb-reaction-emoji">' + visage(r) + '</span>' + (s.pouce ? '' : '<span>' + r.nom + '</span>')
+      : (s.pouce ? logoAvec(POUCE_LOGO, r ? 'aime' : '') : '<span>J\'aime</span>');
+    if(s.pouce){
+      const mot = r ? r.nom : 'J\'aime';
+      el.title = mot;
+      el.setAttribute('aria-label', mot);
+    }
     el.classList.toggle('liked', !!r);
     el.style.color = r ? r.couleur : '';
 
@@ -2754,7 +3108,16 @@
       document.addEventListener('click', function(e){
         if(menuReactions && !menuReactions.hidden && !menuReactions.contains(e.target)) cacherReactions();
       });
-      window.addEventListener('scroll', cacherReactions, { passive: true, capture: true });
+      // Se referme quand le billet bouge sous lui (la page ou la fenêtre qui
+      // défile), et non au moindre défilement : la rangée des stories et
+      // les images des liens glissent d'elles-mêmes, et le menu se
+      // refermait à peine ouvert.
+      window.addEventListener('scroll', function(e){
+        if(!menuPour) return;
+        const t = e.target;
+        if(t === document || t === document.documentElement || t === document.body ||
+          (t && t.contains && t.contains(menuPour.el))) cacherReactions();
+      }, { passive: true, capture: true });
       document.body.appendChild(menuReactions);
     }
     menuPour = { el: el, cle: cle };
@@ -2880,7 +3243,7 @@
       // Les siens reçoivent de quoi les effacer — et eux seuls.
       ((m && m.data) || []).forEach(function(c){
         const ligne = document.querySelector('#communityNewsList .fb-comment[data-comment-id="' + c.id + '"]');
-        if(ligne) ajouterFafana(ligne, c.id);
+        if(ligne){ ajouterOvay(ligne, c.id); ajouterFafana(ligne, c.id); }
       });
       if(premiere) return;
       ((m && m.data) || []).forEach(function(c){
@@ -2891,6 +3254,77 @@
       });
     }, function(){});
   }
+  // « Ovay » sous son propre commentaire : le texte devient un champ, on le
+  // corrige, et « Tehirizo » l'envoie. Le serveur ne laisse changer que le
+  // texte, et que le sien (supabase-commentaires-ovay.sql).
+  function ajouterOvay(ligne, id){
+    const rang = ligne.querySelector('.fb-comment-reactions');
+    if(!rang || rang.querySelector('.fb-comment-ovay')) return;
+    const b = document.createElement('span');
+    b.className = 'fb-comment-ovay';
+    b.setAttribute('role', 'button');
+    b.tabIndex = 0;
+    b.innerHTML = LOGO_OVAY;
+    b.setAttribute('aria-label', 'Ovay');
+    b.title = 'Ovay';
+    b.addEventListener('click', function(e){
+      e.stopPropagation();
+      const texte = ligne.querySelector('.fb-comment-texte');
+      if(!texte || ligne.querySelector('.fb-comment-edition')) return;
+      const avant = texte.textContent;
+      // La relecture régulière redessinerait la liste sous nos doigts : la
+      // ligne est marquée, et la boîte attend qu'on ait fini.
+      ligne.dataset.edition = '1';
+      const zone = document.createElement('div');
+      zone.className = 'fb-comment-edition';
+      zone.innerHTML =
+        '<textarea rows="2"></textarea>' +
+        '<div class="fb-comment-edition-btns">' +
+          '<button type="button" class="btn" data-ovay-aoka>Aoka</button>' +
+          '<button type="button" class="btn btn-primary" data-ovay-tehirizo>Tehirizo</button>' +
+        '</div>';
+      const champ = zone.querySelector('textarea');
+      champ.value = avant;
+      texte.hidden = true;
+      texte.after(zone);
+      champ.focus();
+      champ.setSelectionRange(champ.value.length, champ.value.length);
+      function fermer(){
+        zone.remove();
+        texte.hidden = false;
+        delete ligne.dataset.edition;
+      }
+      zone.addEventListener('click', function(ev){ ev.stopPropagation(); });
+      zone.querySelector('[data-ovay-aoka]').addEventListener('click', fermer);
+      champ.addEventListener('keydown', function(ev){
+        if(ev.key === 'Escape'){ ev.preventDefault(); fermer(); }
+        if(ev.key === 'Enter' && !ev.shiftKey){ ev.preventDefault(); tehirizo.click(); }
+      });
+      const tehirizo = zone.querySelector('[data-ovay-tehirizo]');
+      tehirizo.addEventListener('click', function(){
+        const nouveau = champ.value.trim();
+        if(!nouveau){ direPresDuBouton(tehirizo, 'Tsy azo atao foana ny hevitra. Raha tsy ilainao intsony, fafao.'); return; }
+        if(nouveau === avant.trim()){ fermer(); return; }
+        tehirizo.disabled = true;
+        window.__sb.from('client_news_comments').update({ message: nouveau }).eq('id', id).select('id').then(function(res){
+          tehirizo.disabled = false;
+          // Rien de changé, sans erreur : la règle du serveur a dit non.
+          if(res && !res.error && res.data && res.data.length){
+            texte.textContent = nouveau;
+            fermer();
+            chargerLesCommentaires(true);
+            return;
+          }
+          direPresDuBouton(tehirizo, res && res.error ? PAS_DE_SESSION.replace('manome fihetseham-po', 'manova ny hevitrao') : 'Ny tompon\'ny hevitra ihany no afaka manova azy.');
+        }, function(){
+          tehirizo.disabled = false;
+          direPresDuBouton(tehirizo, 'Tsy voaova : jereo ny fifandraisanao, dia andramo indray.');
+        });
+      });
+    });
+    rang.appendChild(b);
+  }
+
   // « Fafana » sous son propre commentaire. Le serveur le vérifie de son côté
   // (supabase-commentaires-fafana.sql) : ce bouton n'est qu'une commodité, pas
   // la garde.
@@ -3269,7 +3703,7 @@
         ligne.className = 'fb-comment';
         ligne.innerHTML =
           '<strong>' + escapeHtml(c.author_name || 'Client') + '</strong> ' +
-          escapeHtml(c.message || '') +
+          '<span class="fb-comment-texte">' + escapeHtml(c.message || '') + '</span>' +
           '<span class="fb-comment-date">' +
             (c.created_at ? new Date(c.created_at).toLocaleString('fr-FR') : '') +
           '</span>';
@@ -3297,6 +3731,9 @@
       }
       const sig = signature(rows);
       if(sig === empreinte) return;
+      // Un commentaire en cours de modification : on ne redessine pas sous
+      // les doigts ; la prochaine lecture, une fois fini, s'en chargera.
+      if(liste.querySelector('[data-edition]')) return;
       empreinte = sig;
       dessiner(rows);
     }
@@ -4002,7 +4439,9 @@
               // à une homonyme. Sans photo, les initiales. Un billet de la
               // maison, lui, porte le logo du site : il n'appartient à
               // personne en particulier.
-              '<div class="fb-avatar">' + (photoAffichee(n)
+              // Un bord vert si l'auteur est là en ce moment (live.js).
+              '<div class="fb-avatar' + (emailEnLigne(n.author_email) ? ' en-ligne' : '') + '"' +
+                (n.author_email ? ' data-en-ligne-email="' + escapeHtml(String(n.author_email).trim().toLowerCase()) + '"' : '') + '>' + (photoAffichee(n)
                 ? '<img src="' + escapeHtml(photoAffichee(n)) + '" alt="' + escapeHtml(nomAffiche(n)) + '">'
                 : escapeHtml(initials(nomAffiche(n)))) + '</div>' +
               '<div>' +
@@ -4033,20 +4472,23 @@
             // au bord droit (components.css, « .fb-actions-milieu »).
             '<div class="fb-post-actions">' +
             '<div class="fb-actions-milieu">' +
-            '<span class="fb-like-action" data-like style="cursor:pointer;">' + logoAvec(POUCE_LOGO) + '<span>J\'aime</span></span>' +
-            '<span class="fb-comment-action fb-partager" data-comment style="cursor:pointer;">' + BULLE_COMMENTER + '<span>Commenter</span></span>' +
-            // Le panier, juste après : on met de côté ce qu'on achètera.
-            (type === 'entana'
-              ? '<span class="fb-share-action fb-partager fb-panier-action" data-panier style="cursor:pointer;">' + LOGO_PANIER + '<span>Panier</span></span>'
-              : '') +
+            // Le logo seul, sans le mot : le mot reste dans title et
+            // aria-label, pour le survol et pour qui lit à voix haute.
+            '<span class="fb-like-action" data-like role="button" title="J\'aime" aria-label="J\'aime" style="cursor:pointer;">' + logoAvec(POUCE_LOGO) + '</span>' +
+            '<span class="fb-comment-action fb-partager" data-comment role="button" title="Commenter" aria-label="Commenter" style="cursor:pointer;">' + BULLE_COMMENTER + '</span>' +
+            // Le panier, juste après : on met de côté ce qu'on achètera. Sous
+            // chaque billet, et non sous les seuls articles : une nouvelle
+            // parle souvent d'un entana, et les cinq logos restent alignés
+            // d'un billet à l'autre.
+            '<span class="fb-share-action fb-partager fb-panier-action" data-panier role="button" title="Panier" aria-label="Panier" style="cursor:pointer;">' + LOGO_PANIER + '</span>' +
             // « Acheter » n'est plus ici : on passe par le panier, qui achète
             // avec la quantité voulue (« Hividy », buyFromPost).
-            '<span class="fb-share-action fb-partager" data-share style="cursor:pointer;">' + FLECHE_PARTAGE + '<span>Partager</span></span>' +
+            '<span class="fb-share-action fb-partager" data-share role="button" title="Partager" aria-label="Partager" style="cursor:pointer;">' + FLECHE_PARTAGE + '</span>' +
             // La feuille de WhatsApp coche cinq personnes et s'arrête là.
             // Celui-ci passe par la liste des clients (zara-rehetra.js) :
             // tout cocher d'un coup, sans plafond.
-            '<span class="fb-share-action fb-partager" data-share-all style="cursor:pointer;">' +
-              '<img class="fb-logo-maison" src="/icone-192.png" alt="" aria-hidden="true" draggable="false"><span>Rehetra</span></span>' +
+            '<span class="fb-share-action fb-partager" data-share-all role="button" title="Groupe" aria-label="Groupe" style="cursor:pointer;">' +
+              LOGO_GROUPE + '</span>' +
             '</div>' +
             // Effacer n'est offert qu'à qui a écrit le billet : l'adresse du
             // billet est celle du compte. La base dit la même chose de son
@@ -4792,7 +5234,7 @@
     renderClientCodesAdmin();
   });
   // ---------------- DEMANDES DE DÉBLOCAGE (propriétaire) ----------------
-  // Un client qui a oublié son mot de passe règle 20 000 Ar sur le PayPal du
+  // Un client qui a oublié son mot de passe règle 20 000 Ar par Papi au
   // propriétaire puis envoie sa demande. Ici le propriétaire vérifie la
   // réception du paiement, confirme, et un code est généré : il le copie et
   // l'envoie au client, qui le saisit sur l'écran de connexion.
@@ -4821,7 +5263,7 @@
     saveSeenUnlockIds(fresh.map(function(r){ return r.id; }).concat(seen));
   }
 
-  // Encaissements que PayPal a confirmés tout seuls : le solde du propriétaire
+  // Encaissements que Papi a confirmés tout seuls : le solde du propriétaire
   // a réellement monté. Il l'apprend sans avoir rien à vérifier.
   const UNLOCK_PAID_SEEN_KEY = 'stockmanager_unlock_paid_seen';
 
@@ -4854,7 +5296,7 @@
         : (Number(r.amount) || 20000).toLocaleString('fr-FR') + ' Ar';
       // « parrainage » : l'argent qui entre, que la boutique partage avec ses
       // employés (common.js), et non une simple information.
-      pushNotification('parrainage', '💰 Argent reçu sur votre PayPal : ' + recu.trim() + ' de ' +
+      pushNotification('parrainage', '💰 Argent reçu sur votre Papi : ' + recu.trim() + ' de ' +
         (r.name || r.email) + '. Son accès a été rétabli automatiquement, il est prévenu de son côté.');
     });
     saveSeenPaidIds(fresh.map(function(r){ return r.id; }).concat(seen));
@@ -4917,9 +5359,9 @@
               'Payé par : <strong style="color:var(--text);">' + escapeAdminHtml(paymentMethodLabel(row.payment_method)) + '</strong><br>' +
               'Référence : ' + escapeAdminHtml(row.paypal_reference || '—') + '<br>' +
               'Reçue le : ' + new Date(row.created_at).toLocaleString('fr-FR') + '<br>' +
-              // Ce que PayPal a réellement fait entrer, quand il l'a annoncé.
+              // Ce qui est réellement entré, quand le fournisseur l'a annoncé.
               (row.paid_amount
-                ? 'Encaissé sur PayPal : <strong style="color:var(--cyan);">' +
+                ? 'Encaissé sur Papi : <strong style="color:var(--cyan);">' +
                   Number(row.paid_amount).toLocaleString('fr-FR') + ' ' + escapeAdminHtml(row.paid_currency || '') +
                   '</strong>' +
                   // Converti en ariary, seule façon de le comparer aux 20 000 Ar.
@@ -4942,7 +5384,7 @@
             confirmBtn.addEventListener('click', function(){
               const comptes = { card: 'votre compte bancaire', bank: 'votre compte bancaire',
                 mobile: 'votre compte Mobile Money' };
-              const ou = comptes[row.payment_method] || 'votre compte PayPal';
+              const ou = comptes[row.payment_method] || 'votre compte Papi';
               if(!confirm('Avez-vous bien vu les ' + (row.amount || 20000).toLocaleString('fr-FR') +
                 ' Ar arriver sur ' + ou + ' ?\n\nLe déblocage et les notifications partent immédiatement.')) return;
               confirmBtn.disabled = true;

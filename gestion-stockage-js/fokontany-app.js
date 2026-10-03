@@ -46,9 +46,19 @@ function choisirOngletCommun(nom) {
   var PANNEAUX = {
     tableau: 'communCorps',
     adidy: 'communAdidy', historique: 'communHistorique',
-    taratasy: 'communTaratasy', fianakaviana: 'communFianakaviana', fangatahana: 'communFangatahana'
+    taratasy: 'communTaratasy', fianakaviana: 'communFianakaviana', fokontany: 'communFokontany', fangatahana: 'communFangatahana'
   };
-  ongletCommun = PANNEAUX[nom] ? nom : 'tableau';
+  // « Fangatahana » est à l'admin seul : un autre compte n'y entre pas.
+  if (nom === 'fangatahana' && !(currentUser && isOwnerEmail(currentUser.email))) nom = 'tableau';
+  // Dans le Commun, les onglets d'un fokontany ne s'ouvrent qu'une fois un
+  // fokontany choisi ; avant, le tableau de bord de tous, puis la liste.
+  // Choisi, on reste chez lui.
+  if (APP_COMMUN) {
+    var dansUn = !!window.__fokontanyJerena;
+    var SIENS = { tableau: 1, adidy: 1, historique: 1, taratasy: 1, fianakaviana: 1 };
+    if (!dansUn && SIENS[nom] && nom !== 'tableau') nom = 'fokontany';
+    if (dansUn && !SIENS[nom]) nom = 'tableau';
+  }  ongletCommun = PANNEAUX[nom] ? nom : 'tableau';
   Object.keys(PANNEAUX).forEach(function (cle) {
     var el = document.getElementById(PANNEAUX[cle]);
     if (el) el.style.display = cle === ongletCommun ? '' : 'none';
@@ -84,18 +94,288 @@ function remplirOngletCommun() {
     if (typeof renderTaratasyHistorique === 'function') renderTaratasyHistorique();
   } else if (nom === 'taratasy') {
     if (typeof renderTaratasy === 'function') renderTaratasy();
+  } else if (nom === 'fokontany') {
+    rendreLesFokontany();
+    return;
   } else if (nom === 'fianakaviana') {
     if (typeof renderFianakaviana === 'function') renderFianakaviana();
-  } else if (typeof renderFianakaviana === 'function') {
+  } else if (nom !== 'tableau' && typeof renderFianakaviana === 'function') {
+    // Le tableau relit les livrets lui-même (renderFianakavianaIsa), une
+    // fois connus les fokontany à compter : pas de seconde lecture.
     renderFianakaviana();
   }
   if (nom === 'tableau') {
-    if (typeof window.__montrerLesInstallations === 'function') window.__montrerLesInstallations();
-    if (typeof renderFianakavianaIsa === 'function') renderFianakavianaIsa();
-    if (typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
-    if (typeof renderTaratasyIsa === 'function') renderTaratasyIsa();
+    var dessiner = function () {
+      if (typeof window.__montrerLesInstallations === 'function') window.__montrerLesInstallations();
+      if (typeof renderFianakavianaIsa === 'function') renderFianakavianaIsa();
+      if (typeof renderVolaVoaangona === 'function') renderVolaVoaangona();
+      if (typeof renderTaratasyIsa === 'function') renderTaratasyIsa();
+    };
+    // Le tableau de tous, dans le Commun : ses fokontany d'abord, pour ne
+    // compter qu'eux.
+    if (APP_COMMUN && !window.__fokontanyJerena) chargerLesFokontany().then(dessiner, dessiner);
+    else dessiner();
   }
 }
+
+// ---------- Les fokontany du Commun ----------
+// Combien, et lesquels : ceux dont l'accès est confirmé (commun_alalana,
+// voamarina) et ceux qui ont installé leur application, chacun une fois,
+// par son email. Le nom vient de l'installation, sinon de la demande. On y
+// joint le nombre de livres de famille que chacun tient. Le serveur ne rend
+// ces tables qu'au propriétaire.
+// La liste sert aussi au tableau de bord du Commun : ses chiffres ne comptent
+// que ces fokontany-là (window.__fokontanyCommun, lu par « mien » dans
+// fianakaviana.js, adidy.js, taratasy.js). Tant qu'elle n'est pas lue, il
+// vaut undefined et tout est compté, comme avant.
+function cleEmail(e) { return String(e || '').trim().toLowerCase(); }
+function chargerLesFokontany() {
+  var sb = window.__sb;
+  if (!sb || !(currentUser && isOwnerEmail(currentUser.email))) return Promise.resolve(null);
+  var cle = cleEmail;
+  return Promise.all([
+    sb.from('commun_alalana').select('email,anarana,active,voamarina,created_at'),
+    sb.from('fokontany_installation').select('email,fokontany,karazana,created_at'),
+    sb.from('fianakaviana').select('owner_email')
+  ]).then(function (res) {
+    if (res[0].error && res[1].error) return null;
+    var parEmail = {};
+    ((res[0].data) || []).forEach(function (a) {
+      if (!a.active || !a.voamarina || !cle(a.email)) return;
+      parEmail[cle(a.email)] = { email: a.email, nom: a.anarana || '', daty: a.created_at };
+    });
+    ((res[1].data) || []).forEach(function (i) {
+      if (i.karazana === 'commun' || !cle(i.email) || isOwnerEmail(i.email)) return;
+      var f = parEmail[cle(i.email)] || (parEmail[cle(i.email)] = { email: i.email, nom: '', daty: i.created_at });
+      if (i.fokontany) f.nom = i.fokontany;
+    });
+    var livres = {};
+    ((res[2] && res[2].data) || []).forEach(function (r) { var k = cle(r.owner_email); livres[k] = (livres[k] || 0) + 1; });
+    var liste = Object.keys(parEmail).map(function (k) { return parEmail[k]; })
+      .sort(function (a, b) { return (a.nom || a.email).localeCompare(b.nom || b.email, 'fr'); });
+    window.__fokontanyCommun = Object.keys(parEmail);
+    return { liste: liste, livres: livres };
+  }, function () { return null; });
+}
+
+// ---------- Le nom du Commun ----------
+// Dans l'en-tête, « 🏛️ Commun <son nom> ». Le nom vient du lien d'installation
+// (« c=… », gardé dans ce navigateur) ; sinon de ce que le serveur sait :
+// l'installation du Commun, la demande de code (« … — Commun X (…) »), ou
+// le commun que ses fokontany ont déclaré le plus souvent.
+// Sa clé à lui : « stockmanager_fokontany_commun » est le commun dont relève
+// le Fokontany installé sur le même poste, et l'un réécrivait l'autre.
+var CLE_NOM_COMMUN = 'stockmanager_commun_nom';
+function afficherNomCommun(nom) {
+  var el = document.getElementById('fkMarque');
+  if (!el) return;
+  var propre = String(nom || '').replace(/[<>&]/g, '').replace(/^commun\s+/i, '').trim();
+  el.innerHTML = '🏛️ Commun' + (propre ? ' <span translate="no" class="notranslate">' + propre + '</span>' : '');
+  if (propre) document.title = 'Commun ' + propre;
+}
+function trouverNomCommun() {
+  var garde = '';
+  try { garde = String(localStorage.getItem(CLE_NOM_COMMUN) || '').trim(); } catch (e) {}
+  afficherNomCommun(garde);
+  if (garde || !window.__sb || !currentUser) return;
+  var sb = window.__sb;
+  var moi = cleEmail(currentUser.email);
+  Promise.all([
+    sb.from('fokontany_installation').select('email,commun,karazana'),
+    sb.from('commun_alalana').select('email,anarana')
+  ]).then(function (res) {
+    var installs = (res[0] && !res[0].error && res[0].data) || [];
+    var demandes = (res[1] && !res[1].error && res[1].data) || [];
+    var nom = '';
+    installs.forEach(function (i) { if (!nom && i.karazana === 'commun' && cleEmail(i.email) === moi && i.commun) nom = i.commun; });
+    demandes.forEach(function (a) {
+      var m = !nom && cleEmail(a.email) === moi && String(a.anarana || '').match(/Commun\s+([^\/(]+)/i);
+      if (m) nom = m[1].trim();
+    });
+    if (!nom) {
+      var compte = {};
+      installs.forEach(function (i) { if (i.karazana !== 'commun' && i.commun) compte[i.commun] = (compte[i.commun] || 0) + 1; });
+      nom = Object.keys(compte).sort(function (a, b) { return compte[b] - compte[a]; })[0] || '';
+    }
+    if (!nom) return;
+    try { localStorage.setItem(CLE_NOM_COMMUN, nom); } catch (e) {}
+    afficherNomCommun(nom);
+  }, function () {});
+}
+
+// ---------- Ce que la recherche du Commun parcourt ----------
+// Tout ce que ses fokontany ont écrit, lu d'un coup et gardé une minute :
+// on ne relit pas le serveur à chaque lettre tapée. Chaque trouvaille sait
+// de quel fokontany elle vient et quel onglet la montre. Les papiers de
+// départ (fifindra-monina) n'y sont pas : ils ne se feuillettent pas.
+var indexCommun = null;
+var indexCommunAt = 0;
+function chargerIndexCommun() {
+  if (indexCommun && Date.now() - indexCommunAt < 60000) return Promise.resolve(indexCommun);
+  var sb = window.__sb;
+  if (!sb) return Promise.resolve([]);
+  return chargerLesFokontany().then(function (r) {
+    if (!r) return [];
+    var noms = {};
+    r.liste.forEach(function (f) { noms[cleEmail(f.email)] = f.nom || f.email; });
+    var emails = Object.keys(noms);
+    if (!emails.length) return [];
+    var lire = function (table, colonnes) {
+      return sb.from(table).select(colonnes).in('owner_email', emails)
+        .then(function (res) { return (res && !res.error && res.data) || []; }, function () { return []; });
+    };
+    return Promise.all([
+      lire('fianakaviana', 'owner_email,anarana,fonenana,laharana'),
+      lire('fianakaviana_mpikambana', 'owner_email,anarana,laharana_cin,andraikitra'),
+      lire('adidy', 'owner_email,anarana,fe_potoana'),
+      lire('taratasy', 'owner_email,anarana,laharana,laharana_cin,karazana,fonenana')
+    ]).then(function (t) {
+      var items = [];
+      var ajouter = function (email, icone, texte, sous, onglet) {
+        var k = cleEmail(email);
+        if (!noms[k] || !texte) return;
+        items.push({ email: k, fokontany: noms[k], icone: icone, texte: String(texte), sous: sous || '', onglet: onglet });
+      };
+      r.liste.forEach(function (f) { ajouter(f.email, '🏘️', f.nom || f.email, f.email, 'tableau'); });
+      t[0].forEach(function (x) { ajouter(x.owner_email, '📖', x.anarana, [x.laharana, x.fonenana].filter(Boolean).join(' · '), 'fianakaviana'); });
+      t[1].forEach(function (x) { ajouter(x.owner_email, '👤', x.anarana, [x.andraikitra, x.laharana_cin].filter(Boolean).join(' · '), 'fianakaviana'); });
+      t[2].forEach(function (x) { ajouter(x.owner_email, '💰', x.anarana, x.fe_potoana === 'taona' ? 'isan-taona' : 'isam-bolana', 'adidy'); });
+      t[3].forEach(function (x) {
+        if (x.karazana === 'fifindramonina') return;
+        ajouter(x.owner_email, '📄', x.anarana, [x.laharana, x.laharana_cin, x.fonenana].filter(Boolean).join(' · '), 'taratasy');
+      });
+      indexCommun = items;
+      indexCommunAt = Date.now();
+      return items;
+    });
+  });
+}
+
+function rendreLesFokontany() {
+  var corps = document.getElementById('communFokontanyLisitra');
+  if (!corps || !window.__sb || !(currentUser && isOwnerEmail(currentUser.email))) return;
+  var msg = document.getElementById('communFokontanyMessage');
+  var echap = function (t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; };
+  var cle = cleEmail;
+  chargerLesFokontany().then(function (r) {
+    if (!r) { msg.textContent = 'Tsy voaaka ny lisitry ny fokontany.'; return; }
+    msg.textContent = '';
+    var liste = r.liste, livres = r.livres;
+    document.getElementById('communKpiFokontanyIsa').textContent = liste.length;
+    document.getElementById('communFokontanyVide').style.display = liste.length ? 'none' : '';
+    corps.innerHTML = liste.map(function (f, n) {
+      var d = new Date(f.daty);
+      // Une ligne se touche pour regarder ce fokontany seul (voir jereoFokontany).
+      return '<tr data-jereo="' + echap(cle(f.email)) + '" data-anarana="' + echap(f.nom || f.email) + '" style="cursor:pointer;" title="Jereo ity fokontany ity">' +
+        '<td>' + (n + 1) + '</td>' +
+        '<td>' + echap(f.nom || '—') + ' <span style="color:var(--cyan); font-size:0.8rem;">👁️</span></td>' +
+        '<td style="color:var(--muted);">' + echap(f.email) + '</td>' +
+        '<td style="text-align:right;">' + (livres[cle(f.email)] || 0) + '</td>' +
+        '<td style="white-space:nowrap; color:var(--muted);">' + (isNaN(d) ? '—' : d.toLocaleDateString('fr-FR')) + '</td></tr>';
+    }).join('');
+  });
+}
+
+// ---------- Ce qui change chez les fokontany ----------
+// Le Commun est prévenu, sous sa cloche, de ce que les fokontany écrivent :
+// un livre de famille, un membre, un adidy, un versement, un papier remis.
+// On relit toutes les 30 s ce qui est plus récent que la dernière fois (la
+// date est gardée dans ce navigateur) : la première fois ne fait que poser
+// le repère, pour ne pas noyer l'admin sous tout l'historique. Ce qu'écrit
+// l'admin lui-même ne le prévient pas. Une suppression, elle, ne laisse pas
+// de ligne à lire : elle ne se voit pas ici.
+var CLE_SUIVI_COMMUN = 'stockmanager_commun_vaovao_farany';
+var SUIVI_TABLES = [
+  { table: 'fianakaviana', maj: true, mot: function (n) { return n + ' livre de famille vaovao na novaina'; } },
+  { table: 'fianakaviana_mpikambana', mot: function (n) { return n + ' mpianakavy vaovao'; } },
+  { table: 'adidy', maj: true, mot: function (n) { return n + ' adidy vaovao na novaina'; } },
+  { table: 'adidy_fandoavana', mot: function (n) { return n + ' fandoavana adidy'; } },
+  { table: 'taratasy', mot: function (n) { return n + ' taratasy nomena'; } }
+];
+var suiviMinuterie = null;
+function suivreLesFokontany() {
+  if (!APP_COMMUN || suiviMinuterie) return;
+  suiviMinuterie = setInterval(relireLesChangements, 30000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) relireLesChangements(); });
+  relireLesChangements();
+}
+var suiviEnCours = false;
+function relireLesChangements() {
+  var sb = window.__sb;
+  if (!sb || suiviEnCours || !(currentUser && isOwnerEmail(currentUser.email))) return;
+  var depuis = '';
+  try { depuis = localStorage.getItem(CLE_SUIVI_COMMUN) || ''; } catch (e) {}
+  if (!depuis) {
+    try { localStorage.setItem(CLE_SUIVI_COMMUN, new Date().toISOString()); } catch (e) {}
+    return;
+  }
+  suiviEnCours = true;
+  var requetes = SUIVI_TABLES.map(function (s) {
+    var q = sb.from(s.table).select('*');
+    return (s.maj ? q.or('created_at.gt."' + depuis + '",updated_at.gt."' + depuis + '"') : q.gt('created_at', depuis));
+  });
+  requetes.push(sb.from('commun_alalana').select('email,anarana'));
+  requetes.push(sb.from('fokontany_installation').select('email,fokontany'));
+  Promise.all(requetes).then(function (res) {
+    var noms = {};
+    ((res[SUIVI_TABLES.length].data) || []).forEach(function (a) { if (a.anarana) noms[String(a.email).toLowerCase()] = a.anarana; });
+    ((res[SUIVI_TABLES.length + 1].data) || []).forEach(function (i) { if (i.fokontany) noms[String(i.email).toLowerCase()] = i.fokontany; });
+    // Le repère suivant : la ligne la plus récente, plus une milliseconde (le
+    // serveur compte en microsecondes ; sans ce pas, elle reviendrait).
+    var plusRecent = Date.parse(depuis);
+    var parFokontany = {};
+    SUIVI_TABLES.forEach(function (s, k) {
+      ((res[k] && !res[k].error && res[k].data) || []).forEach(function (l) {
+        [l.created_at, l.updated_at].forEach(function (t) { var ms = Date.parse(t); if (ms > plusRecent) plusRecent = ms; });
+        var email = String(l.owner_email || '').toLowerCase();
+        if (!email || isOwnerEmail(email)) return;
+        var f = parFokontany[email] || (parFokontany[email] = {});
+        f[s.table] = (f[s.table] || 0) + 1;
+      });
+    });
+    if (plusRecent > Date.parse(depuis)) {
+      try { localStorage.setItem(CLE_SUIVI_COMMUN, new Date(plusRecent + 1).toISOString()); } catch (e) {}
+    }
+    var emails = Object.keys(parFokontany);
+    emails.forEach(function (email) {
+      var f = parFokontany[email];
+      var morceaux = SUIVI_TABLES.filter(function (s) { return f[s.table]; })
+        .map(function (s) { return s.mot(f[s.table]); });
+      var message = '🗂️ ' + (noms[email] || email) + ' : ' + morceaux.join(', ') + '.';
+      if (typeof window.__ajouterNotificationAction === 'function') window.__ajouterNotificationAction('fokontany', message);
+      // Et hors de la page, si le navigateur l'a déjà permis.
+      try {
+        if (document.hidden && window.Notification && Notification.permission === 'granted') {
+          new Notification('Commun', { body: message, icon: '/fokontany/commun/icone-192.png' });
+        }
+      } catch (e) {}
+    });
+    // Ce qu'on regarde se remet à jour avec.
+    // (et la recherche relira tout à sa prochaine lettre).
+    if (emails.length) { indexCommun = null; remplirOngletCommun(); }
+  }).then(function () { suiviEnCours = false; }, function () { suiviEnCours = false; });
+}
+
+// Regarder un seul fokontany : ce qu'il a dans son Administratif Fokontany,
+// et rien d'autre. Les lectures du Commun (mien, dans fianakaviana.js,
+// adidy.js, taratasy.js) se limitent alors à son email. Les panneaux restent
+// en lecture seule : on regarde, on ne touche pas. '' : tous les fokontany.
+window.__fokontanyJerena = '';
+function jereoFokontany(email, anarana) {
+  window.__fokontanyJerena = String(email || '').trim().toLowerCase();
+  var boite = document.getElementById('communJerenaBox');
+  if (boite) boite.style.display = window.__fokontanyJerena ? 'flex' : 'none';
+  var nom = document.getElementById('communJerenaAnarana');
+  if (nom) nom.textContent = anarana || email || '';
+  document.documentElement.classList.toggle('commun-jerena', !!window.__fokontanyJerena);
+  // Son tableau de bord d'abord ; revenir à tous ramène à la liste.
+  choisirOngletCommun(window.__fokontanyJerena ? 'tableau' : 'fokontany');
+}
+document.addEventListener('click', function (e) {
+  var ligne = e.target.closest && e.target.closest('#communFokontanyLisitra tr[data-jereo]');
+  if (ligne) { jereoFokontany(ligne.dataset.jereo, ligne.dataset.anarana); return; }
+  if (e.target.closest && e.target.closest('#communJerenaRehetra')) jereoFokontany('', '');
+});
 
 // commun-alalana.js l'appelle au retour d'un lien reçu par email. Il n'y a
 // ici qu'une seule vue : l'ouvrir, c'est la redessiner.
@@ -110,8 +390,9 @@ document.addEventListener('DOMContentLoaded', function () {
   function $(id) { return document.getElementById(id); }
 
   if (APP_COMMUN) {
-    $('fkNomApp').textContent = 'Administratif Commun';
-    $('fkMarque').innerHTML = '🏛️ Administratif <span>Commun</span>';
+    $('fkNomApp').textContent = 'Commun';
+    afficherNomCommun('');
+    try { afficherNomCommun(localStorage.getItem(CLE_NOM_COMMUN) || ''); } catch (e) {}
     // Son icône à lui, le « C » : celle du Fokontany est posée dans la page.
     document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]').forEach(function (l) {
       l.setAttribute('href', '/fokontany/commun/icone-192.png');
@@ -120,9 +401,103 @@ document.addEventListener('DOMContentLoaded', function () {
     // mêmes pages. Mais il regarde sans toucher — la classe va sur chaque
     // panneau, jamais sur la rangée d'onglets, qui doit rester cliquable.
     ['communCorps', 'communAdidy', 'communHistorique', 'communTaratasy',
-      'communFianakaviana', 'communFangatahana'].forEach(function (id) {
+      'communFianakaviana', 'communFokontany', 'communFangatahana'].forEach(function (id) {
       var el = $(id);
       if (el) el.classList.add('lecture-seule');
+    });
+
+    // ---------- La recherche du Commun ----------
+    // Il ne touche à rien, mais il cherche : ce qui est tapé masque les lignes
+    // de l'onglet ouvert (tableaux, listes, cartes) qui ne le contiennent pas.
+    // Les onglets se redessinent en arrivant du serveur : on refiltre alors.
+    var champ = $('communRecherche');
+    var sansAccent = function (s) {
+      return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    };
+    var filtrer = function () {
+      var mots = sansAccent(champ.value).split(/\s+/).filter(Boolean);
+      var panneau = ['communCorps', 'communAdidy', 'communHistorique', 'communTaratasy',
+        'communFianakaviana', 'communFokontany', 'communFangatahana'].map($).filter(function (el) {
+        return el && el.style.display !== 'none';
+      })[0];
+      var hita = 0, total = 0;
+      if (panneau) {
+        panneau.querySelectorAll('tbody tr, .list-row').forEach(function (ligne) {
+          total++;
+          var ok = mots.every(function (m) { return sansAccent(ligne.textContent).indexOf(m) !== -1; });
+          ligne.style.display = ok ? '' : 'none';
+          if (ok) hita++;
+        });
+      }
+      // Écrit seulement s'il change : le compteur est lui-même sous
+      // l'observateur, et le réécrire relancerait le filtre sans fin.
+      var texte = mots.length ? hita + ' / ' + total + ' hita' : '';
+      if ($('communRechercheIsa').textContent !== texte) $('communRechercheIsa').textContent = texte;
+    };
+    champ.addEventListener('input', filtrer);
+    var attente = null;
+    new MutationObserver(function () {
+      if (!champ.value || attente) return;
+      attente = requestAnimationFrame(function () { attente = null; filtrer(); });
+    }).observe($('communContenu'), { childList: true, subtree: true });
+    document.querySelectorAll('#dash-commun [data-commun]').forEach(function (tab) {
+      tab.addEventListener('click', function () { setTimeout(filtrer, 0); });
+    });
+
+    // Et dans tout le Commun : sous la barre, ce qui correspond, où que ce
+    // soit — un fokontany, un livret, un membre, un adidy, un papier. Le
+    // toucher ouvre ce fokontany à l'onglet qui le montre, la ligne filtrée.
+    var valiny = $('communRechercheValiny');
+    var echap = function (t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; };
+    var trouves = [];
+    var tour = 0;
+    // Le compte « x / y hita » parle de l'onglet ouvert : il se tait tant que
+    // la liste de tout le Commun est ouverte, pour ne pas la contredire.
+    var fermerValiny = function () { valiny.style.display = 'none'; $('communRechercheIsa').style.visibility = ''; };
+    var chercherPartout = function () {
+      var mots = sansAccent(champ.value).split(/\s+/).filter(Boolean);
+      if (!mots.length || sansAccent(champ.value).trim().length < 2) { fermerValiny(); return; }
+      var ity = ++tour;
+      chargerIndexCommun().then(function (index) {
+        if (ity !== tour) return;
+        trouves = (index || []).filter(function (it) {
+          var tout = sansAccent(it.texte + ' ' + it.sous + ' ' + it.fokontany);
+          return mots.every(function (m) { return tout.indexOf(m) !== -1; });
+        }).slice(0, 40);
+        valiny.innerHTML = trouves.length
+          ? trouves.map(function (it, n) {
+              return '<div role="option" data-valiny="' + n + '" style="padding:0.55rem 0.8rem; border-bottom:1px solid var(--line); cursor:pointer; font-size:0.82rem; line-height:1.4;">' +
+                it.icone + ' <strong>' + echap(it.texte) + '</strong>' +
+                (it.sous ? ' <span style="color:var(--muted);">· ' + echap(it.sous) + '</span>' : '') +
+                '<div style="font-size:0.72rem; color:var(--cyan);">🗂️ ' + echap(it.fokontany) + '</div></div>';
+            }).join('')
+          : '<p style="padding:0.7rem 0.8rem; margin:0; font-size:0.8rem; color:var(--muted);">Tsy misy hita ao amin\'ny Commun.</p>';
+        valiny.style.display = 'block';
+        $('communRechercheIsa').style.visibility = 'hidden';
+      });
+    };
+    var attenteRecherche = null;
+    champ.addEventListener('input', function () {
+      clearTimeout(attenteRecherche);
+      attenteRecherche = setTimeout(chercherPartout, 250);
+    });
+    champ.addEventListener('focus', function () { if (champ.value) chercherPartout(); });
+    champ.addEventListener('keydown', function (e) { if (e.key === 'Escape') fermerValiny(); });
+    valiny.addEventListener('click', function (e) {
+      var el = e.target.closest('[data-valiny]');
+      if (!el) return;
+      var it = trouves[Number(el.dataset.valiny)];
+      if (!it) return;
+      fermerValiny();
+      // Le fokontany seul : rien à filtrer ; sinon la ligne trouvée reste seule.
+      champ.value = it.onglet === 'tableau' ? '' : it.texte;
+      jereoFokontany(it.email, it.fokontany);
+      choisirOngletCommun(it.onglet);
+      setTimeout(filtrer, 0);
+    });
+    document.addEventListener('click', function (e) {
+      if (valiny.style.display === 'none') return;
+      if (e.target.closest && !e.target.closest('#communRechercheBox')) fermerValiny();
     });
   }
 
@@ -143,8 +518,10 @@ document.addEventListener('DOMContentLoaded', function () {
       email = String(params.get('e') || '').trim().toLowerCase();
       var commun = String(params.get('c') || '').trim();
       if (nom || email || commun) {
-        if (nom) localStorage.setItem(CLE_NOM, nom);
-        if (commun) localStorage.setItem(CLE_COMMUN, commun);
+        // Le Commun garde son nom à part : ce qui est écrit pour l'un ne
+        // doit pas se lire chez l'autre.
+        if (nom && !APP_COMMUN) localStorage.setItem(CLE_NOM, nom);
+        if (commun) localStorage.setItem(APP_COMMUN ? CLE_NOM_COMMUN : CLE_COMMUN, commun);
         params.delete('f');
         params.delete('e');
         params.delete('c');
@@ -193,7 +570,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Elles restent dans le site, sous la cloche : une bande qui passe s'oublie,
   // et l'on veut relire ce qui a été dit. Gardées dans ce navigateur, comme
   // celles de Ny asako — elles n'ont rien à faire sur le serveur.
-  var CLE_NOTIFS = 'stockmanager_fokontany_notifs';
+  var CLE_NOTIFS = APP_COMMUN ? 'stockmanager_commun_notifs' : 'stockmanager_fokontany_notifs';
   function lireNotifs() {
     try { return JSON.parse(localStorage.getItem(CLE_NOTIFS)) || []; } catch (e) { return []; }
   }
@@ -222,6 +599,14 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   window.__notifActions = window.__notifActions || {};
   window.__ajouterNotificationAction = function (type, message) {
+    // Ce qu'un fokontany change porte son nom : l'avis se lit ailleurs
+    // aussi (le Commun, un autre compte sur ce navigateur).
+    if (type === 'modification' && !APP_COMMUN) {
+      var fk = '';
+      try { fk = String(localStorage.getItem('stockmanager_fokontany_nom') || '').trim(); } catch (e) {}
+      if (!fk && currentUser) fk = currentUser.name || currentUser.email || '';
+      if (fk) message = '🗂️ ' + (/^fokontany\b/i.test(fk) ? fk : 'Fokontany ' + fk) + ' · ' + message;
+    }
     var liste = lireNotifs();
     liste.unshift({ type: type, message: String(message || ''), date: new Date().toISOString(), lu: false });
     ecrireNotifs(liste);
@@ -254,6 +639,48 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   rendreNotifs();
 
+  // ---------- Andro sy alina ----------
+  // Les clés de Ny asako : même site, même choix. Le jour tout en haut du
+  // curseur de Ny asako (100), la nuit tout en bas (0), en mode manuel.
+  function modeLoko() { return document.documentElement.getAttribute('data-theme') === 'jour' ? 'jour' : 'nuit'; }
+  function marquerLoko() {
+    var actuel = modeLoko();
+    document.querySelectorAll('[data-fk-loko]').forEach(function (b) {
+      b.classList.toggle('btn-primary', b.dataset.fkLoko === actuel);
+    });
+  }
+  document.querySelectorAll('[data-fk-loko]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var jour = b.dataset.fkLoko === 'jour';
+      try {
+        localStorage.setItem('stockmanager_theme_mode', 'manuel');
+        localStorage.setItem('stockmanager_theme_niveau', jour ? '100' : '0');
+        localStorage.setItem('stockmanager_theme', jour ? 'jour' : 'nuit');
+      } catch (e) {}
+      if (typeof window.__appliquerNiveau === 'function') window.__appliquerNiveau(jour ? 100 : 0);
+      marquerLoko();
+    });
+  });
+  marquerLoko();
+
+  // ---------- Fikirana ----------
+  // Le ⚙️ après la cloche : le compte ouvert (nom, email) s'y lit. Il se
+  // referme comme la cloche, d'un clic ailleurs.
+  $('fkParametresBtn').addEventListener('click', function () {
+    var panneau = $('fkParametresPanel');
+    var ouvert = panneau.style.display !== 'none';
+    panneau.style.display = ouvert ? 'none' : 'block';
+    $('fkParametresBtn').setAttribute('aria-expanded', ouvert ? 'false' : 'true');
+  });
+  document.addEventListener('click', function (e) {
+    var panneau = $('fkParametresPanel');
+    if (panneau.style.display === 'none') return;
+    if (e.target.closest && !e.target.closest('#fkParametresPanel') && !e.target.closest('#fkParametresBtn')) {
+      panneau.style.display = 'none';
+      $('fkParametresBtn').setAttribute('aria-expanded', 'false');
+    }
+  });
+
   // ---------- Connexion ----------
   // Le même compte que Ny asako : même base, mêmes identifiants. Créer un
   // compte ou retrouver un mot de passe se fait aussi ici (plus bas).
@@ -281,10 +708,9 @@ document.addEventListener('DOMContentLoaded', function () {
     $('fkReserve').style.display = interdit ? '' : 'none';
     $('dash-commun').style.display = interdit ? 'none' : '';
     if (isOwnerEmail(currentUser.email)) rendreInstallable();
-    // Le Commun surplombe les fokontany : l'admin y valide et y prend les
-    // liens d'installation, la même page que dans Ny asako.
-    $('fkValidation').style.display = (APP_COMMUN && isOwnerEmail(currentUser.email)) ? '' : 'none';
     choisirOngletCommun(ongletCommun);
+    if (APP_COMMUN && isOwnerEmail(currentUser.email)) suivreLesFokontany();
+    if (APP_COMMUN) trouverNomCommun();
   }
 
   // ---------- Le Commun suit les fokontany ----------
@@ -354,7 +780,7 @@ document.addEventListener('DOMContentLoaded', function () {
       id: depart,
       name: 'Fokontany ' + nom,
       short_name: nom.length > 12 ? nom.slice(0, 12) : nom,
-      description: 'Administratif Fokontany ' + nom + ' : livre de famille, adidy, taratasy.',
+      description: 'Fokontany ' + nom + ' : livre de famille, adidy, taratasy.',
       lang: 'mg', dir: 'ltr',
       start_url: depart,
       scope: '/fokontany/',
@@ -428,8 +854,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var nom = '';
     var commun = '';
     try {
-      nom = String(localStorage.getItem('stockmanager_fokontany_nom') || '').trim();
-      commun = String(localStorage.getItem('stockmanager_fokontany_commun') || '').trim();
+      nom = APP_COMMUN ? '' : String(localStorage.getItem('stockmanager_fokontany_nom') || '').trim();
+      commun = String(localStorage.getItem(APP_COMMUN ? CLE_NOM_COMMUN : 'stockmanager_fokontany_commun') || '').trim();
     } catch (e) {}
     var appareil = '';
     try { appareil = String(navigator.userAgent || '').slice(0, 160); } catch (e) {}
@@ -508,6 +934,42 @@ document.addEventListener('DOMContentLoaded', function () {
     if (brut.indexOf('password') >= 0 && brut.indexOf('6') >= 0) return 'Tokony ho 6 litera farafahakeliny ny mot de passe.';
     return 'Tsy nety : ' + ((e && e.message) || 'antony tsy fantatra');
   }
+
+  // ---------- Hanova ny mot de passe (⚙️ Fikirana) ----------
+  // L'ancien d'abord : on se reconnecte avec lui, ce qui prouve qu'il est
+  // juste. Le nouveau, tapé deux fois à l'identique, ne remplace l'ancien
+  // qu'ensuite ; jusque-là, c'est l'ancien qui ouvre le compte.
+  $('fkMdpForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var st = $('fkMdpStatus');
+    var dire = function (t, ok) { st.textContent = t; st.style.color = ok ? 'var(--cyan)' : 'var(--red)'; };
+    var taloha = $('fkMdpTaloha').value;
+    var vaovao = $('fkMdpVaovao').value;
+    var averina = $('fkMdpAverina').value;
+    var email = currentUser && currentUser.email;
+    if (!auth || !email) { dire('Midira aloha.'); return; }
+    if (!taloha) { dire('Soraty ny mot de passe taloha.'); return; }
+    if (vaovao.length < 6) { dire('Tokony ho 6 litera farafahakeliny ny mot de passe vaovao.'); return; }
+    if (vaovao !== averina) { dire('Tsy mitovy ilay vaovao sy ny famerenana azy.'); return; }
+    if (vaovao === taloha) { dire('Mitovy amin\'ny taloha ilay vaovao.'); return; }
+    var bouton = $('fkMdpOvay');
+    bouton.disabled = true;
+    dire('Fanamarinana…', true);
+    auth.signInWithPassword({ email: email, password: taloha }).then(function (r) {
+      if (r && r.error) {
+        var brut = String(r.error.message || '').toLowerCase();
+        throw new Error(brut.indexOf('invalid login credentials') >= 0 ? 'Diso ny mot de passe taloha.' : erreurAuth(r.error));
+      }
+      return auth.updateUser({ password: vaovao });
+    }).then(function (up) {
+      if (up && up.error) throw new Error(erreurAuth(up.error));
+      $('fkMdpForm').reset();
+      dire('✓ Voaova ny mot de passe : ilay vaovao no ampiasaina manomboka izao.', true);
+    }).catch(function (err) {
+      dire((err && err.message) || 'Tsy tratra ny serveur : jereo ny réseau.');
+    }).then(function () { bouton.disabled = false; });
+  });
+
   function tsindry(id, idMiafina) {
     var box = $(id);
     var misokatra = box.style.display === 'none';
@@ -615,13 +1077,6 @@ document.addEventListener('DOMContentLoaded', function () {
       try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
       if (up.data && up.data.user) ouvrir(up.data.user);
     }, function () { st.textContent = 'Tsy tratra ny serveur : jereo ny réseau.'; });
-  });
-
-  $('fkValidation').addEventListener('click', function () {
-    if (typeof window.__validerAvantInstall !== 'function') return;
-    window.__validerAvantInstall(function (suffixe) {
-      window.__versLInstallation('/fokontany/', suffixe);
-    });
   });
 
   $('fkSortir').addEventListener('click', function () {

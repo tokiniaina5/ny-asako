@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="07195c92">
+<meta name="ny-asako-version" content="e2881e95">
 <title>Ny asako — Tanjona</title>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
@@ -135,12 +135,12 @@
 <link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2732x2048.png">
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
-<link rel="stylesheet" href="gestion-stockage-css/base.css?v=3c7a1283">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=d696317b">
+<link rel="stylesheet" href="gestion-stockage-css/base.css?v=505a9236">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=68b0a6cb">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/supabase-init.js?v=94f3c704"></script>
+<script src="gestion-stockage-js/supabase-init.js?v=41d055dd"></script>
 <!-- ============ LOGIN ============ -->
 <div id="loginScreen">
   <div class="login-card">
@@ -215,8 +215,8 @@
       <div id="forgotBox" style="display:none; margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.9rem;">
         <p style="font-size:0.76rem; color:var(--muted); line-height:1.5; margin-bottom:0.9rem;">
           Votre accès est fermé (abonnement à régler ou compte suspendu). Le déblocage se règle
-          <strong style="color:var(--text);">avec le solde de votre portefeuille</strong> : rien à
-          envoyer, rien à attendre — votre accès se rouvre tout de suite.
+          <strong style="color:var(--text);">avec le solde de votre portefeuille</strong> ou
+          <strong style="color:var(--text);">par carte Visa</strong> — votre accès se rouvre tout de suite.
         </p>
         <div class="field">
           <label for="forgotName">Nom</label>
@@ -236,6 +236,21 @@
             <strong id="unlockWalletCost" style="font-family:var(--font-mono); font-size:1.1rem; color:var(--cyan);">0</strong>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="payFromWalletBtn" style="width:100%; margin-top:0.8rem;">💰 Payer avec mon solde et débloquer</button>
+
+          <!-- Ou par carte Visa : le numéro se tape chez Papi (carte BRED),
+               jamais sur cette page. Le mot de passe sert à se reconnecter,
+               car le lien de paiement demande une session. -->
+          <div style="display:flex; align-items:center; gap:0.6rem; margin:0.9rem 0 0.7rem; font-size:0.72rem; color:var(--muted);">
+            <span style="flex:1; border-top:1px solid var(--line);"></span>ou<span style="flex:1; border-top:1px solid var(--line);"></span>
+          </div>
+          <div class="field" style="margin-bottom:0.6rem;">
+            <label for="forgotPassword">Mot de passe (pour payer par carte)</label>
+            <input id="forgotPassword" type="password" minlength="6" placeholder="Votre mot de passe" autocomplete="current-password">
+          </div>
+          <button type="button" class="btn btn-sm" id="payUnlockCardBtn" style="width:100%;">💳 Payer par carte Visa et débloquer</button>
+          <p style="font-size:0.7rem; color:var(--muted); margin-top:0.5rem; line-height:1.5;">
+            Vous saisissez votre carte sur la page sécurisée de Papi, pas ici. Frais de paiement : 5 %.
+          </p>
         </div>
 
         <p style="font-size:0.74rem; color:var(--muted); line-height:1.5;">
@@ -421,17 +436,18 @@
       </div>
     </div>
 
-    <!-- Payer avec le portefeuille : rien ne sort de l'application, l'abonnement
-         est actif dans la seconde. C'est la voie la plus courte, donc la première. -->
+    <!-- Payer en vrai argent, par Papi : l'argent déjà versé s'il suffit, sinon
+         Papi s'ouvre pour la somme qui manque. Les parrainages ne paient plus. -->
     <div style="border:1px solid var(--cyan); border-radius:10px; padding:0.9rem 1rem; margin-bottom:1rem; background:var(--panel-2);">
       <div style="display:flex; justify-content:space-between; align-items:baseline; gap:0.8rem;">
-        <strong style="font-size:0.9rem;">💰 Payer avec mon portefeuille</strong>
+        <strong style="font-size:0.9rem;">📲 Payer par Papi</strong>
         <span id="paywallWalletBalance" style="font-family:var(--font-mono); font-size:0.9rem; color:var(--cyan);">—</span>
       </div>
       <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0.5rem 0 0.8rem;">
-        Immédiat, sans code à demander : la somme quitte votre solde et votre abonnement démarre.
+        MVola, Orange Money, Airtel Money ou carte. L'argent déjà versé par Papi sert d'abord ;
+        l'abonnement démarre dès que Papi confirme. Les parrainages ne paient pas l'abonnement.
       </p>
-      <button type="button" class="btn btn-primary btn-sm" id="paywallWalletBtn" style="width:100%;">Payer avec mon solde</button>
+      <button type="button" class="btn btn-primary btn-sm" id="paywallWalletBtn" style="width:100%;">📲 Payer par Papi</button>
       <p id="paywallWalletStatus" style="font-size:0.78rem; color:var(--cyan); margin-top:0.6rem; line-height:1.5;"></p>
     </div>
 
@@ -536,6 +552,8 @@
             </div>
             <div style="padding:0.8rem 0.9rem;">
               <p class="community-sub" style="margin-bottom:0.8rem;">Magazay 31 any ivelany, voasokajy araka izay tadiavinao. Ampio ny anao eo ambany.</p>
+              <!-- Payer l'entana trouvé avec la vola tena izy du portefeuille. -->
+              <button type="button" class="btn btn-primary btn-sm" id="marketPayerBtn" style="width:100%; margin-bottom:0.8rem;">💰 Aloa amin'ny vola tena izy</button>
               <div id="marketplaceLinks" class="marketplace-groupes"></div>
               <div id="marketplaceAdminForm" style="display:none; margin-top:1rem; border-top:1px solid var(--line); padding-top:1rem;">
                 <div class="form-grid">
@@ -605,8 +623,8 @@
         <!-- Le tableau de bord du stock, en page à lui : il n'était qu'un
              onglet des Articles, posé à nu dans la page. -->
         <button type="button" class="nav-action" id="menuTableauBord">📊 Tableau de bord</button>
-        <button type="button" class="nav-action" id="menuCommun">🗂️ Administratif Fokontany</button>
-        <button type="button" class="nav-action" id="menuCommunAdmin">🏛️ Administratif Commun</button>
+        <button type="button" class="nav-action" id="menuCommun">🗂️ Fokontany</button>
+        <button type="button" class="nav-action" id="menuCommunAdmin">🏛️ Commun</button>
         <!-- Installer les deux applications : le propriétaire seul, et d'ici
              seulement — leurs pages ne s'installent pour personne d'autre. -->
         <button type="button" class="nav-action" id="menuInstallFokontany">📲 Télécharger Fokontany</button>
@@ -727,6 +745,15 @@
         <p class="panneau-note" id="rechercheVide" style="display:none;">Tsy misy hita.</p>
       </div>
 
+      <!-- ⏻ « Herinaratra », comme le menu d'arrêt de Windows : il monte
+           au-dessus du N quand on tient le N appuyé (herinaratra.js). -->
+      <div class="panneau-flottant panneau-boite menu-herinaratra-lisitra" id="herinaratraLisitra" role="menu" aria-label="Herinaratra" hidden>
+        <button type="button" role="menuitem" data-h="hidio" title="Verrouiller"><span aria-hidden="true">🔒</span> Hidio</button>
+        <button type="button" role="menuitem" data-h="atory" title="Mettre en veille"><span aria-hidden="true">🌙</span> Atory</button>
+        <button type="button" role="menuitem" data-h="vonoy" title="Se déconnecter"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></span> Déconnecter</button>
+        <button type="button" role="menuitem" data-h="avereno" title="Redémarrer"><span aria-hidden="true">🔄</span> Avereno</button>
+      </div>
+
       <!-- Petit panneau des réglages de la rangée : il monte au-dessus d'elle,
            comme les autres. -->
       <div class="panneau-flottant panneau-boite" id="barReglages" style="display:none;">
@@ -820,8 +847,13 @@
             </div>
           </div>
           <!-- Les stories : vingt-quatre heures, en rangée sous le titre
-               (parametres.js). -->
-          <div class="story-rangee" id="storyRangee" aria-label="Stories"></div>
+               (parametres.js). Pleine, elle défile de côté, flèches à
+               l'appui ; « Hanampy story » reste en tête. -->
+          <div class="story-cadre">
+            <button type="button" class="story-fleche story-fleche-g" id="storyFlecheG" aria-label="Story teo aloha" hidden>‹</button>
+            <div class="story-rangee" id="storyRangee" aria-label="Stories"></div>
+            <button type="button" class="story-fleche story-fleche-d" id="storyFlecheD" aria-label="Story manaraka" hidden>›</button>
+          </div>
           <input type="file" id="storyFichier" accept="image/*,video/*" multiple hidden>
 
           <div class="community-grid">
@@ -1079,8 +1111,7 @@
                 <div class="kpi-card"><div class="kpi-label">Olona manana fanamarinam-ponenana</div><div class="kpi-value" id="communKpiFonenana">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Fanamarinam-ponenana manan-kery</div><div class="kpi-value" id="communKpiFonenanaKery">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Taratasy fifindra-monina</div><div class="kpi-value" id="communKpiFifindra">0</div></div>
-                <div class="kpi-card"><div class="kpi-label">Sora-panambadiana</div><div class="kpi-value" id="communKpiFanambadiana">0</div></div>
-                <div class="kpi-card"><div class="kpi-label">Sora-pahafatesana</div><div class="kpi-value" id="communKpiFahafatesana">0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Fananan-tany</div><div class="kpi-value" id="communKpiFananantany">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Taratasy samihafa</div><div class="kpi-value" id="communKpiHafa">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Taratasy nomena ity volana ity</div><div class="kpi-value" id="communKpiTarVolana">0</div></div>
                 <div class="kpi-card"><div class="kpi-label">Taratasy nomena ity taona ity</div><div class="kpi-value" id="communKpiTarTaona">0</div></div>
@@ -1163,12 +1194,12 @@
               <div class="table-scroll">
                 <table>
                   <thead>
-                    <tr><th>Olona</th><th>Naloha ?</th><th>Vola</th><th>Daty</th></tr>
+                    <tr><th>Fianakaviana</th><th>Naloha ?</th><th>Vola</th><th>Daty</th></tr>
                   </thead>
                   <tbody id="adidyOlonaListe"></tbody>
                 </table>
               </div>
-              <p class="empty-hint" id="adidyOlonaVide">Mbola tsy misy olona ao amin'ny « CIN / Passeport ».</p>
+              <p class="empty-hint" id="adidyOlonaVide">Mbola tsy misy fianakaviana voasoratra ao amin'ny « Livre de famille ».</p>
             </div>
           </div>
 
@@ -1228,8 +1259,7 @@
                   <select id="tarKarazana">
                     <option value="fonenana">Fanamarinam-ponenana</option>
                     <option value="fifindramonina">Fanamarinana fifindra-monina</option>
-                    <option value="fanambadiana">Sora-panambadiana (acte de mariage)</option>
-                    <option value="fahafatesana">Sora-pahafatesana (acte de décès)</option>
+                    <option value="fananantany">Fananan-tany</option>
                     <option value="hafa">Taratasy samihafa</option>
                   </select>
                 </div>
@@ -1258,23 +1288,18 @@
                   <label for="tarTerakaToerana">Toerana nahaterahana</label>
                   <input type="text" id="tarTerakaToerana" placeholder="Antananarivo" autocomplete="off">
                 </div>
-                <!-- Le mariage : le second conjoint. -->
-                <div class="field" id="tarVadyChamp" style="display:none;">
-                  <label for="tarVady">Anaran'ny vady faharoa</label>
-                  <textarea id="tarVady" class="champ-anarana" rows="1" placeholder="Nom et prénoms" autocomplete="off"></textarea>
+                <!-- Fananan-tany : où est la terre, sa mesure, son numéro. -->
+                <div class="field" id="tarTanyToeranaChamp" style="display:none;">
+                  <label for="tarTanyToerana">Toerana misy ny tany</label>
+                  <input type="text" id="tarTanyToerana" placeholder="Anaran'ny tany, fokontany, kaominina" autocomplete="off">
                 </div>
-                <div class="field" id="tarVadyCinChamp" style="display:none;">
-                  <label for="tarVadyCin">Laharana CIN an'ny vady faharoa</label>
-                  <input type="text" id="tarVadyCin" placeholder="101 234 567 890" autocomplete="off">
+                <div class="field" id="tarTanyVelaranaChamp" style="display:none;">
+                  <label for="tarTanyVelarana">Velaran'ny tany</label>
+                  <input type="text" id="tarTanyVelarana" placeholder="Ohatra : 500 m²" autocomplete="off">
                 </div>
-                <!-- Le mariage et le décès : quand et où c'est arrivé. -->
-                <div class="field" id="tarZavaDatyChamp" style="display:none;">
-                  <label for="tarZavaDaty" id="tarZavaDatyLabel">Daty</label>
-                  <input type="date" id="tarZavaDaty">
-                </div>
-                <div class="field" id="tarZavaToeranaChamp" style="display:none;">
-                  <label for="tarZavaToerana" id="tarZavaToeranaLabel">Toerana</label>
-                  <input type="text" id="tarZavaToerana" placeholder="Toerana" autocomplete="off">
+                <div class="field" id="tarTanyLaharanaChamp" style="display:none;">
+                  <label for="tarTanyLaharana">Laharan'ny titra na kadasitra</label>
+                  <input type="text" id="tarTanyLaharana" placeholder="Ohatra : Titre n° 12345-A" autocomplete="off">
                 </div>
                 <div class="field" id="tarFonenanaChamp">
                   <label for="tarFonenana">Fonenana</label>
@@ -1508,8 +1533,8 @@
              même porte : sans alalana, rien ne s'y montre. -->
         <div class="dash-view" id="dash-communadmin">
           <div class="section-head"><div>
-            <h2>🏛️ Administratif Commun</h2>
-            <p>Tableau de bord an'ny Administratif Fokontany. Jerena fotsiny : tsy azo ovaina eto ny ao anatiny.</p>
+            <h2>🏛️ Commun</h2>
+            <p>Tableau de bord an'ny Fokontany. Jerena fotsiny : tsy azo ovaina eto ny ao anatiny.</p>
           </div></div>
           <p id="communAdminMessage" class="empty-hint" style="display:none;"></p>
           <div id="communAdminCorps" class="lecture-seule"></div>
@@ -2241,7 +2266,7 @@
         <div class="section-head">
           <div>
             <h2>Portefeuille électronique</h2>
-            <p>Votre solde en ariary, à dépenser ou à retirer vers votre compte.</p>
+            <p>Votre solde en ariary : déposez par Papi, retirez vers votre Mobile Money.</p>
           </div>
         </div>
 
@@ -2266,7 +2291,6 @@
             </button>
           </form>
           <p id="walletAuthStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem;"></p>
-
         </div>
 
         <!-- vue connectée -->
@@ -2277,20 +2301,38 @@
               <div>
                 <div class="plan-note">Compte vérifié</div>
                 <div class="plan-price" id="walletVerifiedEmail" style="font-size:1rem;">—</div>
+                <!-- L'ID KEY : ce qu'on donne pour recevoir un transfert. -->
+                <div class="plan-note" style="margin-top:0.7rem;">🔑 ID KEY</div>
+                <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                  <strong id="walletIdKey" style="font-family:var(--font-mono); font-size:1.05rem; color:var(--text); letter-spacing:0.05em;">—</strong>
+                  <button type="button" class="btn btn-sm" id="walletIdKeyCopy" style="width:auto;">📋 Adikao</button>
+                  <button type="button" class="btn btn-sm" id="walletIdKeyEdit" style="width:auto;">✏️ Ovaina</button>
+                  <button type="button" class="btn btn-sm" id="walletIdKeyDelete" style="width:auto; display:none;">🗑️ Esory</button>
+                </div>
+                <div class="plan-note" id="walletIdKeyType" style="font-size:0.72rem;"></div>
+                <!-- Une clef choisie : enregistrer (créer ou modifier), annuler.
+                     « Esory » la retire et rend une clef automatique. -->
+                <div id="walletIdKeyForm" style="display:none; margin-top:0.5rem;">
+                  <input id="walletIdKeyInput" type="text" maxlength="20" placeholder="Ex : TOKY-2026" autocomplete="off" style="font-family:var(--font-mono); text-transform:uppercase;">
+                  <div style="display:flex; gap:0.5rem; margin-top:0.4rem;">
+                    <button type="button" class="btn btn-primary btn-sm" id="walletIdKeySave" style="width:auto;">💾 Save</button>
+                    <button type="button" class="btn btn-sm" id="walletIdKeyCancel" style="width:auto;">Ajanony</button>
+                  </div>
+                </div>
+                <p id="walletIdKeyStatus" style="font-size:0.75rem; color:var(--cyan); margin-top:0.3rem;"></p>
               </div>
               <div>
                 <div class="plan-note">Solde disponible</div>
                 <div class="plan-price" id="walletBalance" style="font-size:1.4rem; color:var(--cyan);">0 Ar</div>
                 <div class="plan-note" id="walletBalanceCredits" style="margin-top:0.2rem;">—</div>
-                <!-- Seul l'argent vraiment payé sort en retrait (wallet, « retirableFor ») :
-                     les parrainages et les sommes inscrites par l'application se dépensent ici. -->
+                <!-- Ce qui peut sortir : dépôts payés et parrainages (wallet, « retirableFor »). -->
                 <div class="plan-note" id="walletRetirable" style="margin-top:0.2rem;"></div>
               </div>
             </div>
 
-            <!-- Le même solde, dans la devise du pays où l'argent doit arriver. -->
+            <!-- La vola tena izy seule (sans parrainage), dans la devise du pays où l'argent doit arriver. -->
             <div style="margin-top:1rem; border-top:1px solid var(--line); padding-top:0.9rem;">
-              <div class="plan-note" style="margin-bottom:0.5rem;">Voir dans une autre devise</div>
+              <div class="plan-note" style="margin-bottom:0.5rem;">💰 Vola tena izy — voir dans une autre devise</div>
               <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center;">
                 <select id="walletCurrency" style="width:auto; min-width:150px; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.9rem;">
                   <option value="MGA">Ariary (MGA)</option>
@@ -2300,6 +2342,12 @@
                   <option value="MUR">Roupie mauricienne (MUR)</option>
                   <option value="GBP">Livre sterling (GBP)</option>
                   <option value="CAD">Dollar canadien (CAD)</option>
+                  <option value="CNY">Yuan chinois (CNY)</option>
+                  <option value="JPY">Yen japonais (JPY)</option>
+                  <option value="INR">Roupie indienne (INR)</option>
+                  <option value="AED">Dirham des Émirats (AED)</option>
+                  <option value="TRY">Livre turque (TRY)</option>
+                  <option value="HKD">Dollar de Hong Kong (HKD)</option>
                 </select>
                 <strong id="walletConverted" style="font-family:var(--font-mono); font-size:1.1rem; color:var(--text);">—</strong>
               </div>
@@ -2309,80 +2357,142 @@
             <button type="button" class="btn btn-sm" id="walletSignOutBtn" style="margin-top:1rem;">Se déconnecter du portefeuille</button>
           </div>
 
-          <!-- ---- RETRAIT VERS UN COMPTE EXTÉRIEUR ---- -->
-          <div class="panel" id="walletPayoutPanel">
-            <h3>💸 Retirer vers mon compte</h3>
+          <!-- ---- DÉPOSER : l'argent qui ENTRE ----
+               Par Papi, vérifié par le serveur : rien n'est crédité avant que
+               Papi ne confirme le paiement. -->
+          <div class="panel" id="walletDepotPanel">
+            <h3>📥 Déposer de l'argent</h3>
             <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1rem;">
-              Indiquez où envoyer l'argent : votre compte PayPal, votre compte bancaire, ou votre
-              Mobile Money. La somme quitte votre solde dès la demande, et le propriétaire l'envoie
-              vers ce compte. Vous êtes prévenu tous les deux dès que c'est parti.
+              Payez avec MVola, Orange Money, Airtel Money ou une carte bancaire, par Papi. La somme
+              s'ajoute à votre solde dès que Papi confirme le paiement, et peut être retirée ensuite.
+              Frais de dépôt : <strong id="depotFraisPct" style="color:var(--text);">5 %</strong>.
             </p>
             <div class="form-grid">
               <div class="field" style="margin-bottom:0;">
-                <label for="payoutAmount">Montant à retirer (Ar)</label>
-                <input id="payoutAmount" type="number" min="0" step="1000" placeholder="20000">
+                <label for="papiAmount">Montant (Ar)</label>
+                <input id="papiAmount" type="number" min="300" step="1000" value="15000">
               </div>
               <div class="field" style="margin-bottom:0;">
-                <label for="payoutMethod">Où l'envoyer</label>
-                <select id="payoutMethod">
-                  <option value="paypal">PayPal</option>
-                  <option value="card">Compte bancaire / carte</option>
-                  <option value="mobile">Mobile Money</option>
-                  <option value="cash">Espèces — point cash / Western Union</option>
-                  <option value="wallet">Autre portefeuille (Wise, Payoneer, Skrill…)</option>
-                  <option value="merchant">Payer un achat à l'étranger</option>
+                <label for="papiProvider">Payer avec</label>
+                <select id="papiProvider">
+                  <option value="">Choisir sur la page Papi</option>
+                  <option value="MVOLA">MVola</option>
+                  <option value="ORANGE_MONEY">Orange Money</option>
+                  <option value="AIRTEL_MONEY">Airtel Money</option>
+                  <option value="BRED">Carte bancaire</option>
                 </select>
               </div>
               <div class="field" style="margin-bottom:0;">
-                <label for="payoutCurrency">Devise à l'arrivée</label>
-                <select id="payoutCurrency">
-                  <option value="MGA">Ariary (MGA)</option>
-                  <option value="EUR">Euro (EUR)</option>
-                  <option value="USD">Dollar (USD)</option>
-                  <option value="ZAR">Rand sud-africain (ZAR)</option>
-                  <option value="MUR">Roupie mauricienne (MUR)</option>
-                  <option value="GBP">Livre sterling (GBP)</option>
-                  <option value="CAD">Dollar canadien (CAD)</option>
+                <label for="papiPhone">Téléphone (facultatif)</label>
+                <input id="papiPhone" type="tel" placeholder="034 00 000 00">
+              </div>
+            </div>
+            <p id="papiFrais" style="font-size:0.78rem; color:var(--muted); margin-top:0.6rem; line-height:1.5;"></p>
+            <button type="button" class="btn btn-primary btn-sm" id="papiPayBtn" style="width:auto; margin-top:0.6rem;">Payer avec Papi</button>
+            <p id="papiStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem; line-height:1.5;"></p>
+          </div>
+
+          <!-- ---- RETIRER : l'argent qui SORT, en Mobile Money ----
+               Papi n'envoie pas d'argent (il n'encaisse que) : le propriétaire
+               envoie lui-même, puis marque la demande comme envoyée. -->
+          <div class="panel" id="walletPayoutPanel">
+            <h3>💸 Retirer vers mon Mobile Money</h3>
+            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1rem;">
+              Votre argent — les dépôts et ce que vos parrainages ont rapporté — part vers votre
+              MVola, Orange Money ou Airtel Money. La somme quitte votre solde dès la demande ; le
+              propriétaire l'envoie et vous êtes prévenu. Si elle ne part pas, elle vous est rendue.
+            </p>
+            <div class="form-grid">
+              <div class="field" style="margin-bottom:0;">
+                <label for="payoutAmount">Montant à recevoir (Ar)</label>
+                <input id="payoutAmount" type="number" min="0" step="1000" placeholder="20000">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="payoutOperateur">Vers</label>
+                <select id="payoutOperateur">
+                  <option value="MVola">MVola</option>
+                  <option value="Orange Money">Orange Money</option>
+                  <option value="Airtel Money">Airtel Money</option>
                 </select>
               </div>
             </div>
             <div class="field" style="margin-top:1rem;">
-              <label for="payoutDestination" id="payoutDestinationLabel">Votre email PayPal</label>
-              <input id="payoutDestination" type="text" placeholder="vous@paypal.com">
+              <label for="payoutDestination">Votre numéro et le nom du titulaire</label>
+              <input id="payoutDestination" type="text" placeholder="034 00 000 00 — RABE Koto">
             </div>
-            <div class="field" id="payoutLinkField" style="display:none;">
-              <label for="payoutLink" id="payoutLinkLabel">Lien du service</label>
-              <input id="payoutLink" type="text" placeholder="https://…">
-              <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">
-                L'adresse à ouvrir pour faire l'envoi : votre portefeuille, la page du marchand,
-                le point cash. Elle évite d'avoir à le chercher.
-              </p>
-            </div>
-            <div class="field" id="payoutInstructionsField" style="display:none;">
-              <label for="payoutInstructions">Marche à suivre</label>
-              <input id="payoutInstructions" type="text" placeholder="Ex : ouvrir le lien, choisir « Envoyer », mettre mon nom et mon numéro de pièce d'identité">
-              <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">
-                Expliquez pas à pas ce qu'il faut faire. Un canal que l'application ne connaît pas
-                ne se devine pas : sans consigne, la somme partirait au hasard.
-              </p>
-            </div>
-            <button type="button" class="btn btn-primary btn-sm" id="payoutRequestBtn" style="width:auto;">Demander le retrait</button>
+            <p id="payoutFrais" style="font-size:0.78rem; color:var(--muted); margin-bottom:0.6rem; line-height:1.5;"></p>
+            <button type="button" class="btn btn-primary btn-sm" id="payoutRequestBtn" style="width:auto;">Retirer</button>
             <p id="payoutStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem; line-height:1.5;"></p>
+          </div>
 
-            <div style="margin-top:1.2rem; padding-top:1rem; border-top:1px solid var(--line);">
-              <h3 style="font-size:0.95rem;">Mes retraits</h3>
-              <div id="payoutList" style="margin-top:0.7rem;"></div>
-              <p class="empty-hint" id="payoutEmpty" style="display:none;">Aucun retrait demandé.</p>
+          <!-- ---- ACHATS INTERNATIONAUX : payés avec la vola tena izy ----
+               Le lien de l'entana (Alibaba, AliExpress…), son prix en ariary,
+               l'adresse de livraison : le propriétaire l'achète et le fait
+               livrer (fonction wallet, méthode « merchant »). Les parrainages
+               ne paient pas ces achats. -->
+          <div class="panel" id="walletEtrangerPanel">
+            <h3>🌍 Hividy entana any ivelany</h3>
+            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1rem;">
+              Apetaho ny rohin'ilay entana hita tao amin'ny « Achats internationaux ». Ny
+              <strong style="color:var(--text);">vola tena izy</strong> ihany no andoavana azy, fa tsy ny parrainage.
+              Ny tompony no mividy azy ary mampandefa azy any amin'ny adiresinao. Raha tsy vita ny fividianana dia averina ny vola.
+            </p>
+            <div class="field">
+              <label for="etrangerLien">Rohin'ilay entana</label>
+              <input id="etrangerLien" type="url" placeholder="https://www.alibaba.com/product/…">
             </div>
+            <div class="form-grid">
+              <div class="field" style="margin-bottom:0;">
+                <label for="etrangerPrix">Vidiny, livraison tafiditra</label>
+                <!-- Les devises sont celles de « Voir dans une autre devise »,
+                     recopiées par common.js : une seule liste à tenir. -->
+                <div style="display:flex; gap:0.5rem;">
+                  <input id="etrangerPrix" type="number" min="0" step="any" placeholder="150000" style="flex:1; min-width:0;">
+                  <select id="etrangerDevise" style="width:auto; max-width:45%;"></select>
+                </div>
+                <p id="etrangerEnAr" style="font-size:0.78rem; color:var(--muted); margin-top:0.3rem;"></p>
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="etrangerAdresse">Adiresy fandefasana sy laharana finday</label>
+                <input id="etrangerAdresse" type="text" placeholder="Lot II A 12, Antananarivo — 034 00 000 00">
+              </div>
+            </div>
+            <div class="field" style="margin-top:1rem;">
+              <label for="etrangerConsigne">Fanazavana (habe, loko, isa…)</label>
+              <input id="etrangerConsigne" type="text" placeholder="2 pièces, loko mainty, taille M">
+            </div>
+            <p id="etrangerDispo" style="font-size:0.78rem; color:var(--muted); margin-bottom:0.6rem; line-height:1.5;"></p>
+            <button type="button" class="btn btn-primary btn-sm" id="etrangerBtn" style="width:auto;">🛒 Hividy amin'ny vola tena izy</button>
+            <p id="etrangerStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem; line-height:1.5;"></p>
+          </div>
 
-            <!-- Ce qui est ENTRÉ. Un versement annoncé et pas encore confirmé
-                 doit se voir : sans cela, la personne qui vient de payer croit
-                 que rien n'est arrivé et paie une seconde fois. -->
-            <div style="margin-top:1.2rem; padding-top:1rem; border-top:1px solid var(--line);">
-              <h3 style="font-size:0.95rem;">Mes versements</h3>
-              <div id="depositList" style="margin-top:0.7rem;"></div>
-              <p class="empty-hint" id="depositEmpty" style="display:none;">Aucun versement reçu.</p>
+          <!-- ---- TRANSFERT vers un autre portefeuille, par son ID KEY ----
+               Vola tena izy seule ; frais au propriétaire (fonction wallet,
+               « transfert » ; supabase-portefeuille-famindrana.sql). -->
+          <div class="panel" id="walletTransfertPanel">
+            <h3>🔁 Hamindra vola any amin'ny wallet hafa</h3>
+            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1rem;">
+              Angataho ny <strong style="color:var(--text);">ID KEY</strong> an'ilay olona. Ny vola tena izy ihany no afindra.
+              Tonga avy hatrany any aminy ilay vola, ary tsy azo averina intsony.
+            </p>
+            <div class="form-grid">
+              <div class="field" style="margin-bottom:0;">
+                <label for="transfertCle">ID KEY an'ilay handray</label>
+                <input id="transfertCle" type="text" placeholder="NA-XXXX-XXXX" autocomplete="off" style="font-family:var(--font-mono); text-transform:uppercase;">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label for="transfertMontant">Vola halefa (Ar)</label>
+                <input id="transfertMontant" type="number" min="0" step="1000" placeholder="10000">
+              </div>
             </div>
+            <p id="transfertQui" style="font-size:0.78rem; color:var(--muted); margin-top:0.3rem;"></p>
+            <div class="field" style="margin-top:0.7rem;">
+              <label for="transfertNote">Antony (tsy voatery)</label>
+              <input id="transfertNote" type="text" placeholder="Vidin'ny entana…">
+            </div>
+            <p id="transfertFrais" style="font-size:0.78rem; color:var(--muted); margin-bottom:0.6rem; line-height:1.5;"></p>
+            <button type="button" class="btn btn-primary btn-sm" id="transfertBtn" style="width:auto;">🔁 Afindra</button>
+            <p id="transfertStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem; line-height:1.5;"></p>
           </div>
 
           <!-- ---- ACHATS DU FIL ---- -->
@@ -2395,6 +2505,23 @@
             <div id="achatList" style="margin-top:0.7rem;"></div>
             <p class="empty-hint" id="achatEmpty" style="display:none;">Tsy mbola nisy fividianana na fivarotana.</p>
           </div>
+
+          <!-- ---- HISTORIQUE ---- -->
+          <div class="panel" id="walletHistoriquePanel">
+            <h3>🧾 Historique</h3>
+            <!-- Un versement en attente doit se voir : sinon la personne qui
+                 vient de payer croit que rien n'est arrivé et paie deux fois. -->
+            <h3 style="font-size:0.95rem; margin-top:0.8rem;">Mes dépôts</h3>
+            <div id="depositList" style="margin-top:0.7rem;"></div>
+            <p class="empty-hint" id="depositEmpty" style="display:none;">Aucun dépôt.</p>
+            <h3 style="font-size:0.95rem; margin-top:1.2rem;">Mes retraits</h3>
+            <div id="payoutList" style="margin-top:0.7rem;"></div>
+            <p class="empty-hint" id="payoutEmpty" style="display:none;">Aucun retrait demandé.</p>
+            <h3 style="font-size:0.95rem; margin-top:1.2rem;">Famindrana</h3>
+            <div id="transfertList" style="margin-top:0.7rem;"></div>
+            <p class="empty-hint" id="transfertEmpty" style="display:none;">Tsy mbola nisy famindrana.</p>
+          </div>
+
           <!-- ---- FILE DES RETRAITS À ENVOYER (propriétaire uniquement) ---- -->
           <div class="panel" id="walletQueuePanel" style="display:none;">
             <h3>📤 Retraits à envoyer</h3>
@@ -2407,13 +2534,11 @@
           </div>
 
           <!-- ---- DÉPENSER LE SOLDE ---- -->
-          <!-- Trois usages, dans l'ordre où ils se posent : l'abonnement qui
-               fait tourner l'application, ce qui s'achète dedans, et ce qui
-               s'achète dehors. -->
           <div class="panel" id="walletBuyPanel">
-            <h3>💳 Dépenser votre solde</h3>
+            <h3>💳 Payer l'abonnement par Papi</h3>
             <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1.2rem;">
-              Réglé depuis votre portefeuille, sans code à demander ni argent à envoyer.
+              Réglé avec l'argent versé par Papi ; s'il manque, Papi s'ouvre pour la différence.
+              Les parrainages ne paient pas l'abonnement : ils se retirent vers votre Mobile Money.
             </p>
 
             <h3 style="font-size:0.95rem;">Abonnement</h3>
@@ -2437,14 +2562,6 @@
                 <button type="button" class="btn btn-sm buy-site-item" data-item="sub_days" style="width:100%; margin-top:0.7rem;">Payer</button>
               </div>
             </div>
-
-            <h3 style="font-size:0.95rem; margin-top:1.4rem;">Achat hors du site</h3>
-            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin:0.5rem 0 0.8rem;">
-              Payer un marchand à l'étranger, ou faire passer la somme par un autre portefeuille
-              international — Wise, Payoneer, Skrill, PayPal, un point cash. Vous donnez le lien et
-              la marche à suivre ; le propriétaire exécute et vous êtes prévenus tous les deux.
-            </p>
-            <button type="button" class="btn btn-sm" id="goToPayoutBtn" style="width:auto;">Choisir où envoyer l'argent</button>
 
             <p id="walletBuyStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:1rem; line-height:1.5;"></p>
             <p id="walletRedeemStatus" style="display:none;"></p>
@@ -2520,8 +2637,8 @@
         <div class="panel">
           <h3>💰 Vola miditra (déclaré)</h3>
           <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
-            Paiements annoncés par les clients (déblocages réglés sur PayPal). Le solde réel de votre
-            compte PayPal se consulte chez PayPal : l'application ne peut pas le lire.
+            Paiements annoncés par les clients (déblocages réglés par Papi). Le solde réel de votre
+            compte Papi se consulte chez Papi (app.papi.mg) : l'application ne peut pas le lire.
           </p>
           <div class="table-scroll">
             <table id="adminMoneyTable">
@@ -3007,7 +3124,7 @@
           <h3>🔓 Demandes de déblocage (admin — vous uniquement)</h3>
           <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
             Chaque client ayant oublié son mot de passe règle <strong style="color:var(--text);">20 000 Ar</strong>
-            sur votre PayPal puis envoie sa demande ici. Vérifiez la réception du paiement puis cliquez sur
+            par Papi (MVola, Orange Money, Airtel Money ou carte) puis envoie sa demande ici. Vérifiez la réception du paiement puis cliquez sur
             <strong style="color:var(--text);">Confirmer le paiement</strong> : l'accès se rouvre tout seul
             sur l'appareil du client. Aucun code ne circule, rien à transmettre.
           </p>
@@ -3068,40 +3185,43 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=80e17225"></script>
-<script src="gestion-stockage-js/stock.js?v=fe9a5898"></script>
+<script src="gestion-stockage-js/common.js?v=3989ed0e"></script>
+<script src="gestion-stockage-js/herinaratra.js?v=622d64e8"></script>
+<script src="gestion-stockage-js/stock.js?v=d33d19a7"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
-<script src="gestion-stockage-js/comptes.js?v=7204c861"></script>
-<script src="gestion-stockage-js/factures.js?v=3c5eba5b"></script>
-<script src="gestion-stockage-js/factures-modely.js"></script>
+<script src="gestion-stockage-js/comptes.js?v=92ad47d0"></script>
+<script src="gestion-stockage-js/factures.js?v=69af0cd7"></script>
+<script src="gestion-stockage-js/factures-modely.js?v=8fbf4a42"></script>
 <script src="gestion-stockage-js/inviter.js?v=437d899c"></script>
 <script src="gestion-stockage-js/contact.js?v=b7517b12"></script>
 <!-- Montre au client qui vient de s'inscrire, à sa première entrée, tous les
      canaux du propriétaire (contact.js les tient). -->
 <script src="gestion-stockage-js/serasera-voalohany.js?v=55330613"></script>
-<script src="gestion-stockage-js/zara-rehetra.js?v=dfde1af2"></script>
-<script src="gestion-stockage-js/live.js?v=accde37b"></script>
+<script src="gestion-stockage-js/zara-rehetra.js?v=b4bc508d"></script>
+<script src="gestion-stockage-js/live.js?v=31a0f27f"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=bef220d0"></script>
+<script src="gestion-stockage-js/parametres.js?v=48fd7b6e"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>
 <script src="gestion-stockage-js/identite.js?v=32177fac"></script>
 <script src="gestion-stockage-js/fond.js?v=66e9ffc6"></script>
 <script src="gestion-stockage-js/carte-libre.js?v=732ab00c"></script>
-<script src="gestion-stockage-js/equipe.js?v=8f763fd8"></script>
-<script src="gestion-stockage-js/vue-mpiasa.js?v=bff76752"></script>
-<script src="gestion-stockage-js/vue-suivi.js?v=cb9f7da7"></script>
+<script src="gestion-stockage-js/equipe.js?v=57df35d0"></script>
+<script src="gestion-stockage-js/vue-mpiasa.js?v=703bbcb1"></script>
+<script src="gestion-stockage-js/vue-suivi.js?v=77f7b0f5"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=bf90a8a5"></script>
-<script src="gestion-stockage-js/photocopie.js?v=362c711f"></script>
-<script src="gestion-stockage-js/pdf.js"></script>
-<script src="gestion-stockage-js/commun-alalana.js?v=682d598c"></script>
-<script src="gestion-stockage-js/taratasy.js?v=08c97553"></script>
-<script src="gestion-stockage-js/fianakaviana.js?v=7620b9e5"></script>
-<script src="gestion-stockage-js/validation-install.js?v=2e1540c4"></script>
-<script src="gestion-stockage-js/adidy.js?v=7925663f"></script>
+<script src="gestion-stockage-js/photocopie.js?v=be4f35a5"></script>
+<script src="gestion-stockage-js/pdf.js?v=b7c1f056"></script>
+<script src="gestion-stockage-js/commun-alalana.js?v=14bcf7c9"></script>
+<script src="gestion-stockage-js/taratasy.js?v=7688b0e0"></script>
+<script src="gestion-stockage-js/fianakaviana.js?v=2d087da0"></script>
+<script src="gestion-stockage-js/validation-install.js?v=6136b9a3"></script>
+<script src="gestion-stockage-js/adidy.js?v=0f6b4f4c"></script>
 <script src="gestion-stockage-js/theme.js?v=096262fd"></script>
+<script src="gestion-stockage-js/mot-de-passe.js?v=fa311136"></script>
 <script src="gestion-stockage-js/securite.js?v=e38535e6"></script>
+<script src="gestion-stockage-js/papi-paiement.js?v=d9fdde58"></script>
 
 
 

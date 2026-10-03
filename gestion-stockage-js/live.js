@@ -83,7 +83,7 @@
       updateLiveReachInfo();
       veillerSurLesLives();
       if(typeof updateOwnerPresenceLabel === 'function') updateOwnerPresenceLabel();
-      // Le bord vert des stories de ceux qui sont là (parametres.js).
+      // Ceux qui sont là : anneau violet sur leur story, vert sur leurs billets (parametres.js).
       if(typeof window.__storiesEnLigne === 'function') window.__storiesEnLigne();
     });
     presenceChannel.subscribe(function(status){

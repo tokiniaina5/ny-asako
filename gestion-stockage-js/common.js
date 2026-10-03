@@ -881,6 +881,7 @@
     }catch(e){}
   }
 
+
   function initWalletAuth(){
     walletSession = loadWalletSession();
     renderWallet();
@@ -920,25 +921,14 @@
   // Chaque canal demande autre chose : une adresse email, un compte, un nom
   // de bénéficiaire, une référence de commande. Un seul champ « destination »
   // au libellé figé les mélangerait tous.
+  // « devise » : ce que le compte d'arrivée sait recevoir. Les portefeuilles
+  // internationaux ne tiennent pas d'ariary ; le Mobile Money, que de l'ariary.
   const PAYOUT_DESTINATION_LABELS = {
-    paypal: { label: 'Votre email PayPal', placeholder: 'vous@paypal.com' },
-    card: { label: 'Votre compte bancaire (IBAN ou banque / agence / compte / clé)', placeholder: '00008 03016 05001514368 86' },
-    mobile: { label: 'Votre numéro Mobile Money', placeholder: '034 00 000 00' },
-    cash: {
-      label: 'Nom exact sur votre pièce d\'identité, et où retirer',
-      placeholder: 'RABE Koto — point Western Union, Antananarivo Analakely',
-      link: 'Lien du point cash (facultatif)', needs: true
-    },
-    wallet: {
-      label: 'Votre identifiant sur ce portefeuille',
-      placeholder: 'Wise : vous@email.com · Payoneer : n° de compte',
-      link: 'Lien du portefeuille', needs: true
-    },
-    merchant: {
-      label: 'Le marchand et votre commande',
-      placeholder: 'Ex : AliExpress — commande n° 812345, au nom de RABE Koto',
-      link: 'Lien de la page à payer', needs: true
-    }
+    wise: { label: 'Email de votre compte Wise', placeholder: 'vous@email.com', devise: 'etrangere' },
+    payoneer: { label: 'Email de votre compte Payoneer', placeholder: 'vous@email.com', devise: 'etrangere' },
+    skrill: { label: 'Email de votre compte Skrill', placeholder: 'vous@email.com', devise: 'etrangere' },
+    mobile: { label: 'Votre numéro Mobile Money et le nom du titulaire', placeholder: '034 00 000 00 — RABE Koto', devise: 'MGA' },
+    card: { label: 'Votre compte bancaire (IBAN ou banque / agence / compte / clé) et le titulaire', placeholder: 'FR76 3000 … — RABE Koto', devise: 'libre' }
   };
 
   function formatWalletAr(amount){
@@ -994,21 +984,63 @@
         ? 'soit ' + Math.floor((walletState.balanceAr || 0) / par) + ' parrainage(s) à ' + formatWalletAr(par)
         : '';
     }
-    // Ce qui peut sortir pour de bon : l'argent vraiment payé. Le reste
-    // (parrainages, sommes inscrites par l'application) se dépense ici.
+    // Ce qui peut sortir pour de bon : l'argent vraiment payé et les
+    // parrainages. Les sommes inscrites par l'application se dépensent ici.
     const retirableEl = document.getElementById('walletRetirable');
     if(retirableEl){
       const r = walletState.retirableAr;
+      // Telo samy hafa, asehoy misaraka : vola tena izy (dépôts Papi +
+      // ventes), parrainage, ary ny vola nampidirin'ny appli ho azy.
+      const vola = Math.max(0, walletState.papiAr || 0);
+      const parrainage = Math.max(0, walletState.parrainageAr || 0);
+      const appli = Math.max(0, (walletState.balanceAr || 0) - vola - parrainage);
+      const ligne = function(label, montant, note){
+        return '<div style="display:flex; justify-content:space-between; align-items:baseline; gap:0.8rem; padding:0.35rem 0; border-top:1px solid var(--line);">' +
+          '<span>' + label + (note ? '<br><span style="font-size:0.72rem;">' + note + '</span>' : '') + '</span>' +
+          '<strong style="color:var(--text); white-space:nowrap;">' + formatWalletAr(montant) + '</strong></div>';
+      };
       retirableEl.innerHTML = (r === undefined || r === null) ? '' :
-        '💵 Azo alaina (tena vola) : <strong style="color:var(--text);">' + formatWalletAr(r) + '</strong>' +
-        (r < (walletState.balanceAr || 0)
-          ? '<br><span style="font-size:0.72rem;">Ny vola nampidirin\'ny appli ho azy dia ampiasaina ato anatiny ihany (abonnement, déblocage…).</span>'
-          : '');
+        '<div style="margin-top:0.4rem;">' +
+        ligne('💰 Vola tena izy', vola, 'Dépôt Papi sy varotra') +
+        ligne('🎁 Parrainage', parrainage) +
+        (appli ? ligne('🏷️ Avy amin\'ny appli', appli, 'Ato anatiny ihany (abonnement, déblocage…)') : '') +
+        '</div>';
     }
+    const cleEl = document.getElementById('walletIdKey');
+    if(cleEl) cleEl.textContent = walletState.idKey || '—';
+    const cleType = document.getElementById('walletIdKeyType');
+    if(cleType) cleType.textContent = walletState.idKey
+      ? (walletState.idKeyAuto ? 'Automatique — azonao ovaina ho anao manokana.' : 'Noforoninao.')
+      : '';
+    const cleSuppr = document.getElementById('walletIdKeyDelete');
+    if(cleSuppr) cleSuppr.style.display = walletState.idKey && !walletState.idKeyAuto ? '' : 'none';
+    renderTransferts();
+    transfertCalculer();
+    const dispoEl = document.getElementById('etrangerDispo');
+    if(dispoEl) dispoEl.textContent = 'Vola tena izy azo ampiasaina : ' + formatWalletAr(walletState.papiAr || 0);
+    renderWalletCanaux();
+    updatePayoutDestinationField();
     updateWalletConversion();
   }
 
-  // Le même solde, dans la devise du pays où l'argent doit arriver.
+  // Ce qui marche vraiment sur ce serveur : c'est lui qui le dit, selon les
+  // clefs posées. Un canal fermé ne doit pas avoir l'air ouvert.
+  function renderWalletCanaux(){
+    const el = document.getElementById('walletCanaux');
+    const c = (walletState && walletState.canaux) || {};
+    if(el){
+      el.innerHTML =
+        (c.depotPapi ? '✅' : '⛔') + ' Dépôt Mobile Money<br>' +
+        '👤 Retraits envoyés par le propriétaire';
+    }
+    const pct = document.getElementById('depotFraisPct');
+    if(pct && walletState && walletState.depositFeePct !== undefined) pct.textContent = walletState.depositFeePct + ' %';
+    const papiBtn = document.getElementById('papiPayBtn');
+    if(papiBtn) papiBtn.disabled = !c.depotPapi;
+  }
+
+  // La vola tena izy (argent vraiment payé), dans la devise du pays où
+  // l'argent doit arriver — pas le parrainage ni les sommes de l'appli.
   function updateWalletConversion(){
     const select = document.getElementById('walletCurrency');
     const out = document.getElementById('walletConverted');
@@ -1016,7 +1048,7 @@
     if(!select || !out || !walletState) return;
     const currency = select.value;
     if(currency === 'MGA'){
-      out.textContent = formatWalletAr(walletState.balanceAr);
+      out.textContent = formatWalletAr(walletState.papiAr || 0);
       if(note) note.textContent = '';
       return;
     }
@@ -1027,12 +1059,12 @@
         if(note) note.textContent = 'Taux du jour indisponible pour ' + currency + '.';
         return;
       }
-      const converted = (walletState.balanceAr || 0) * res.rate;
+      const converted = (walletState.papiAr || 0) * res.rate;
       out.textContent = converted.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' ' + currency;
       if(note){
         note.textContent = 'Taux du jour : 1 ' + currency + ' ≈ ' +
           (1 / res.rate).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' Ar. ' +
-          'Il bouge d\'un jour à l\'autre — c\'est celui du moment du retrait qui compte.';
+          'Il bouge d\'un jour à l\'autre.';
       }
     }, function(err){
       out.textContent = '—';
@@ -1044,24 +1076,36 @@
   if(walletCurrencySelect) walletCurrencySelect.addEventListener('change', updateWalletConversion);
 
   // Le champ « où envoyer » change de sens selon le moyen choisi : un email
-  // PayPal, un compte bancaire et un numéro Mobile Money ne se ressemblent pas.
+  // Wise, un compte bancaire et un numéro Mobile Money ne se ressemblent pas.
   const payoutMethodSelect = document.getElementById('payoutMethod');
   function updatePayoutDestinationField(){
     if(!payoutMethodSelect) return;
-    const conf = PAYOUT_DESTINATION_LABELS[payoutMethodSelect.value] || PAYOUT_DESTINATION_LABELS.paypal;
+    const methode = payoutMethodSelect.value;
+    const conf = PAYOUT_DESTINATION_LABELS[methode] || PAYOUT_DESTINATION_LABELS.wise;
     const label = document.getElementById('payoutDestinationLabel');
     const input = document.getElementById('payoutDestination');
     if(label) label.textContent = conf.label;
     if(input) input.placeholder = conf.placeholder;
 
-    // Lien et marche à suivre n'apparaissent que pour les canaux que
-    // l'application ne sait pas exécuter d'elle-même.
-    const linkField = document.getElementById('payoutLinkField');
-    const linkLabel = document.getElementById('payoutLinkLabel');
-    const instructionsField = document.getElementById('payoutInstructionsField');
-    if(linkField) linkField.style.display = conf.needs ? 'block' : 'none';
-    if(linkLabel && conf.link) linkLabel.textContent = conf.link;
-    if(instructionsField) instructionsField.style.display = conf.needs ? 'block' : 'none';
+    // La devise suit le compte d'arrivée : proposer l'ariary pour Wise,
+    // c'est une demande que le serveur refusera.
+    const devise = document.getElementById('payoutCurrency');
+    if(devise){
+      Array.prototype.forEach.call(devise.options, function(o){
+        o.disabled = (conf.devise === 'etrangere' && o.value === 'MGA') ||
+          (conf.devise === 'MGA' && o.value !== 'MGA');
+      });
+      if(devise.options[devise.selectedIndex].disabled){
+        devise.value = conf.devise === 'MGA' ? 'MGA' : 'EUR';
+      }
+    }
+
+    // Dire franchement qui envoie : l'application elle-même, ou le propriétaire.
+    const canal = document.getElementById('payoutCanal');
+    if(canal){
+      canal.textContent = '👤 Envoyé par le propriétaire depuis son compte ' + payoutMethodLabel(methode) +
+          ' — vous êtes prévenu dès que c\'est parti.';
+    }
   }
   if(payoutMethodSelect){
     payoutMethodSelect.addEventListener('change', updatePayoutDestinationField);
@@ -1071,18 +1115,125 @@
   // Les canaux de sortie ont leurs propres noms : « wallet » veut dire
   // « un autre portefeuille » ici, pas « le portefeuille de l'application ».
   function payoutMethodLabel(method){
+    if(method === 'wise') return 'Wise';
+    if(method === 'payoneer') return 'Payoneer';
+    if(method === 'skrill') return 'Skrill';
     if(method === 'card') return 'Compte bancaire / carte';
     if(method === 'mobile') return 'Mobile Money';
     if(method === 'cash') return 'Espèces — point cash';
     if(method === 'wallet') return 'Autre portefeuille';
     if(method === 'merchant') return 'Achat à l\'étranger';
-    return 'PayPal';
+    return 'Ancien moyen (retiré)';
   }
 
   function payoutStatusLabel(status){
     if(status === 'sent') return '<span style="color:var(--cyan);">Envoyé</span>';
     if(status === 'refused') return '<span style="color:var(--red, #e66);">Refusé — solde rendu</span>';
     return '<span style="color:var(--amber);">En attente d\'envoi</span>';
+  }
+
+  // ---- Glisser une ligne de l'historique pour la masquer ----
+  // Ce sont des traces d'argent : elles ne s'effacent JAMAIS de la base, et
+  // le solde n'en dépend pas. Glisser à gauche ou à droite les retire
+  // seulement de CETTE liste, sur cet appareil ; « Tout réafficher » les
+  // ramène. Une ligne encore en attente ne se masque pas : on la perdrait de
+  // vue alors qu'elle n'est pas tranchée.
+  const HISTORIQUE_MASQUE_KEY = 'wallet_historique_masque';
+  function historiqueMasque(){
+    try { return JSON.parse(localStorage.getItem(HISTORIQUE_MASQUE_KEY)) || []; } catch(e){ return []; }
+  }
+  function masquerDansHistorique(id){
+    const ids = historiqueMasque();
+    if(ids.indexOf(id) < 0) ids.unshift(id);
+    try { localStorage.setItem(HISTORIQUE_MASQUE_KEY, JSON.stringify(ids.slice(0, 500))); } catch(e){}
+  }
+  function lienReafficher(list, combien){
+    if(!combien) return;
+    const a = document.createElement('button');
+    a.type = 'button';
+    a.className = 'btn btn-sm';
+    a.style.cssText = 'width:auto; margin-top:0.2rem;';
+    a.textContent = '↺ Tout réafficher (' + combien + ' masqué' + (combien > 1 ? 's' : '') + ')';
+    a.addEventListener('click', function(){
+      try { localStorage.removeItem(HISTORIQUE_MASQUE_KEY); } catch(e){}
+      renderPayoutList();
+    });
+    list.appendChild(a);
+  }
+
+  // « agir », quand il est donné, remplace le simple masquage : il reçoit de
+  // quoi remettre la carte en place si l'action n'aboutit pas.
+  function glisserPourMasquer(div, id, agir){
+    div.style.touchAction = 'pan-y';
+    div.style.cursor = 'grab';
+    div.title = 'Glisser à gauche ou à droite pour masquer';
+    let depart = null, glisse = false, dx = 0;
+    function debut(x, y, cible){
+      // Les boutons (annuler, envoyer) gardent leur clic.
+      if(cible && cible.closest && cible.closest('button, a, input, select')){ depart = null; return; }
+      depart = { x: x, y: y }; glisse = false; dx = 0;
+    }
+    function bouge(x, y){
+      if(!depart) return false;
+      dx = x - depart.x;
+      const dy = y - depart.y;
+      if(!glisse){
+        // Plus vertical qu'horizontal : c'est la liste qui défile.
+        if(Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)){ depart = null; return false; }
+        if(Math.abs(dx) < 12) return false;
+        glisse = true;
+        div.style.transition = 'none';
+      }
+      div.style.transform = 'translateX(' + dx + 'px)';
+      div.style.opacity = String(Math.max(1 - Math.abs(dx) / (div.offsetWidth || 1), 0.25));
+      return true;
+    }
+    function remettre(){
+      div.style.transition = 'transform 0.2s, opacity 0.2s';
+      div.style.transform = '';
+      div.style.opacity = '';
+    }
+    function fin(){
+      if(!depart) return;
+      depart = null;
+      if(!glisse) return;
+      glisse = false;
+      if(Math.abs(dx) >= (div.offsetWidth || 1) * 0.35 && agir){
+        agir(remettre);
+      } else if(Math.abs(dx) >= (div.offsetWidth || 1) * 0.35){
+        div.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+        div.style.transform = 'translateX(' + (dx < 0 ? -1 : 1) * (div.offsetWidth + 40) + 'px)';
+        div.style.opacity = '0';
+        masquerDansHistorique(id);
+        setTimeout(renderPayoutList, 230);
+      } else {
+        remettre();
+      }
+    }
+    div.addEventListener('dragstart', function(e){ e.preventDefault(); });
+    div.addEventListener('touchstart', function(e){
+      if(e.touches.length !== 1){ depart = null; remettre(); return; }
+      debut(e.touches[0].clientX, e.touches[0].clientY, e.target);
+    }, { passive: true });
+    div.addEventListener('touchmove', function(e){
+      if(!depart) return;
+      if(bouge(e.touches[0].clientX, e.touches[0].clientY) && e.cancelable) e.preventDefault();
+    }, { passive: false });
+    div.addEventListener('touchend', fin);
+    div.addEventListener('touchcancel', function(){ depart = null; glisse = false; remettre(); });
+    div.addEventListener('mousedown', function(e){
+      if(e.button !== 0) return;
+      debut(e.clientX, e.clientY, e.target);
+      if(!depart) return;
+      function suivre(ev){ bouge(ev.clientX, ev.clientY); }
+      function lacher(){
+        document.removeEventListener('mousemove', suivre);
+        document.removeEventListener('mouseup', lacher);
+        fin();
+      }
+      document.addEventListener('mousemove', suivre);
+      document.addEventListener('mouseup', lacher);
+    });
   }
 
   // La liste des versements suit le même état que celle des retraits.
@@ -1170,11 +1321,41 @@
     const list = document.getElementById('payoutList');
     const empty = document.getElementById('payoutEmpty');
     if(!list || !walletState) return;
-    const rows = walletState.payouts || [];
+    const masques = historiqueMasque();
+    const tous = walletState.payouts || [];
+    const rows = tous.filter(function(r){ return r.status === 'pending' || masques.indexOf(r.id) < 0; });
     list.innerHTML = '';
     if(empty) empty.style.display = rows.length ? 'none' : 'block';
     rows.forEach(function(r){
       const div = document.createElement('div');
+      // Un retrait réglé se masque ; un retrait encore en attente, glissé,
+      // s'annule — la somme revient au solde. Celui qu'un envoi automatique a
+      // déjà touché ne s'annule pas : il a pu partir (voir « annuler »).
+      if(r.status !== 'pending'){
+        glisserPourMasquer(div, r.id);
+      } else {
+        glisserPourMasquer(div, r.id, function(remettre){
+          if(r.auto_provider){
+            remettre();
+            alert('Tsy azo foanana intsony : efa nalefa tany amin\'ny ' + r.auto_provider +
+              ' ny baiko. Andraso ny valiny, na jereo any aminy.');
+            return;
+          }
+          if(!confirm('Hofoanana ity retrait ity, dia hiverina ao amin\'ny soldenao ny ' +
+            formatWalletAr(r.amount_ar) + '. Hitohy?')){ remettre(); return; }
+          div.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+          div.style.opacity = '0.4';
+          callWallet({ action: 'annuler', id: r.id }).then(function(){
+            pushNotification('parrainage', '↩️ Nofoanana ny retrait : ' +
+              formatWalletAr(r.amount_ar) + ' naverina ao amin\'ny soldenao.');
+            masquerDansHistorique(r.id);
+            refreshWalletFromServer();
+          }, function(err){
+            remettre();
+            alert(err.message);
+          });
+        });
+      }
       div.style.cssText = 'border:1px solid var(--line); border-radius:8px; padding:0.7rem 0.9rem; margin-bottom:0.6rem; font-size:0.8rem; color:var(--muted); line-height:1.7;';
       const arrivee = r.amount_out && r.currency && r.currency !== 'MGA'
         ? ' → ' + Number(r.amount_out).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' ' + r.currency
@@ -1198,48 +1379,6 @@
       // parvienne ; la rendre reviendrait à la payer deux fois. Le serveur le
       // refuse aussi de son côté — le bouton n'est que la porte fermée
       // d'avance.
-      // Déposer l'ordre chez le fournisseur, maintenant. C'est l'acte du
-      // propriétaire : son compte marchand se vide. Le serveur le refuse à
-      // quiconque d'autre — le bouton n'est que la porte fermée d'avance.
-      //
-      // Le rejouer est sans danger : la clef présentée au fournisseur est
-      // l'identifiant de la ligne, et c'est lui qui refuse le doublon.
-      // C'est le serveur qui dit qui est le propriétaire — il compare le
-      // jeton, pas un email que la page aurait sous la main.
-      if(r.status === 'pending' && r.method === 'paypal' && walletState.isOwner){
-        const envoi = document.createElement('button');
-        envoi.type = 'button';
-        envoi.className = 'btn btn-primary btn-sm';
-        envoi.style.cssText = 'width:auto; margin-top:0.6rem; margin-right:0.5rem;';
-        envoi.textContent = r.auto_ref ? '🔁 Andramo indray ny PayPal' : '📤 Alefa amin\'ny PayPal izao';
-        const dire = function(texte, couleur){
-          const ligne = document.createElement('div');
-          ligne.style.cssText = 'color:' + couleur + '; margin-top:0.4rem; line-height:1.5;';
-          ligne.textContent = texte;
-          div.appendChild(ligne);
-        };
-        envoi.addEventListener('click', function(){
-          envoi.disabled = true;
-          envoi.textContent = 'Mandefa…';
-          callWallet({ action: 'envoyer', id: r.id }).then(function(res){
-            envoi.disabled = false;
-            envoi.textContent = '🔁 Andramo indray ny PayPal';
-            // « Déposé » n'est pas « arrivé » : PayPal traite ensuite. La
-            // ligne reste en attente, et c'est la vérification qui la fera
-            // passer — avec l'avis qui va avec.
-            dire(res.message || 'Lasa ny baiko.', res.etat === 'refuse' ? 'var(--red, #e66)' : 'var(--cyan)');
-            pushNotification('parrainage', '📤 Nalefa tany amin\'ny PayPal ny baiko : ' +
-              formatWalletAr(r.amount_ar) + '. Andrasana ny fanamarinana.');
-            refreshWalletFromServer();
-          }, function(err){
-            envoi.disabled = false;
-            envoi.textContent = '📤 Alefa amin\'ny PayPal izao';
-            dire(err.message, 'var(--amber)');
-          });
-        });
-        div.appendChild(envoi);
-      }
-
       if(r.status === 'pending' && !r.auto_provider){
         const bouton = document.createElement('button');
         bouton.type = 'button';
@@ -1270,6 +1409,7 @@
       }
       list.appendChild(div);
     });
+    lienReafficher(list, tous.length - rows.length);
   }
 
   // Ce qui est ENTRÉ dans le portefeuille. Le solde ne compte que les
@@ -1282,14 +1422,16 @@
   };
   const DEPOT_CANAUX = {
     mvola: 'MVola', orange: 'Orange Money', airtel: 'Airtel Money',
-    paypal: 'PayPal', essai: 'Essai', visiteur: 'Personne nouvelle sur le site'
+    paypal: 'Ancien dépôt (moyen retiré)', papi: 'Mobile Money (Papi)', essai: 'Essai', visiteur: 'Personne nouvelle sur le site'
   };
 
   function renderDepositList(){
     const list = document.getElementById('depositList');
     const empty = document.getElementById('depositEmpty');
     if(!list || !walletState) return;
-    const rows = walletState.deposits || [];
+    const masques = historiqueMasque();
+    const tous = walletState.deposits || [];
+    const rows = tous.filter(function(r){ return r.status === 'en_attente' || masques.indexOf(r.id) < 0; });
     list.innerHTML = '';
     if(empty) empty.style.display = rows.length ? 'none' : 'block';
     rows.forEach(function(r){
@@ -1304,8 +1446,10 @@
         ' · <span style="color:' + etat.couleur + ';">' + escapeHtml(etat.texte) + '</span>' +
         (r.provider_ref ? '<br>Référence : ' + escapeHtml(r.provider_ref) : '') +
         (r.note ? '<br>Note : ' + escapeHtml(r.note) : '');
+      if(r.status !== 'en_attente') glisserPourMasquer(div, r.id);
       list.appendChild(div);
     });
+    lienReafficher(list, tous.length - rows.length);
   }
 
     const payoutRequestBtn = document.getElementById('payoutRequestBtn');
@@ -1313,19 +1457,21 @@
     payoutRequestBtn.addEventListener('click', function(){
       const statusEl = document.getElementById('payoutStatus');
       const amount = Number(document.getElementById('payoutAmount').value) || 0;
-      const method = document.getElementById('payoutMethod').value;
-      const currency = document.getElementById('payoutCurrency').value;
-      const destination = document.getElementById('payoutDestination').value.trim();
-      if(!destination){ statusEl.textContent = 'Indiquez où envoyer l\'argent.'; return; }
+      // Seul le Mobile Money reste ouvert, en ariary. L'opérateur voyage
+      // avec le numéro : c'est ce que le propriétaire lira pour envoyer.
+      const method = 'mobile';
+      const currency = 'MGA';
+      const numero = document.getElementById('payoutDestination').value.trim();
+      const operateurEl = document.getElementById('payoutOperateur');
+      const destination = numero ? ((operateurEl ? operateurEl.value + ' · ' : '') + numero) : '';
+      if(!destination){ statusEl.textContent = 'Indiquez votre numéro Mobile Money.'; return; }
       if(!(amount > 0)){ statusEl.textContent = 'Indiquez le montant à retirer.'; return; }
 
       payoutRequestBtn.disabled = true;
       statusEl.textContent = 'Envoi de la demande…';
       callWallet({
         action: 'payout', amountAr: amount, method: method, currency: currency,
-        destination: destination, name: (currentUser && currentUser.name) || '',
-        link: document.getElementById('payoutLink').value.trim(),
-        instructions: document.getElementById('payoutInstructions').value.trim()
+        destination: destination, name: (currentUser && currentUser.name) || ''
       }).then(function(res){
         payoutRequestBtn.disabled = false;
         document.getElementById('payoutAmount').value = '';
@@ -1363,6 +1509,263 @@
     });
   }
 
+  // ---- Achats internationaux, payés avec la vola tena izy ----
+  // Le bouton du panneau « Achats internationaux » mène ici ; la demande
+  // part comme un retrait « merchant », que le propriétaire exécute.
+  const marketPayerBtn = document.getElementById('marketPayerBtn');
+  if(marketPayerBtn){
+    marketPayerBtn.addEventListener('click', function(){
+      const panneau = document.getElementById('marketPanel');
+      if(panneau) panneau.style.display = 'none';
+      const nav = document.querySelector('.nav-item[data-section="wallet"]');
+      if(nav) nav.click();
+      setTimeout(function(){
+        const cible = document.getElementById('walletEtrangerPanel');
+        if(cible && cible.offsetParent) cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    });
+  }
+  // ---- ID KEY et transferts entre portefeuilles ----
+  // L'argent part de la vola tena izy seule ; les frais (transferFeePct,
+  // 0,5 %) s'ajoutent à la somme et reviennent au propriétaire. Le serveur
+  // refait tout le compte : la page ne fait qu'annoncer.
+  function transfertFrais(montant){
+    const pct = (walletState && walletState.transferFeePct) || 0;
+    return pct > 0 ? Math.ceil(montant * pct / 100) : 0;
+  }
+  function transfertCalculer(){
+    const el = document.getElementById('transfertFrais');
+    const champ = document.getElementById('transfertMontant');
+    if(!el || !champ || !walletState) return;
+    const montant = Math.floor(Number(champ.value) || 0);
+    const vola = walletState.papiAr || 0;
+    const pct = walletState.transferFeePct || 0;
+    el.textContent = montant > 0
+      ? 'Frais ' + pct.toLocaleString('fr-FR') + ' % : ' + formatWalletAr(transfertFrais(montant)) +
+        ' — hiala amin\'ny vola tena izy : ' + formatWalletAr(montant + transfertFrais(montant)) +
+        ' (misy : ' + formatWalletAr(vola) + ').'
+      : 'Vola tena izy azo afindra : ' + formatWalletAr(vola) + ' · frais ' + pct.toLocaleString('fr-FR') + ' %.';
+  }
+  function renderTransferts(){
+    const list = document.getElementById('transfertList');
+    const empty = document.getElementById('transfertEmpty');
+    if(!list || !walletState) return;
+    const rows = walletState.transferts || [];
+    list.innerHTML = '';
+    if(empty) empty.style.display = rows.length ? 'none' : 'block';
+    rows.forEach(function(t){
+      const sortant = t.sens === 'envoye';
+      const div = document.createElement('div');
+      div.style.cssText = 'border:1px solid var(--line); border-radius:8px; padding:0.7rem 0.9rem; margin-bottom:0.6rem; font-size:0.8rem; color:var(--muted); line-height:1.7;';
+      div.innerHTML =
+        '<strong style="color:' + (sortant ? 'var(--text)' : 'var(--cyan)') + ';">' +
+        (sortant ? '− ' : '+ ') + formatWalletAr(t.amount_ar) + '</strong>' +
+        (sortant && t.fee_ar ? ' <span>(+ frais ' + formatWalletAr(t.fee_ar) + ')</span>' : '') +
+        ' · ' + (sortant ? 'Nalefa any amin\'ny ' : 'Avy amin\'ny ') +
+        '<span style="font-family:var(--font-mono);">' + escapeHtml(t.cle || '—') + '</span><br>' +
+        new Date(t.created_at).toLocaleString('fr-FR') +
+        (t.note ? '<br>' + escapeHtml(t.note) : '');
+      list.appendChild(div);
+    });
+  }
+  const idKeyCopy = document.getElementById('walletIdKeyCopy');
+  if(idKeyCopy){
+    idKeyCopy.addEventListener('click', function(){
+      const cle = walletState && walletState.idKey;
+      if(!cle) return;
+      const fait = function(){
+        idKeyCopy.textContent = '✅ Voadika';
+        setTimeout(function(){ idKeyCopy.textContent = '📋 Adikao'; }, 1500);
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(cle).then(fait, function(){ window.prompt('ID KEY', cle); });
+      } else {
+        window.prompt('ID KEY', cle);
+      }
+    });
+  }
+  // Créer / modifier sa propre ID KEY, ou l'effacer (retour à l'automatique).
+  function cleEnregistrer(valeur, message){
+    const statusEl = document.getElementById('walletIdKeyStatus');
+    statusEl.textContent = '…';
+    return callWallet({ action: 'cle-modifier', cle: valeur }).then(function(res){
+      if(walletState){ walletState.idKey = res.idKey; walletState.idKeyAuto = res.idKeyAuto; }
+      document.getElementById('walletIdKeyForm').style.display = 'none';
+      statusEl.textContent = message;
+      renderWalletBalance();
+    }, function(err){
+      statusEl.textContent = '⚠️ ' + err.message;
+    });
+  }
+  const idKeyEdit = document.getElementById('walletIdKeyEdit');
+  if(idKeyEdit){
+    idKeyEdit.addEventListener('click', function(){
+      const form = document.getElementById('walletIdKeyForm');
+      const input = document.getElementById('walletIdKeyInput');
+      form.style.display = 'block';
+      input.value = walletState && !walletState.idKeyAuto ? (walletState.idKey || '') : '';
+      input.focus();
+    });
+    document.getElementById('walletIdKeyCancel').addEventListener('click', function(){
+      document.getElementById('walletIdKeyForm').style.display = 'none';
+      document.getElementById('walletIdKeyStatus').textContent = '';
+    });
+    document.getElementById('walletIdKeySave').addEventListener('click', function(){
+      const valeur = document.getElementById('walletIdKeyInput').value.trim().toUpperCase();
+      if(!valeur){ document.getElementById('walletIdKeyStatus').textContent = 'Soraty ny ID KEY tianao.'; return; }
+      cleEnregistrer(valeur, '✅ Voatahiry ny ID KEY-nao.');
+    });
+    document.getElementById('walletIdKeyDelete').addEventListener('click', function(){
+      if(!window.confirm('Hofafana ny ID KEY noforoninao ?\nHisy ID KEY automatique vaovao hisolo azy.')) return;
+      cleEnregistrer('', '🗑️ Voafafa ; ID KEY automatique vaovao no misy.');
+    });
+  }
+  const transfertMontant = document.getElementById('transfertMontant');
+  if(transfertMontant) transfertMontant.addEventListener('input', transfertCalculer);
+  // Qui va recevoir : vérifié quand on s'arrête de taper, pour ne pas
+  // envoyer à une clef mal recopiée. Une clef peut être choisie par son
+  // propriétaire : sa longueur ne dit donc plus qu'elle est entière.
+  const transfertCle = document.getElementById('transfertCle');
+  let transfertCleVue = '';
+  let transfertCleAttente = null;
+  if(transfertCle){
+    transfertCle.addEventListener('input', function(){
+      const qui = document.getElementById('transfertQui');
+      const brut = transfertCle.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      clearTimeout(transfertCleAttente);
+      if(brut.length < 4){ qui.textContent = ''; transfertCleVue = ''; return; }
+      if(brut === transfertCleVue) return;
+      transfertCleVue = brut;
+      qui.textContent = 'Jerena…';
+      transfertCleAttente = setTimeout(function(){ chercherCle(brut, qui); }, 600);
+    });
+  }
+  function chercherCle(brut, qui){
+      if(transfertCleVue !== brut) return;
+      callWallet({ action: 'cle', cle: brut }).then(function(res){
+        if(transfertCleVue !== brut) return;
+        qui.textContent = '✅ ' + res.cle + (res.nom ? ' — ' + res.nom : ' — wallet hita');
+      }, function(err){
+        if(transfertCleVue !== brut) return;
+        qui.textContent = '⚠️ ' + err.message;
+      });
+  }
+  const transfertBtn = document.getElementById('transfertBtn');
+  if(transfertBtn){
+    transfertBtn.addEventListener('click', function(){
+      const statusEl = document.getElementById('transfertStatus');
+      const cle = document.getElementById('transfertCle').value.trim();
+      const montant = Math.floor(Number(document.getElementById('transfertMontant').value) || 0);
+      const note = document.getElementById('transfertNote').value.trim();
+      if(!cle){ statusEl.textContent = 'Ampidiro ny ID KEY an\'ilay handray.'; return; }
+      if(!(montant > 0)){ statusEl.textContent = 'Ampidiro ny vola halefa.'; return; }
+      const total = montant + transfertFrais(montant);
+      if(total > ((walletState && walletState.papiAr) || 0)){
+        statusEl.textContent = 'Tsy ampy ny vola tena izy : ' + formatWalletAr(total) + ' no ilaina (frais tafiditra).';
+        return;
+      }
+      if(!window.confirm('Hamindra ' + formatWalletAr(montant) + ' any amin\'ny ' + cle.toUpperCase() +
+        ' ?\nFrais : ' + formatWalletAr(total - montant) + '. Tsy azo averina intsony.')) return;
+      transfertBtn.disabled = true;
+      statusEl.textContent = 'Afindra…';
+      callWallet({ action: 'transfert', cle: cle, amountAr: montant, note: note }).then(function(res){
+        transfertBtn.disabled = false;
+        ['transfertCle', 'transfertMontant', 'transfertNote'].forEach(function(id){
+          document.getElementById(id).value = '';
+        });
+        document.getElementById('transfertQui').textContent = '';
+        transfertCleVue = '';
+        statusEl.textContent = '✅ Lasa ' + formatWalletAr(montant) + ' any amin\'ny ' + (res.cle || cle) + '.';
+        pushNotification('parrainage', 'Famindrana : ' + formatWalletAr(montant) + ' → ' + (res.cle || cle) + '.');
+        refreshWalletFromServer();
+      }, function(err){
+        transfertBtn.disabled = false;
+        statusEl.textContent = err.message;
+      });
+    });
+  }
+
+  // Les devises de l'achat sont celles de « Voir dans une autre devise » :
+  // recopiées de ce menu-là, elles ne peuvent pas diverger. Une devise
+  // s'ajoute donc à un seul endroit (index.html, #walletCurrency).
+  const etrangerDevise = document.getElementById('etrangerDevise');
+  const walletCurrencySel = document.getElementById('walletCurrency');
+  let etrangerTaux = 1;
+  function etrangerEstimer(){
+    const enAr = document.getElementById('etrangerEnAr');
+    if(!enAr || !etrangerDevise) return;
+    const prix = Number(document.getElementById('etrangerPrix').value) || 0;
+    const devise = etrangerDevise.value;
+    if(devise === 'MGA' || !prix){ enAr.textContent = ''; return; }
+    enAr.textContent = etrangerTaux > 0
+      ? '≈ ' + formatWalletAr(Math.ceil(prix / etrangerTaux)) + ' (taux du jour, voafaritry ny serveur)'
+      : 'Taux ' + devise + ' tsy hita androany.';
+  }
+  if(etrangerDevise && walletCurrencySel){
+    etrangerDevise.innerHTML = walletCurrencySel.innerHTML;
+    etrangerDevise.value = 'MGA';
+    etrangerDevise.addEventListener('change', function(){
+      const devise = etrangerDevise.value;
+      etrangerTaux = 1;
+      document.getElementById('etrangerPrix').step = devise === 'MGA' ? '1000' : 'any';
+      if(devise === 'MGA'){ etrangerEstimer(); return; }
+      document.getElementById('etrangerEnAr').textContent = '…';
+      callWallet({ action: 'rate', currency: devise }).then(function(res){
+        if(etrangerDevise.value !== devise) return;
+        etrangerTaux = res.rate || 0;
+        etrangerEstimer();
+      }, function(){ etrangerTaux = 0; etrangerEstimer(); });
+    });
+    document.getElementById('etrangerPrix').addEventListener('input', etrangerEstimer);
+  }
+  const etrangerBtn = document.getElementById('etrangerBtn');
+  if(etrangerBtn){
+    etrangerBtn.addEventListener('click', function(){
+      const statusEl = document.getElementById('etrangerStatus');
+      const lien = document.getElementById('etrangerLien').value.trim();
+      const devise = etrangerDevise ? etrangerDevise.value : 'MGA';
+      const saisi = Number(document.getElementById('etrangerPrix').value) || 0;
+      // En ariary ici seulement pour vérifier d'avance ; le serveur refait
+      // le compte au taux du jour.
+      const prix = devise === 'MGA' ? Math.floor(saisi) : (etrangerTaux > 0 ? Math.ceil(saisi / etrangerTaux) : 0);
+      const adresse = document.getElementById('etrangerAdresse').value.trim();
+      const consigne = document.getElementById('etrangerConsigne').value.trim();
+      if(!/^https?:\/\//i.test(lien)){ statusEl.textContent = 'Apetaho ny rohin\'ilay entana (https://…).'; return; }
+      if(!(saisi > 0)){ statusEl.textContent = 'Ampidiro ny vidiny.'; return; }
+      if(!(prix > 0)){ statusEl.textContent = 'Tsy hita ny taux ' + devise + ' androany. Andramo indray.'; return; }
+      if(!adresse){ statusEl.textContent = 'Ampidiro ny adiresy fandefasana.'; return; }
+      const vola = (walletState && walletState.papiAr) || 0;
+      if(prix > vola){
+        statusEl.textContent = 'Tsy ampy ny vola tena izy : ' + formatWalletAr(vola) + ' no misy, ' +
+          formatWalletAr(prix) + ' no ilaina. Ampidiro vola amin\'ny Mobile Money aloha.';
+        return;
+      }
+      etrangerBtn.disabled = true;
+      statusEl.textContent = 'Alefa ny fangatahana…';
+      callWallet({
+        action: 'payout', amountAr: devise === 'MGA' ? prix : 0, prixDevise: saisi,
+        method: 'merchant', currency: devise,
+        destination: adresse, link: lien, instructions: consigne,
+        name: (currentUser && currentUser.name) || ''
+      }).then(function(res){
+        etrangerBtn.disabled = false;
+        const tena = (res && res.payout && res.payout.amount_ar) || prix;
+        ['etrangerLien', 'etrangerPrix', 'etrangerConsigne'].forEach(function(id){
+          document.getElementById(id).value = '';
+        });
+        etrangerEstimer();
+        statusEl.textContent = 'Voaray ny fangatahana : ' + formatWalletAr(tena) +
+          (devise !== 'MGA' ? ' (' + saisi.toLocaleString('fr-FR') + ' ' + devise + ')' : '') +
+          ' voatazona amin\'ny vola tena izy. Ny tompony no mividy ilay entana ; hampandrenesina ianao.';
+        pushNotification('parrainage', 'Fividianana any ivelany : ' + formatWalletAr(tena) + '.');
+        refreshWalletFromServer();
+      }, function(err){
+        etrangerBtn.disabled = false;
+        statusEl.textContent = err.message;
+      });
+    });
+  }
+
   // ---- Côté propriétaire : la file des retraits à envoyer ----
   function renderPayoutQueue(){
     const panel = document.getElementById('walletQueuePanel');
@@ -1370,9 +1773,10 @@
     const empty = document.getElementById('walletQueueEmpty');
     if(!panel || !list || !walletState) return;
     if(!walletState.isOwner){ panel.style.display = 'none'; return; }
-    panel.style.display = 'block';
 
+    // Vide, la file n'a rien à dire : elle ne paraît que s'il y a à envoyer.
     const rows = walletState.queue || [];
+    panel.style.display = rows.length ? 'block' : 'none';
     list.innerHTML = '';
     if(empty) empty.style.display = rows.length ? 'none' : 'block';
     notifyNewPayoutRequests(rows);
@@ -1409,8 +1813,7 @@
       sentBtn.textContent = '✅ Efa nalefako an-tanana';
       sentBtn.addEventListener('click', function(){
         if(!confirm('Efa nalefanao TENA ve ny ' + arrivee + ' ho any amin\'ny ' + r.destination + ' ?\n\n' +
-          'Ity bokotra ity dia tsy mandefa vola : manamarina fotsiny izy fa efa nataonao. ' +
-          'Raha te-hampandeha azy amin\'ny PayPal dia « 📤 Alefa amin\'ny PayPal izao » no tsindrio.')) return;
+          'Ity bokotra ity dia tsy mandefa vola : manamarina fotsiny izy fa efa nataonao.')) return;
         settlePayout(r.id, 'sent', '', sentBtn);
       });
 
@@ -1456,7 +1859,8 @@
     const sub = ensureInstallDate();
     callWallet({ action: 'state', installId: sub.id }).then(function(state){
       walletState = state;
-      soldeEl.textContent = 'Solde : ' + formatWalletAr(state.balanceAr);
+      soldeEl.textContent = 'Vola Papi : ' + formatWalletAr(state.papiAr || 0);
+      majBoutonAbonnement();
     }, function(err){
       soldeEl.textContent = '—';
       const st = document.getElementById('paywallWalletStatus');
@@ -1492,6 +1896,8 @@
         } else if(res.grant === 'sub_days'){
           sub.subscriptionCreditDays = (sub.subscriptionCreditDays || 0) + WALLET_SUB_DAYS;
           detail = ' : ' + WALLET_SUB_DAYS + ' jours mis de côté pour votre prochain abonnement';
+        } else if(res.grant === 'unlock'){
+          detail = ' : accès rétabli';
         }
         saveSubscription(sub);
         majPageAbonnement();
@@ -1513,26 +1919,49 @@
   document.querySelectorAll('.buy-site-item').forEach(function(btn){
     btn.addEventListener('click', function(){
       const statusEl = document.getElementById('walletBuyStatus');
-      buySiteItem(btn.getAttribute('data-item'), statusEl, btn)
-        .then(function(){ refreshWalletFromServer(); }, function(){});
+      payerAbonnement(btn.getAttribute('data-item'), statusEl, btn, function(){ refreshWalletFromServer(); });
     });
   });
 
-  // « Acheter hors du site » mène au formulaire de retrait, déjà réglé sur le
-  // paiement d'un marchand : c'est la même sortie d'argent, pas une autre.
-  const goToPayoutBtn = document.getElementById('goToPayoutBtn');
-  if(goToPayoutBtn){
-    goToPayoutBtn.addEventListener('click', function(){
-      const method = document.getElementById('payoutMethod');
-      if(method){
-        method.value = 'merchant';
-        method.dispatchEvent(new Event('change'));
+  // ---- L'abonnement se paie en vrai argent, par Papi ----
+  // Plus avec les parrainages (ils se retirent en Mobile Money). Si l'argent
+  // déjà versé par Papi suffit, l'abonnement part de là ; sinon on ouvre Papi
+  // pour la somme qui manque, et l'abonnement se règle tout seul au retour
+  // (papi-paiement.js). Les prix ne sont ici que pour l'affichage : c'est le
+  // serveur qui les tient.
+  const PRIX_ABONNEMENT = { sub_month: 15000, sub_year: 150000, sub_days: 20000 };
+  const FRAIS_DEPOT_PCT = 5;
+  // Ce qu'il faut payer chez Papi pour que, frais ôtés, « net » arrive au solde.
+  function brutPourNet(net){
+    let b = Math.max(300, Math.ceil(net * 100 / (100 - FRAIS_DEPOT_PCT)));
+    while(b - Math.ceil(b * FRAIS_DEPOT_PCT / 100) < net) b++;
+    return b;
+  }
+  function manquePour(item){
+    const papi = (walletState && walletState.papiAr) || 0;
+    return Math.max(0, (PRIX_ABONNEMENT[item] || 0) - papi);
+  }
+  function majBoutonAbonnement(){
+    const btn = document.getElementById('paywallWalletBtn');
+    if(!btn) return;
+    const item = selectedPlan === 'annuel' ? 'sub_year' : 'sub_month';
+    const manque = manquePour(item);
+    btn.textContent = manque > 0
+      ? '📲 Payer ' + formatWalletAr(brutPourNet(manque)) + ' par Papi'
+      : '💰 Payer avec mon argent Papi';
+  }
+  function payerAbonnement(item, statusEl, btn, apres){
+    const manque = manquePour(item);
+    if(manque > 0){
+      if(typeof window.papiPayerAbonnement !== 'function'){
+        if(statusEl) statusEl.textContent = 'Papi indisponible : rechargez la page.';
+        return;
       }
-      const panel = document.getElementById('walletPayoutPanel');
-      if(panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const dest = document.getElementById('payoutDestination');
-      if(dest) dest.focus();
-    });
+      if(btn) btn.disabled = true;
+      window.papiPayerAbonnement(item, brutPourNet(manque), statusEl, function(){ if(btn) btn.disabled = false; });
+      return;
+    }
+    buySiteItem(item, statusEl, btn).then(apres || function(){}, function(){});
   }
 
   const paywallWalletBtn = document.getElementById('paywallWalletBtn');
@@ -1540,7 +1969,7 @@
     paywallWalletBtn.addEventListener('click', function(){
       const statusEl = document.getElementById('paywallWalletStatus');
       const item = selectedPlan === 'annuel' ? 'sub_year' : 'sub_month';
-      buySiteItem(item, statusEl, paywallWalletBtn).then(function(){ openApp(); }, function(){});
+      payerAbonnement(item, statusEl, paywallWalletBtn, function(){ openApp(); });
     });
   }
 
@@ -1619,9 +2048,6 @@
   function verifierLePortefeuille(){
     if(!(currentUser && currentUser.email)) return;
     const sub = ensureInstallDate();
-    // D'abord demander au fournisseur où en sont les ordres déposés. Sans
-    // cela, l'état qu'on lit juste après serait celui d'avant, et l'argent
-    // arrivé cette nuit ne se dirait qu'à la prochaine ouverture.
     const lireLEtat = function(){
       callWallet({ action: 'state', installId: sub.id }).then(function(state){
         walletState = state;
@@ -1632,9 +2058,7 @@
         }
       }, function(){});
     };
-    // Qu'elle aboutisse ou non, on lit l'état ensuite : une vérification
-    // impossible ne doit pas empêcher de voir ce qu'on sait déjà.
-    callWallet({ action: 'verifier' }).then(lireLEtat, lireLEtat);
+    lireLEtat();
   }
 
   const PAYOUT_SEEN_KEY = 'stockmanager_payouts_seen';
@@ -1695,6 +2119,7 @@
     // Le solde en ariary vient du serveur : c'est lui qui fait foi. En
     // attendant sa réponse, l'estimation locale évite un écran vide.
     refreshWalletFromServer();
+
 
     const boosterPanel = document.getElementById('walletBoosterPanel');
     const boosterActive = sub.boosterActiveUntil && new Date(sub.boosterActiveUntil) > new Date();
@@ -2364,7 +2789,7 @@
     if(method === 'card') return 'Carte Visa / Mastercard';
     if(method === 'bank') return 'Virement bancaire';
     if(method === 'mobile') return 'Mobile Money';
-    return 'PayPal';
+    return 'Papi';
   }
 
   // Le hash (jamais le code en clair) est ce qui transite et ce qui est stocké.
@@ -2394,11 +2819,12 @@
   // et ses propres crédits s'en trouvent augmentés d'autant. L'écriture est
   // faite au mieux — hors ligne, le déblocage a tout de même lieu, car les
   // crédits, eux, ont bien été retirés.
-  function recordWalletUnlock(name, email){
+  function recordWalletUnlock(name, email, method){
     if(!window.__sb) return;
     window.__sb.from('unlock_requests').insert({
-      name: name, email: normEmail(email), phone: '', message: 'Payé avec le solde du portefeuille',
-      amount: UNLOCK_COST_CREDITS, paypal_reference: '', payment_method: 'wallet',
+      name: name, email: normEmail(email), phone: '',
+      message: method === 'card' ? 'Payé par carte Visa (Papi)' : 'Payé avec le solde du portefeuille',
+      amount: UNLOCK_COST_CREDITS, paypal_reference: '', payment_method: method || 'wallet',
       status: 'confirmed', auto_confirmed: true,
       confirmed_at: new Date().toISOString()
     }).then(function(){}, function(){});
@@ -2468,6 +2894,71 @@
       loginFromProfile(profile);
     });
   }
+
+  // ---- Le même déblocage, payé par carte Visa ----
+  // Le numéro de carte ne passe jamais par ici : il se tape sur la page de
+  // paiement de Papi (carte BRED / Visa). Il faut une session Supabase pour
+  // créer le lien, et le compte bloqué en a été sorti : on se reconnecte donc
+  // avec le mot de passe. Au retour, papi-paiement.js vérifie le paiement,
+  // achète l'article « unlock » au serveur, puis appelle apresDeblocageCarte.
+  const UNLOCK_CARD_KEY = 'stockmanager_deblocage_carte';
+  const payByCardBtn = document.getElementById('payUnlockCardBtn');
+  if(payByCardBtn){
+    payByCardBtn.addEventListener('click', async function(){
+      const statusEl = document.getElementById('forgotStatus');
+      const name = document.getElementById('forgotName').value.trim();
+      const email = document.getElementById('forgotEmail').value.trim();
+      const password = document.getElementById('forgotPassword').value;
+      if(!name || !email){
+        statusEl.textContent = 'Votre nom et votre email sont obligatoires.';
+        return;
+      }
+      if(!findProfileByEmail(email)){
+        statusEl.textContent = 'Aucun compte n\'est enregistré sur cet appareil pour cet email. ' +
+          'Utilisez « Première connexion / autre compte ».';
+        return;
+      }
+      if(typeof window.papiPayerAbonnement !== 'function'){
+        statusEl.textContent = 'Papi indisponible : rechargez la page.';
+        return;
+      }
+      const auth = sbAuth();
+      if(!auth){ statusEl.textContent = 'Paiement par carte indisponible hors ligne.'; return; }
+      payByCardBtn.disabled = true;
+      try {
+        const s = await auth.getSession();
+        const connecte = s && s.data && s.data.session &&
+          normEmail(s.data.session.user && s.data.session.user.email) === normEmail(email);
+        if(!connecte){
+          if(password.length < 6){
+            statusEl.textContent = 'Tapez votre mot de passe pour payer par carte.';
+            payByCardBtn.disabled = false;
+            return;
+          }
+          statusEl.textContent = 'Connexion…';
+          const r = await auth.signInWithPassword({ email: email, password: password });
+          if(r.error) throw new Error('Mot de passe incorrect.');
+        }
+      } catch(err){
+        statusEl.textContent = err.message;
+        payByCardBtn.disabled = false;
+        return;
+      }
+      try { localStorage.setItem(UNLOCK_CARD_KEY, JSON.stringify({ name: name, email: email })); } catch(e){}
+      window.papiPayerAbonnement('unlock', brutPourNet(UNLOCK_COST_CREDITS * AR_PER_CREDIT), statusEl,
+        function(){ payByCardBtn.disabled = false; }, 'BRED');
+    });
+  }
+  window.apresDeblocageCarte = function(){
+    let who = null;
+    try { who = JSON.parse(localStorage.getItem(UNLOCK_CARD_KEY) || 'null'); localStorage.removeItem(UNLOCK_CARD_KEY); } catch(e){}
+    const profile = who && findProfileByEmail(who.email);
+    if(!profile) return;
+    recordWalletUnlock(who.name || profile.name || '', who.email, 'card');
+    const paye = (UNLOCK_COST_CREDITS * AR_PER_CREDIT).toLocaleString('fr-FR') + ' Ar';
+    pushNotification('parrainage', 'Déblocage payé par carte Visa (' + paye + ') — accès rétabli.');
+    loginFromProfile(profile);
+  };
 
 
   let quickLoginBusy = false;
@@ -2983,11 +3474,13 @@
     selectedPlan = 'mensuel';
     document.getElementById('planMensuel').classList.add('selected');
     document.getElementById('planAnnuel').classList.remove('selected');
+    majBoutonAbonnement();
   });
   document.getElementById('planAnnuel').addEventListener('click', function(){
     selectedPlan = 'annuel';
     document.getElementById('planAnnuel').classList.add('selected');
     document.getElementById('planMensuel').classList.remove('selected');
+    majBoutonAbonnement();
   });
 
   document.getElementById('sendCodeBtn').addEventListener('click', function(){
@@ -4422,9 +4915,6 @@
     if(!rangee) return;
     const CLE = 'stockmanager_barre_epingles';
     const CLE_MODE = 'stockmanager_barre_mode';
-    // Six icônes tiennent sur la largeur d'un téléphone sans qu'il faille tirer
-    // la rangée : c'est la limite du mode automatique.
-    const GARDEES = 6;
 
     // Chaque épingle retient sa dernière visite : c'est elle qui décide, en
     // automatique, laquelle cède la place.
@@ -4569,9 +5059,30 @@
       if(id === 'dash-communadmin') return 'id:menuCommunAdmin';
       return '';
     }
+    // Six pages seulement se reconnaissaient à leur nom ; les autres (Panier,
+    // Portefeuille…) gardaient leur icône à la fermeture. On retient donc,
+    // à chaque entrée pressée, la page qui s'ouvre derrière elle.
+    const CLE_PAGE_ICONE = 'stockmanager_barre_page_icone';
+    function lirePageIcone(){
+      try{ return JSON.parse(localStorage.getItem(CLE_PAGE_ICONE)) || {}; }catch(e){ return {}; }
+    }
+    function retenirLaPageDe(cle){
+      // La page paraît un instant après le clic : on la cherche alors, la
+      // fenêtre active du dessus.
+      setTimeout(function(){
+        const ouvertes = [].slice.call(document.querySelectorAll('.fenetre-page.active'))
+          .filter(function(el){ return el.id && el.id !== 'dash-accueil' && el.offsetParent !== null; });
+        if(!ouvertes.length) return;
+        ouvertes.sort(function(a, b){ return (Number(getComputedStyle(b).zIndex) || 0) - (Number(getComputedStyle(a).zIndex) || 0); });
+        const id = ouvertes[0].id;
+        if(cleDeLaPage(id)) return;
+        const l = lirePageIcone();
+        l[id] = cle;
+        try{ localStorage.setItem(CLE_PAGE_ICONE, JSON.stringify(l)); }catch(e){}
+      }, 250);
+    }
     window.__pageFermee = function(id){
-      if(lireMode() !== 'auto') return;
-      const cle = cleDeLaPage(id);
+      const cle = cleDeLaPage(id) || lirePageIcone()[id];
       if(!cle) return;
       ecrireEpingles(lireEpingles().filter(function(e){ return e.cle !== cle; }));
       const bouton = rangee.querySelector('[data-epingle="' + cle + '"]');
@@ -4711,22 +5222,103 @@
     // récemment restent. À égalité — jamais servies —, l'ordre du menu
     // départage : ce qui y vient en tête est ce qui compte le plus.
     // En manuel, rien ne part sans qu'on le dise.
+    // La rangée ne montre que ce qui est ouvert, comme la barre des tâches
+    // d'un ordinateur : une page s'ouvre, son icône paraît ; on la ferme,
+    // l'icône s'en va. Une page réduite garde la sienne (elle clignote). Dans
+    // les deux modes : le manuel n'y ajoute que la ✕ sur chaque icône, qui
+    // ferme la page et son icône d'un geste.
+    function pageDeLaCle(cle){
+      if(cle.indexOf('section:') === 0) return document.getElementById('section-' + cle.slice(8));
+      const connues = { 'id:menuArticles': 'dash-articles', 'id:menuTableauBord': 'dash-dashboard',
+        'id:menuCommun': 'dash-commun', 'id:menuCommunAdmin': 'dash-communadmin' };
+      if(connues[cle]) return document.getElementById(connues[cle]);
+      const l = lirePageIcone();
+      for(const id in l){ if(l[id] === cle) return document.getElementById(id); }
+      return null;
+    }
+    // Un panneau est ouvert quand son entrée du menu le dit (aria-expanded).
+    // Une entrée sans cet état (Chrome, Edge…) n'ouvre rien qui reste :
+    // elle n'a pas d'icône en automatique.
+    function panneauOuvert(cle){
+      const entree = entreeDe(cle);
+      return !!(entree && entree.getAttribute('aria-expanded') === 'true');
+    }
     function elaguer(){
-      if(lireMode() !== 'auto') return;
-      let liste = lireEpingles();
-      if(liste.length <= GARDEES) return;
-      const usages = lireUsages();
-      liste.sort(function(a, b){
-        const ecart = (usages[b.cle] || 0) - (usages[a.cle] || 0);
-        return ecart !== 0 ? ecart : rangDansLeMenu(a.cle) - rangDansLeMenu(b.cle);
-      });
-      liste.slice(GARDEES).forEach(function(e){
+      const liste = lireEpingles();
+      const gardees = liste.filter(function(e){
         const bouton = rangee.querySelector('[data-epingle="' + e.cle + '"]');
+        if(bouton && bouton.classList.contains('reduite')) return true;
+        if(panneauOuvert(e.cle)) return true;
+        const page = pageDeLaCle(e.cle);
+        if(page && page.classList.contains('active')) return true;
         if(bouton) bouton.remove();
+        return false;
       });
-      ecrireEpingles(liste.slice(0, GARDEES));
+      // Les pages ouvertes qui n'ont pas encore leur icône la reçoivent —
+      // celle rouverte au démarrage, par exemple, sans passer par le menu.
+      [].forEach.call(document.querySelectorAll('.fenetre-page.active'), function(page){
+        if(!page.id || page.id === 'dash-accueil') return;
+        const cle = cleDeLaPage(page.id) || lirePageIcone()[page.id];
+        if(!cle || surLeFond(cle) || !entreeDe(cle)) return;
+        if(gardees.some(function(e){ return e.cle === cle; })) return;
+        gardees.push({ cle: cle, vu: Date.now() });
+        poser(cle);
+      });
+      // Le crayon (« Écrire ») et la maison (« Botika ») suivent la même
+      // règle : là tant que leur fenêtre est ouverte ou réduite, partis quand
+      // on la ferme à sa ✕.
+      [['barComposer', function(){ const b = document.getElementById('fbComposer'); return b && getComputedStyle(b).display !== 'none'; }],
+       ['barAccueil', function(){ const v = document.getElementById('dash-accueil'); return v && v.classList.contains('active'); }]
+      ].forEach(function(f){
+        const bouton = document.getElementById(f[0]);
+        if(!bouton || surLeFond('fixe:' + f[0])) return;
+        bouton.style.display = (f[1]() || bouton.classList.contains('reduite')) ? '' : 'none';
+      });
+      // Les panneaux (cloche, lune, achats, livraison…) aussi : leur icône
+      // paraît tant qu'ils sont ouverts. Leur entrée le dit elle-même
+      // (aria-expanded).
+      entreesEpinglables().forEach(function(entree){
+        const cle = cleDe(entree);
+        // Écrire et l'Accueil ont déjà leur bouton fixe (le crayon, la maison).
+        if(JUMEAUX[entree.id] || !panneauOuvert(cle) || surLeFond(cle)) return;
+        if(gardees.some(function(e){ return e.cle === cle; })) return;
+        gardees.push({ cle: cle, vu: Date.now() });
+        poser(cle);
+      });
+      if(gardees.length !== liste.length || gardees.some(function(e, i){ return !liste[i] || liste[i].cle !== e.cle; })){
+        ecrireEpingles(gardees);
+      }
       mesurer();
     }
+    // Une page s'ouvre ou se ferme de bien des façons (menu, icône, croix,
+    // retour au démarrage) : la rangée se remet d'accord avec l'écran toutes
+    // les secondes, plutôt que de compter sur chacune.
+    setInterval(function(){ if(!document.hidden){ elaguer(); compterLesOuvertes(); } }, 1000);
+
+    // Sur le N, le nombre de ce qui est encore ouvert (pages, panneaux,
+    // Botika, boîte d'écriture — réduits compris) : on sait d'un coup d'œil
+    // qu'il reste des sites derrière. Rien d'ouvert, pas de pastille.
+    function compterLesOuvertes(){
+      const n = document.getElementById('menuToggle');
+      if(!n) return;
+      let total = rangee.querySelectorAll('[data-epingle]').length;
+      ['barComposer', 'barAccueil'].forEach(function(id){
+        const b = document.getElementById(id);
+        if(b && getComputedStyle(b).display !== 'none') total++;
+      });
+      let pastille = n.querySelector('.n-ouvertes');
+      if(!total){ if(pastille) pastille.remove(); n.removeAttribute('data-ouvertes'); return; }
+      if(!pastille){
+        pastille = document.createElement('span');
+        pastille.className = 'n-ouvertes';
+        pastille.setAttribute('aria-hidden', 'true');
+        n.appendChild(pastille);
+      }
+      pastille.textContent = total > 9 ? '9+' : String(total);
+      n.setAttribute('data-ouvertes', String(total));
+      n.title = 'Ouvrir le menu — ' + total + ' ouvert' + (total > 1 ? 's' : '');
+    }
+    compterLesOuvertes();
 
     // Écrire et l'Accueil tiennent déjà leur place dans la rangée. Les presser
     // dans le menu après les en avoir retirés doit les y ramener — et non en
@@ -4749,14 +5341,16 @@
       }
       const cle = cleDe(entree);
       if(surLeFond(cle)) return;
-      if(!remplissage) noterUsage(cle);
+      if(!remplissage){ noterUsage(cle); retenirLaPageDe(cle); }
       const liste = lireEpingles();
       const connue = liste.filter(function(e){ return e.cle === cle; })[0];
       if(connue) connue.vu = Date.now();
       else liste.push({ cle: cle, vu: Date.now() });
       ecrireEpingles(liste);
       poser(cle);
-      elaguer();
+      // La page ou le panneau s'ouvre juste après ce clic : on lui en laisse
+      // le temps avant de regarder ce qui est ouvert.
+      setTimeout(elaguer, 80);
       mesurer();
     }
 
@@ -4794,6 +5388,9 @@
 
     function direLeMode(){
       const mode = lireMode();
+      // La croix ✕ des petites icônes, en manuel seulement. En automatique,
+      // c'est la croix de la page ouverte qui retire son icône
+      // (window.__pageFermee).
       rangee.classList.toggle('mode-manuel', mode === 'manuel');
       // Les icônes posées sur le fond obéissent au même réglage, et sont hors
       // de la rangée : c'est le corps de la page qui porte la consigne.
@@ -4803,10 +5400,12 @@
           b.classList.toggle('actif', b.dataset.mode === mode);
         });
       }
+      const remettre = document.getElementById('barToutRemettre');
+      if(remettre) remettre.style.display = 'none';
       if(note){
         note.textContent = mode === 'manuel'
-          ? "Ianao no manala : tsindrio ny ✕ eo amin'ny sary."
-          : "Ny sary " + GARDEES + " farany nampiasainao no mijanona ; ny hafa miala ho azy.";
+          ? "Ny sarin'ny pejy misokatra ihany no eo ; ny ✕ eo amin'ny sary no manidy azy."
+          : "Ny sarin'ny pejy misokatra ihany no eo ; miala izy rehefa hidinao amin'ny ✕ ilay pejy.";
       }
     }
 
@@ -4850,8 +5449,6 @@
         b.addEventListener('click', function(){
           ecrireMode(b.dataset.mode);
           direLeMode();
-          // Le passage en automatique se voit tout de suite : la rangée se
-          // ramène à six.
           elaguer();
           mesurer();
         });
@@ -6085,6 +6682,8 @@
       adidy: 'communAdidy', historique: 'communHistorique',
       taratasy: 'communTaratasy', fianakaviana: 'communFianakaviana', fangatahana: 'communFangatahana'
     };
+    // « Fangatahana » est à l'admin seul : un autre compte n'y entre pas.
+    if(nom === 'fangatahana' && !(currentUser && isOwnerEmail(currentUser.email))) nom = 'tableau';
     ongletCommun = PANNEAUX[nom] ? nom : 'tableau';
     Object.keys(PANNEAUX).forEach(function(cle){
       const el = document.getElementById(PANNEAUX[cle]);
@@ -6212,7 +6811,7 @@
       if(message){
         message.style.display = ouverte ? 'none' : '';
         message.textContent = ouverte ? '' :
-          '🔐 Mila alalana ity pejy ity : sokafy aloha ny « Administratif Fokontany » miaraka amin\'ny code nomen\'ny tompon\'ny site.';
+          '🔐 Mila alalana ity pejy ity : sokafy aloha ny « Fokontany » miaraka amin\'ny code nomen\'ny tompon\'ny site.';
       }
       if(!ouverte) return;
       // Les mêmes lectures que l'onglet Tableau de bord du Fokontany,

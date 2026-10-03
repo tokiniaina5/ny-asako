@@ -19,8 +19,8 @@
 <meta property="og:description" content="Ireo entana sy vaovao farany. Jereo aloha, dia midira raha tianao.">
 <meta property="og:type" content="website">
 <link rel="icon" href="/icone-192.png">
-<link rel="stylesheet" href="/gestion-stockage-css/base.css?v=3c7a1283">
-<link rel="stylesheet" href="/gestion-stockage-css/components.css?v=d696317b">
+<link rel="stylesheet" href="/gestion-stockage-css/base.css?v=505a9236">
+<link rel="stylesheet" href="/gestion-stockage-css/components.css?v=68b0a6cb">
 <style>
   .bk-entete{
     display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
@@ -45,6 +45,20 @@
   .bk-carte-nom{ font-size:0.82rem; font-weight:600; line-height:1.3; overflow:hidden;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
   .bk-carte-prix{ font-size:0.85rem; font-weight:700; color:var(--cyan); margin-top:auto; }
+  /* Les sary du site au bout d'un lien : un seul à la fois, en grand, et le
+     suivant prend sa place (on peut aussi les faire glisser du doigt). Une
+     bannière, une icône ou une image refusée s'efface d'elle-même. */
+  .bk-apercu{
+    display:flex; overflow-x:auto; margin-top:0.6rem; border-radius:10px;
+    scroll-snap-type:x mandatory; scrollbar-width:none; overscroll-behavior-x:contain;
+  }
+  .bk-apercu::-webkit-scrollbar{ display:none; }
+  .bk-apercu:empty{ display:none; }
+  .bk-apercu a{ flex:0 0 100%; display:block; scroll-snap-align:start; }
+  .bk-apercu img{
+    width:100%; height:min(72vw, 340px); object-fit:cover; display:block;
+    background:var(--panel-2); transition:opacity 0.2s;
+  }
 </style>
 </head>
 <body>
@@ -87,7 +101,7 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="/gestion-stockage-js/supabase-init.js?v=94f3c704"></script>
+<script src="/gestion-stockage-js/supabase-init.js?v=41d055dd"></script>
 <script>
 (function () {
   'use strict';
@@ -156,7 +170,8 @@
         sary +
         (n.price ? '<div class="fb-post-price">' + ariary(n.price) + '</div>' : '') +
         (n.link && /^https?:\/\//i.test(n.link)
-          ? '<a href="' + echap(n.link) + '" target="_blank" rel="noopener" class="fb-post-link">🔗 ' + echap(n.link) + '</a>'
+          ? '<div class="bk-apercu" data-lien="' + echap(n.link) + '"></div>' +
+            '<a href="' + echap(n.link) + '" target="_blank" rel="noopener" class="fb-post-link">🔗 ' + echap(n.link) + '</a>'
           : '') +
         // Acheter demande un compte : c'est une commande, elle doit porter un
         // nom. Le bouton mène donc à l'entrée, et non à un panier anonyme.
@@ -167,11 +182,118 @@
       return div;
   }
 
+  // ---- Les sary au bout d'un lien ----
+  // La fonction « apercu » (supabase/functions/apercu) lit la page du site et
+  // en rapporte les images ; on les montre toutes, en rangée. Une à la fois,
+  // les adresses : trente appels ensemble feraient attendre les trente. Ce
+  // qu'on a reçu se garde un jour sur l'appareil.
+  var APERCU_CLE = 'bk-apercus', APERCU_JOUR = 24 * 60 * 60 * 1000;
+  function apercusGardes() {
+    try { return JSON.parse(localStorage.getItem(APERCU_CLE)) || {}; } catch (e) { return {}; }
+  }
+  function garderApercu(url, images) {
+    try {
+      var tous = apercusGardes();
+      tous[url] = { images: images, le: Date.now() };
+      var cles = Object.keys(tous);
+      if (cles.length > 100) {
+        cles.sort(function (a, b) { return tous[a].le - tous[b].le; });
+        cles.slice(0, cles.length - 100).forEach(function (k) { delete tous[k]; });
+      }
+      localStorage.setItem(APERCU_CLE, JSON.stringify(tous));
+    } catch (e) {}
+  }
+  // Une photo d'entana est à peu près carrée et assez grande ; une bande
+  // large est une bannière, un petit carré une icône (comme parametres.js).
+  function formeBonne(img) {
+    var l = img.naturalWidth, h = img.naturalHeight;
+    return l >= 120 && h >= 120 && l / h <= 1.8 && h / l <= 1.8;
+  }
+  function poserApercu(cadre, images) {
+    var lien = cadre.getAttribute('data-lien');
+    cadre.innerHTML = images.map(function (src) {
+      return '<a href="' + echap(lien) + '" target="_blank" rel="noopener">' +
+        '<img src="' + echap(src) + '" alt="" loading="lazy" referrerpolicy="no-referrer" style="opacity:0"></a>';
+    }).join('');
+    [].forEach.call(cadre.querySelectorAll('img'), function (img) {
+      img.addEventListener('load', function () {
+        if (formeBonne(img)) img.style.opacity = '1';
+        else img.parentNode.remove();
+      });
+      img.addEventListener('error', function () { img.parentNode.remove(); });
+    });
+  }
+  // Trois adresses à la fois : une à une, trente sites faisaient attendre
+  // les derniers près d'une minute ; toutes ensemble, les premières aussi.
+  var APERCU_ENSEMBLE = 3, enVol = {};
+  function chercherApercus() {
+    var cadres = document.querySelectorAll('.bk-apercu[data-lien]:not([data-fait])');
+    for (var i = 0; i < cadres.length && Object.keys(enVol).length < APERCU_ENSEMBLE; i++) {
+      var url = cadres[i].getAttribute('data-lien');
+      if (!enVol[url]) demanderApercu(url);
+    }
+  }
+  function demanderApercu(url) {
+    var memes = function () {
+      return document.querySelectorAll('.bk-apercu[data-lien="' + (window.CSS && CSS.escape ? CSS.escape(url) : url) + '"]:not([data-fait])');
+    };
+    var poser = function (images) {
+      [].forEach.call(memes(), function (c) { c.setAttribute('data-fait', ''); poserApercu(c, images); });
+    };
+    var garde = apercusGardes()[url];
+    if (garde && Date.now() - garde.le < APERCU_JOUR) { poser(garde.images || []); chercherApercus(); return; }
+    if (!window.__sb || !window.__sb.functions) { poser([]); return; }
+    enVol[url] = true;
+    var fini = function (images) { delete enVol[url]; poser(images); chercherApercus(); };
+    window.__sb.functions.invoke('apercu', { body: { url: url } }).then(function (res) {
+      var a = res && res.data && !res.data.error ? res.data : null;
+      var images = (a && (a.images || (a.image ? [a.image] : []))) || [];
+      garderApercu(url, images);
+      fini(images);
+    }, function () { fini([]); });
+  }
+
+  // Les sary d'une rangée se succèdent d'eux-mêmes : toutes les trois
+  // secondes, la rangée avance d'une image, et revient au début au bout.
+  // Seules bougent celles qu'on voit à l'écran ; un doigt ou la souris
+  // dessus l'arrêtent, et elle repart quatre secondes après.
+  var APERCU_PAS_MS = 3000;
+  document.addEventListener('pointerdown', retenirRangee, true);
+  document.addEventListener('touchstart', retenirRangee, { passive: true, capture: true });
+  document.addEventListener('wheel', retenirRangee, { passive: true, capture: true });
+  // La souris posée dessus (pas le doigt : sur un téléphone, le survol reste
+  // collé après un appui).
+  document.addEventListener('mousemove', retenirRangee, { passive: true, capture: true });
+  function retenirRangee(e) {
+    var r = e.target && e.target.closest && e.target.closest('.bk-apercu');
+    if (r) r.__attente = Date.now() + 4000;
+  }
+  setInterval(function () {
+    if (document.hidden || ecran) return;
+    var haut = window.innerHeight;
+    [].forEach.call(document.querySelectorAll('.bk-apercu[data-fait]'), function (r) {
+      if (r.__attente && Date.now() < r.__attente) return;
+      var max = r.scrollWidth - r.clientWidth;
+      if (max <= 2) return;
+      var b = r.getBoundingClientRect();
+      if (b.bottom < 0 || b.top > haut) return;
+      // L'image suivante : la première dont le bord gauche dépasse celui de
+      // la rangée.
+      var liens = r.children, cible = null;
+      for (var i = 0; i < liens.length; i++) {
+        if (liens[i].offsetLeft - r.offsetLeft > r.scrollLeft + 4) { cible = liens[i]; break; }
+      }
+      var x = r.scrollLeft >= max - 2 || !cible ? 0 : Math.min(max, cible.offsetLeft - r.offsetLeft);
+      r.scrollTo({ left: x, behavior: 'smooth' });
+    });
+  }, APERCU_PAS_MS);
+
   function dessiner(lignes) {
     var fil = $('bkFil');
     $('bkVide').style.display = lignes.length ? 'none' : '';
     fil.innerHTML = '';
     lignes.forEach(function (n) { fil.appendChild(carteBillet(n)); });
+    chercherApercus();
     if (vise) {
       var el = fil.querySelector('.bk-visee');
       if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
@@ -194,7 +316,10 @@
     var q = window.__sb.from('client_news').select(COLONNES).gte('created_at', depuis);
     if (enLigne) q = q.is('deleted_at', null);
     if (entanaSeuls) q = q.eq('type', 'entana');
-    return q.order('created_at', { ascending: false }).limit(entanaSeuls ? 60 : 30);
+    // Tout ce qui vit encore, et non les trente derniers : rien ne doit
+    // rester caché ici. Mille est le plafond d'une lecture chez Supabase ; en
+    // trente jours, le fil n'en approche pas.
+    return q.order('created_at', { ascending: false }).limit(1000);
   }
   function demander(entanaSeuls) {
     return requete(true, entanaSeuls)
@@ -202,9 +327,8 @@
   }
 
   // ---- La vitrine ----
-  // Le fil ne montre que les trente derniers billets : les directs et les
-  // nouvelles y poussaient les articles dehors. La vitrine, elle, ne montre
-  // qu'eux, tous ceux qui sont en vente.
+  // Les articles en vente, à part : dans le fil, les directs et les nouvelles
+  // les noient. La vitrine ne montre qu'eux, tous ceux qui sont en vente.
   var VIDEO = /\.(mp4|webm|mov|m4v|ogv)(\?|$)/i;
 
   // Le nom de l'article : la ligne « 📦 … » de sa fiche (parametres.js), et
@@ -218,8 +342,8 @@
   }
 
   // Un appui sur la vitrine mène à l'annonce : là sont la fiche entière et le
-  // bouton pour acheter. Absente du fil (trop ancienne pour les trente
-  // derniers), elle y est posée en tête.
+  // bouton pour acheter. Absente du fil (redessiné entre-temps), elle y est
+  // posée en tête.
   function montrerLAnnonce(n) {
     var fil = $('bkFil');
     var el = document.getElementById('bk-' + n.id);
@@ -302,13 +426,70 @@
     rangee.innerHTML = g.map(function (x, i) {
       var d = x.liste[x.liste.length - 1];
       var video = d.genre === 'video';
-      return '<button type="button" class="story-carte" data-groupe="' + i + '"' +
-        (video ? '' : ' style="background-image:url(\'' + String(d.media).replace(/'/g, '%27') + '\')"') + '>' +
-        (video ? '<video class="story-carte-video" src="' + echap(d.media) + '#t=' + ((d.video_debut || 0) + 0.5) + '" muted playsinline preload="metadata"></video>' +
+      // Le rond en relief, comme dans l'application (components.css).
+      return '<button type="button" class="story-carte" data-groupe="' + i + '">' +
+        '<span class="story-rond">' +
+        (video ? '' : '<span class="story-carte-fond" style="background-image:url(\'' + String(d.media).replace(/'/g, '%27') + '\')"></span>') +
+        (video ? '<video class="story-carte-video" src="' + echap(d.media) + '#t=' + ((d.video_debut || 0) + 0.5) + '" muted playsinline preload="metadata"' +
+          ' data-debut="' + (Number(d.video_debut) || 0) + '" data-fin="' + (Number(d.video_fin) || 0) + '"></video>' +
           '<span class="story-carte-play" aria-hidden="true">▶</span>' : '') +
+        '</span>' +
+        '<span class="story-helice" aria-hidden="true"></span>' +
         '<span class="story-anneau">' + avatar(x.photo, x.nom) + '</span>' +
         '<span class="story-nom">' + echap(x.nom || 'Client') + '</span></button>';
     }).join('');
+    jouerCartes();
+  }
+
+  // Les bulles s'animent chacune son tour, comme dans l'application
+  // (jouerVideosCartes, parametres.js) : un sary grossit quatre secondes, une
+  // vidéo joue sans le son de son début à sa fin (quinze secondes au plus),
+  // puis la suivante. Rien ne bouge pendant qu'une story est ouverte.
+  var tourCartes = 0;
+  function jouerCartes() {
+    var tour = ++tourCartes, n = 0, rangee = $('bkStories');
+    function suivante() {
+      if (tour !== tourCartes) return;
+      var cartes = rangee.querySelectorAll('.story-carte');
+      if (!cartes.length) return;
+      if (document.hidden || ecran) { setTimeout(suivante, 1500); return; }
+      var carte = cartes[n % cartes.length];
+      n++;
+      var el = carte.querySelector('.story-carte-video');
+      if (!el) {
+        carte.classList.add('story-joue');
+        setTimeout(function () { carte.classList.remove('story-joue'); setTimeout(suivante, 300); }, 4000);
+        return;
+      }
+      var debut = Number(el.getAttribute('data-debut')) || 0;
+      var finChoisie = Number(el.getAttribute('data-fin')) || 0;
+      var fini = false, garde;
+      function arreter() {
+        if (fini) return;
+        fini = true;
+        clearTimeout(garde);
+        el.removeEventListener('timeupdate', surTemps);
+        el.removeEventListener('ended', arreter);
+        el.removeEventListener('error', arreter);
+        el.pause();
+        carte.classList.remove('story-joue');
+        setTimeout(suivante, cartes.length > 1 ? 300 : 1500);
+      }
+      function surTemps() {
+        if (tour !== tourCartes || document.hidden || ecran) { arreter(); return; }
+        if (finChoisie && el.currentTime >= finChoisie) arreter();
+      }
+      garde = setTimeout(arreter, 15000);
+      el.addEventListener('timeupdate', surTemps);
+      el.addEventListener('ended', arreter);
+      el.addEventListener('error', arreter);
+      el.muted = true;
+      try { el.currentTime = debut; } catch (e) {}
+      carte.classList.add('story-joue');
+      var p = el.play();
+      if (p && p.catch) p.catch(arreter);
+    }
+    setTimeout(suivante, 600);
   }
   function taire() { if (son) { try { son.pause(); } catch (e) {} son = null; } }
   function fermer() {
@@ -400,6 +581,38 @@
     var c = e.target.closest('[data-groupe]');
     if (c) ouvrir(Number(c.getAttribute('data-groupe')), 0);
   });
+  // La rangée glisse d'elle-même tant que personne n'y touche, et revient au
+  // début au bout ; un doigt ou la souris l'arrêtent, elle repart trois
+  // secondes après (comme defilerStoriesSeules, parametres.js).
+  (function defilerSeule(r) {
+    if (!r || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    var pos = 0, attente = performance.now() + 2500, dedans = false, avant = 0;
+    function retenir(ms) { attente = Math.max(attente, performance.now() + ms); }
+    ['pointerdown', 'touchstart', 'wheel', 'focusin'].forEach(function (t) {
+      r.addEventListener(t, function () { retenir(4000); }, { passive: true });
+    });
+    r.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') dedans = true; });
+    r.addEventListener('pointerleave', function () { dedans = false; retenir(3000); });
+    ['pointerup', 'touchend', 'pointercancel'].forEach(function (t) {
+      r.addEventListener(t, function () { retenir(3000); }, { passive: true });
+    });
+    function pas(t) {
+      requestAnimationFrame(pas);
+      var dt = Math.min(t - (avant || t), 50);
+      avant = t;
+      var max = r.scrollWidth - r.clientWidth;
+      if (max <= 0 || dedans || t < attente || document.hidden || ecran) { pos = r.scrollLeft; return; }
+      if (Math.abs(r.scrollLeft - pos) > 2) pos = r.scrollLeft;
+      if (pos >= max - 1) {
+        retenir(4000);
+        setTimeout(function () { r.scrollTo({ left: 0, behavior: 'smooth' }); }, 1500);
+        return;
+      }
+      pos = Math.min(max, pos + dt * 0.03);
+      r.scrollLeft = pos;
+    }
+    requestAnimationFrame(pas);
+  })($('bkStories'));
   function lireStories() {
     if (!window.__sb) return;
     window.__sb.from('botika_stories')

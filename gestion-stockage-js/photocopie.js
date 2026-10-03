@@ -368,7 +368,7 @@
       // .dash-tab quand il change de vue.
       '<div class="dash-tabs" id="pcOnglets">' +
         '<div class="pc-onglet active" data-pc="tableau">📊 Tableau de bord</div>' +
-        '<div class="pc-onglet" data-pc="scan">📠 Scan</div>' +
+        '<div class="pc-onglet" data-pc="scan">📑 Scan</div>' +
         '<div class="pc-onglet" data-pc="sary">📷 Maka sary</div>' +
         '<div class="pc-onglet" data-pc="kopia">🖨️ Photocopie</div>' +
         '<div class="pc-onglet" data-pc="reliure">📚 Reliure</div>' +
@@ -387,7 +387,7 @@
         '</div>' +
         '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(14rem, 1fr)); gap:0.8rem; margin:1rem 0;">' +
           carteService('kopia', '🖨️ Photocopie', 'pejy') +
-          carteService('scan', '📠 Scan', 'pejy') +
+          carteService('scan', '📑 Scan', 'pejy') +
           carteService('sary', '📷 Maka sary', 'sary') +
           carteService('reliure', '📚 Reliure', 'isa') +
           carteService('plast', '🪪 Plastification', 'isa') +
@@ -405,7 +405,7 @@
       // ----- Scan -----
       '<div data-volet="scan" style="display:none;">' +
         '<div class="panel">' +
-          '<h3>📠 Scan taratasy</h3>' +
+          '<h3>📑 Scan taratasy</h3>' +
           boutonsCamera('scan', '📸 Scan ity pejy ity') +
           // Sur PC, « 📥 Alaina ny scan vaovao » enregistre tout seul (liste et
           // « 📄 PDF ») : les réglages et boutons ci-dessous restent cachés.
@@ -630,7 +630,7 @@
   const graphiques = {};
   // Le service d'une ligne du journal : son « loko » le dit.
   const SERVICES = ['kopia', 'scan', 'sary', 'reliure', 'plast'];
-  const NOM_SERVICE = { kopia: '🖨️ Photocopie', scan: '📠 Scan', sary: '📷 Sary', reliure: '📚 Reliure', plast: '🪪 Plastification' };
+  const NOM_SERVICE = { kopia: '🖨️ Photocopie', scan: '📑 Scan', sary: '📷 Sary', reliure: '📚 Reliure', plast: '🪪 Plastification' };
   function serviceDe(a) {
     if (a.loko === 'scan' || a.loko === 'sary' || a.loko === 'reliure' || a.loko === 'plast') return a.loko;
     return 'kopia';
@@ -896,7 +896,7 @@
                 '<button type="button" class="btn btn-sm" data-photoshop="' + d.id + '" style="width:auto;" title="Hatsaraina amin\'ny Photoshop an-tserasera (Photopea)">🎨 Photoshop</button>' +
                 '<button type="button" class="btn btn-sm" data-canva="' + d.id + '" style="width:auto;" title="Hatsaraina amin\'ny Canva">🖌 Canva</button>'
               : '') +
-            '<button type="button" class="btn btn-sm" data-kopia="' + d.id + '" style="width:auto;" title="Photocopie">📑</button>' +
+            '<button type="button" class="btn btn-sm" data-kopia="' + d.id + '" style="width:auto;" title="Photocopie">🖨️</button>' +
             '<button type="button" class="btn btn-sm" data-esory-doc="' + d.id + '" style="width:auto;" aria-label="Fafao">🗑</button>' +
           '</div></div>';
       }).join('') + '</div>';
@@ -1007,7 +1007,7 @@
     sel.innerHTML = (documents.length || kopiaImport ? '' : '<option value="">— Mbola tsy misy photocopie na sary —</option>') +
       (kopiaImport ? '<option value="import">📂 ' + html(kopiaImport.nom) + '</option>' : '') +
       documents.map(function (d) {
-        return '<option value="' + d.id + '">' + (d.type === 'scan' ? '📠 ' : '📷 ') + html(d.nom) +
+        return '<option value="' + d.id + '">' + (d.type === 'scan' ? '📑 ' : '📷 ') + html(d.nom) +
           (d.type === 'scan' ? ' (' + d.pages.length + ' pejy)' : '') + '</option>';
       }).join('');
     sel.value = kopiaChoix;
@@ -1056,6 +1056,15 @@
       const ram = lireRam(t);
       const champ = z.querySelector('[data-ram-habe="' + t + '"]');
       if (champ && document.activeElement !== champ) champ.value = ram.habe;
+      // Pas encore de paquet ouvert : il s'ouvre tout seul au premier travail
+      // du jour, pour que le papier baisse dès la première photo.
+      if (!ram.at) {
+        const auj = debutJour(Date.now());
+        const premier = lireAsa().reduce(function (m, a) {
+          return a.at >= auj && RAM_SERVICES[t][serviceDe(a)] && (!m || a.at < m) ? a.at : m;
+        }, 0);
+        if (premier) { ram.at = premier; ecrireJson(CLE_RAM[t], ram); }
+      }
       if (!ram.at) {
         el.innerHTML = '📦 <span style="color:var(--muted);">Tsindrio « ' + (t === 'sary' ? 'Paquet vaovao' : 'Ram vaovao') + ' » rehefa manokatra vaovao ianao.</span>';
         return;

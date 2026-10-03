@@ -4,9 +4,9 @@
 // revient chaque mois ou chaque année), puis les versements — qui a payé,
 // pour quelle période.
 //
-// Les personnes viennent du livre de famille (fianakaviana.js) : on ne tient
+// Ceux qui paient sont les familles du livre de famille (fianakaviana.js) : on ne tient
 // pas deux listes de gens, elles finiraient par ne plus se ressembler. Une
-// personne inscrite dans plusieurs livrets n'y paraît qu'une fois, par son nom.
+// ligne par livret : son nom et sa fonenana.
 //
 // Tout vit dans Supabase (supabase/sql/supabase-adidy.sql).
 
@@ -17,8 +17,19 @@
 
   // Le Commun lit les registres de tous les fokontany ; partout ailleurs, on
   // ne lit que les siens (fokontany-app.js pose __lectureCommun).
+  function lectureSeule() {
+    return typeof window.__lectureCommun === 'function' && window.__lectureCommun();
+  }
   function mien(requete, email) {
-    if (typeof window.__lectureCommun === 'function' && window.__lectureCommun()) return requete;
+    // Le Commun lit tout, ou le seul fokontany qu'il regarde (fokontany-app.js).
+    if (typeof window.__lectureCommun === 'function' && window.__lectureCommun()) {
+      if (window.__fokontanyJerena) return requete.eq('owner_email', window.__fokontanyJerena);
+      // Tous : seulement les fokontany du Commun, une fois leur liste lue.
+      if (Array.isArray(window.__fokontanyCommun)) {
+        return requete.in('owner_email', window.__fokontanyCommun.length ? window.__fokontanyCommun : ['-']);
+      }
+      return requete;
+    }
     return requete.eq('owner_email', email);
   }
 
@@ -220,11 +231,11 @@
 
   // ---------- Les personnes, prises au registre ----------
 
-  // Les personnes viennent du livre de famille (fianakaviana.js) : c'est là
-  // qu'on inscrit les gens, et il n'y a pas de seconde liste.
+  // Ce sont les familles du livre de famille (fianakaviana.js) qui paient
+  // l'adidy : une ligne par famille, avec son nom et sa fonenana.
   function chargerPersonnes() {
-    if (typeof window.__personnesDuFokontany !== 'function') { personnes = []; return Promise.resolve(); }
-    return window.__personnesDuFokontany().then(function (liste) {
+    if (typeof window.__fianakavianaDuFokontany !== 'function') { personnes = []; return Promise.resolve(); }
+    return window.__fianakavianaDuFokontany().then(function (liste) {
       personnes = liste || [];
     }, function () { personnes = []; });
   }
@@ -237,8 +248,8 @@
     const adidyId = $('adidySafidy').value;
     const periode = periodeChoisie();
     if (!client || !email || !adidyId || !periode) { versements = []; afficherPersonnes(); return Promise.resolve(); }
-    return client.from('adidy_fandoavana').select('*')
-      .eq('owner_email', email).eq('adidy_id', adidyId).eq('vanim_potoana', periode)
+    return mien(client.from('adidy_fandoavana').select('*'), email)
+      .eq('adidy_id', adidyId).eq('vanim_potoana', periode)
       .then(function (res) {
         if (res.error) { dire('adidyFandoavanaMessage', expliquer(res), true); return; }
         versements = res.data || [];
@@ -261,12 +272,16 @@
     corps.innerHTML = personnes.map(function (p) {
       const v = verseDe(p.cle);
       return '<tr>' +
-        '<td>' + echapper(p.anarana) + '</td>' +
+        '<td>' + echapper(p.anarana) +
+          (p.fonenana ? '<div style="font-size:0.75rem; color:var(--muted);">' + echapper(p.fonenana) + '</div>' : '') + '</td>' +
         '<td style="white-space:nowrap;">' +
-          '<label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">' +
-            '<input type="checkbox" data-olona="' + echapper(p.cle) + '"' + (v ? ' checked' : '') + '> ' +
-            (v ? 'Naloha' : 'Tsy mbola') +
-          '</label>' +
+          // Le Commun regarde : un mot, pas une case qu'on pourrait cocher.
+          (lectureSeule()
+            ? (v ? '✅ Naloha' : '<span style="color:var(--muted);">⬜ Tsy mbola</span>')
+            : '<label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">' +
+                '<input type="checkbox" data-olona="' + echapper(p.cle) + '"' + (v ? ' checked' : '') + '> ' +
+                (v ? 'Naloha' : 'Tsy mbola') +
+              '</label>') +
         '</td>' +
         '<td style="font-family:var(--font-mono); white-space:nowrap;">' + (v && v.vola != null ? ariary(v.vola) : '—') + '</td>' +
         '<td style="color:var(--muted); white-space:nowrap;">' + (v && v.daty ? new Date(v.daty + 'T00:00:00').toLocaleDateString('fr-FR') : '—') + '</td>' +
@@ -284,6 +299,8 @@
   }
 
   function basculer(cle, coché) {
+    // Le Commun ne marque rien : il regarde ce que le fokontany a marqué.
+    if (lectureSeule()) { afficherPersonnes(); return; }
     const client = sb();
     const email = monEmail();
     const adidyId = $('adidySafidy').value;
