@@ -18,6 +18,19 @@
      version (common.js) la compare à celle du serveur. -->
 <meta name="ny-asako-version" content="e2881e95">
 <title>Ny asako — Tanjona</title>
+<!-- Ouvert par le lien d'un employé ou d'un livreur : la fenêtre porte son
+     nom dès le premier instant (gardé la dernière fois par vue-mpiasa.js,
+     « porterSonNom »), et non celui du patron le temps que la page entre.
+     Certaines fenêtres d'application ne relisent pas le titre ensuite. -->
+<script>
+  (function(){
+    try {
+      var j = new URLSearchParams(location.search).get('mpiasa');
+      var t = j && localStorage.getItem('nyasako_titre_' + j.slice(0, 16));
+      if (t) document.title = t;
+    } catch(e){}
+  })();
+</script>
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
 <link rel="manifest" href="/manifest.webmanifest">
