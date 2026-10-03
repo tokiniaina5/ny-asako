@@ -2786,7 +2786,9 @@
           <p id="personneLienMailNote" style="font-size:0.78rem; color:var(--muted); margin:0.7rem 0 0; line-height:1.5;"></p>
         </div>
 
-        <div class="panel" style="margin-top:1rem;">
+        <!-- Pour un livreur, ces deux panneaux passent dans SA page, sous sa
+             carte (vue-mpiasa.js) : equipe.js les cache ici. -->
+        <div class="panel" id="personneTableauPanel" style="margin-top:1rem;">
           <div class="panneau-titre">Tableau de bord</div>
           <!-- Le stock que la personne tient depuis son lien, tel que son
                application l'a envoyé en dernier : equipe.js le remplit. -->
@@ -2794,7 +2796,7 @@
           <div id="personneTableau"></div>
         </div>
 
-        <div class="panel" style="margin-top:1rem;">
+        <div class="panel" id="personnePointagesPanel" style="margin-top:1rem;">
           <div class="panneau-titre">Ny fivezivezena</div>
           <div id="personnePointages" style="margin-top:0.7rem;"></div>
           <p class="empty-hint" id="personnePointagesVide" style="display:none;">Mbola tsy nisy pointage.</p>
