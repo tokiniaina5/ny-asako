@@ -3087,6 +3087,22 @@
           <span id="profileSaveStatus" style="font-size:0.78rem; color:var(--muted); margin-left:0.6rem;"></span>
         </div>
 
+        <!-- Le lien Maps de chaque client de « Gestion de compte » : on le
+             cherche par son nom ou son numéro (parametres.js). -->
+        <div class="panel" id="mapsClientsPanel">
+          <h3>📍 Lien Maps des clients</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
+            Cherchez un client (nom ou téléphone) puis collez le lien Maps de l'endroit où il se trouve,
+            ou touchez « Ma position » si vous êtes chez lui.
+          </p>
+          <div class="field" style="margin-bottom:0.6rem;">
+            <label for="mapsClientsSearch">🔎 Rechercher un client</label>
+            <input id="mapsClientsSearch" type="search" placeholder="Nom ou téléphone…" autocomplete="off">
+          </div>
+          <div id="mapsClientsList"></div>
+          <p class="empty-hint" id="mapsClientsEmpty" style="display:none;"></p>
+        </div>
+
         <div class="panel" id="adminVisitsPanel" style="display:none;">
           <div class="section-head" style="margin-bottom:0.6rem;">
             <div><h3>🌐 Visiteurs du site</h3></div>
