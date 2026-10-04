@@ -237,3 +237,18 @@ self.addEventListener('fetch', function(e){
     })
   );
 });
+
+// Une notification touchée (un appel qui arrive, live.js) : on ramène
+// devant la page déjà ouverte — c'est elle qui tient l'appel — plutôt
+// que d'en ouvrir une neuve, qui ne saurait rien de lui.
+self.addEventListener('notificationclick', function(e){
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(fenetres){
+      for(const f of fenetres){
+        if(memeOrigine(f.url) && 'focus' in f) return f.focus();
+      }
+      return self.clients.openWindow ? self.clients.openWindow('/') : null;
+    })
+  );
+});
