@@ -3043,6 +3043,14 @@
                 <a class="btn btn-sm" id="profileMapsOpen" href="#" target="_blank" rel="noopener" style="width:auto; display:none;">🌐 Google Maps</a>
                 <button type="button" class="btn btn-sm" id="profileMapsSite" style="width:auto; display:none;">🗺️ Dans le site</button>
               </div>
+              <!-- Envoyer ce lien à un client : son numéro (WhatsApp), son
+                   email, ou le lien de son profil (Messenger…) — common.js. -->
+              <div id="profileMapsEnvoi" style="display:none; margin-top:0.6rem;">
+                <label for="profileMapsDest" style="font-size:0.78rem;">📤 Envoyer à un client</label>
+                <input id="profileMapsDest" type="text" list="profileMapsDestListe" autocomplete="off" placeholder="Numéro, email ou lien du client">
+                <datalist id="profileMapsDestListe"></datalist>
+                <button type="button" class="btn btn-primary btn-sm" id="profileMapsSend" style="width:auto; margin-top:0.4rem;">📤 Envoyer</button>
+              </div>
               <p id="profileMapsStatus" style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Collez le lien « Partager » de Google Maps, ou touchez « Ma position ».</p>
             </div>
             <div class="field" style="margin-bottom:0;">
