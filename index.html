@@ -161,11 +161,13 @@
     <h1 id="loginTitle">Connexion</h1>
     <p class="sub" id="loginSub">Première connexion : renseignez vos informations et choisissez un mot de passe pour créer votre compte.</p>
 
-    <!-- Retour d'un compte déjà enregistré : email + code suffisent -->
+    <!-- Retour d'un compte déjà enregistré : le nom de famille et le mot de
+         passe suffisent, comme dans le Fokontany (fonction fiditra-anarana).
+         L'id reste quickEmail : un email tapé tel quel entre encore. -->
     <form id="quickLoginForm" style="display:none;">
       <div class="field">
-        <label for="quickEmail">Email</label>
-        <input id="quickEmail" type="email" required placeholder="vous@exemple.com" autocomplete="email">
+        <label for="quickEmail">Last name</label>
+        <input id="quickEmail" type="text" required placeholder="Nom" autocomplete="family-name">
       </div>
       <div class="field">
         <label for="quickCode">Mot de passe</label>
