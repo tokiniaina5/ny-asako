@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="e2881e95">
+<meta name="ny-asako-version" content="cb9d78dd">
 <title>Ny asako — Tanjona</title>
 <!-- Ouvert par le lien d'un employé ou d'un livreur : la fenêtre porte son
      nom dès le premier instant (gardé la dernière fois par vue-mpiasa.js,
@@ -149,7 +149,7 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=505a9236">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=68b0a6cb">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=54e0f08b">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
@@ -164,8 +164,8 @@
     <!-- Retour d'un compte déjà enregistré : email + code suffisent -->
     <form id="quickLoginForm" style="display:none;">
       <div class="field">
-        <label for="quickEmail">Email</label>
-        <input id="quickEmail" type="email" required placeholder="vous@exemple.com" autocomplete="email">
+        <label for="quickEmail">Email ou téléphone</label>
+        <input id="quickEmail" type="text" required placeholder="vous@exemple.com ou 034 12 345 67" autocomplete="username">
       </div>
       <div class="field">
         <label for="quickCode">Mot de passe</label>
@@ -3248,7 +3248,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=3989ed0e"></script>
+<script src="gestion-stockage-js/common.js?v=ac16d992"></script>
 <script src="gestion-stockage-js/herinaratra.js?v=622d64e8"></script>
 <script src="gestion-stockage-js/stock.js?v=d33d19a7"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
@@ -3261,22 +3261,22 @@
      canaux du propriétaire (contact.js les tient). -->
 <script src="gestion-stockage-js/serasera-voalohany.js?v=55330613"></script>
 <script src="gestion-stockage-js/zara-rehetra.js?v=b4bc508d"></script>
-<script src="gestion-stockage-js/live.js?v=31a0f27f"></script>
+<script src="gestion-stockage-js/live.js?v=7720b6ae"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=48fd7b6e"></script>
+<script src="gestion-stockage-js/parametres.js?v=9c286435"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>
 <script src="gestion-stockage-js/identite.js?v=32177fac"></script>
 <script src="gestion-stockage-js/fond.js?v=66e9ffc6"></script>
-<script src="gestion-stockage-js/carte-libre.js?v=732ab00c"></script>
-<script src="gestion-stockage-js/equipe.js?v=57df35d0"></script>
-<script src="gestion-stockage-js/vue-mpiasa.js?v=6ebd78a5"></script>
+<script src="gestion-stockage-js/carte-libre.js?v=da42db8a"></script>
+<script src="gestion-stockage-js/equipe.js?v=307dc2cd"></script>
+<script src="gestion-stockage-js/vue-mpiasa.js?v=1e6cfbec"></script>
 <script src="gestion-stockage-js/vue-suivi.js?v=77f7b0f5"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=bf90a8a5"></script>
 <script src="gestion-stockage-js/photocopie.js?v=be4f35a5"></script>
 <script src="gestion-stockage-js/pdf.js?v=b7c1f056"></script>
-<script src="gestion-stockage-js/commun-alalana.js?v=14bcf7c9"></script>
+<script src="gestion-stockage-js/commun-alalana.js?v=c3a8e119"></script>
 <script src="gestion-stockage-js/taratasy.js?v=7688b0e0"></script>
 <script src="gestion-stockage-js/fianakaviana.js?v=2d087da0"></script>
 <script src="gestion-stockage-js/validation-install.js?v=6136b9a3"></script>

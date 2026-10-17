@@ -1,0 +1,96 @@
+// Fidirana amin'ny anarana : entrer dans le Fokontany avec son nom.
+//
+// La page n'envoie que le nom et le mot de passe. Ici (clé de service), on
+// retrouve les emails portant ce nom (supabase-fiditra-anarana.sql), puis on
+// essaie le mot de passe sur chacun : le premier qui ouvre rend sa session.
+// Deux personnes du même nom ne se gênent donc pas, et aucun email ne sort
+// d'ici tant que le mot de passe n'est pas juste.
+//
+// Déploiement : supabase functions deploy fiditra-anarana --no-verify-jwt
+// (SANS vérification du jeton : on n'est pas encore connecté.)
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method !== "POST") return json({ error: "méthode refusée" }, 405);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  if (!supabaseUrl || !serviceKey || !anonKey) {
+    return json({ error: "configuration incomplète" }, 500);
+  }
+
+  // Le nom complet (anarana), ou le nom de famille seul (farany) : la page
+  // du Fokontany ne demande plus que celui-ci.
+  // Ou le numéro de téléphone (finday) : c'est lui que la page demande
+  // désormais, à côté de l'email qu'elle envoie directement à Supabase.
+  let anarana = "";
+  let farany = "";
+  let finday = "";
+  let mailaka = "";
+  let mdp = "";
+  // Ny asako (« Bon retour ») passe aussi par ici pour le numéro : il n'y
+  // entre qu'avec un compte Ny asako, jamais avec un compte Fokontany à part.
+  let nyAsako = false;
+  try {
+    const corps = await req.json();
+    nyAsako = corps?.ny_asako === true;
+    mailaka = String(corps?.email ?? "").trim().toLowerCase().slice(0, 200);
+    anarana = String(corps?.anarana ?? "").trim().slice(0, 120);
+    farany = String(corps?.farany ?? "").trim().slice(0, 120);
+    finday = String(corps?.finday ?? "").trim().slice(0, 40);
+    mdp = String(corps?.mdp ?? "");
+  } catch {
+    return json({ error: "corps de requête illisible" }, 400);
+  }
+  if ((!anarana && !farany && !finday && !mailaka) || !mdp) return json({ ok: false });
+
+  const admin = createClient(supabaseUrl, serviceKey);
+  // Un email : d'abord les comptes Fokontany à part qui le portent (leur mot
+  // de passe à eux), puis le compte Ny asako de cet email lui-même.
+  const { data: emails, error } = mailaka
+    ? await admin.rpc("emails_avy_mailaka", { p_email: mailaka }).then((r) => ({
+        data: [...((r.data ?? []) as string[]), mailaka],
+        error: r.error,
+      }))
+    : finday
+    ? await admin.rpc("emails_avy_finday", { p_finday: finday })
+    : farany
+    ? await admin.rpc("emails_avy_farany", { p_farany: farany })
+    : await admin.rpc("emails_avy_anarana", { p_anarana: anarana });
+  if (error) return json({ error: error.message }, 502);
+
+  // Un nom inconnu et un mot de passe faux répondent pareil : rien ne dit
+  // au curieux si le nom existe.
+  for (const email of (emails ?? []) as string[]) {
+    if (nyAsako && email.endsWith("@fokontany.invalid")) continue;
+    const client = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+    const { data, error: e } = await client.auth.signInWithPassword({ email, password: mdp });
+    if (!e && data?.session) {
+      return json({
+        ok: true,
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+    }
+    if (e && /email not confirmed/i.test(e.message)) {
+      return json({ ok: false, antony: "tsy_voamarina" });
+    }
+  }
+  return json({ ok: false });
+});

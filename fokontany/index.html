@@ -103,13 +103,38 @@
 <link rel="apple-touch-icon" href="/fokontany/icone-192.png">
 <link rel="icon" href="/fokontany/icone-192.png" type="image/png">
 <link rel="stylesheet" href="/gestion-stockage-css/base.css?v=505a9236">
-<link rel="stylesheet" href="/gestion-stockage-css/components.css?v=68b0a6cb">
+<link rel="stylesheet" href="/gestion-stockage-css/components.css?v=54e0f08b">
 <style>
   .fk-barre{ display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
     padding:0.9rem 1rem; border-bottom:1px solid var(--line); background:var(--panel); position:sticky; top:0; z-index:200; }
   .fk-qui{ font-size:0.76rem; color:var(--muted); text-align:right; line-height:1.4; }
   .fk-qui strong{ color:var(--text); display:block; font-size:0.84rem; }
   .fk-corps{ max-width:1200px; margin:0 auto; padding:1.2rem 16px 3rem; }
+  /* L'accueil, comme la tête d'un site : fond sombre aux reflets cyan,
+     cercles en filigrane, le nom au centre. Les mêmes couleurs de jour et de
+     nuit : le texte blanc y reste lisible. */
+  #fkArahaba{ position:fixed; inset:0; z-index:9500; overflow:hidden; text-align:center; color:#fff;
+    display:flex; align-items:center; justify-content:center; padding:2rem 16px;
+    transition:opacity 0.35s ease;
+    background:
+      radial-gradient(circle at 12% 20%, rgba(79,216,224,0.35) 0, transparent 38%),
+      radial-gradient(circle at 88% 85%, rgba(79,216,224,0.25) 0, transparent 40%),
+      linear-gradient(135deg, #0b3d47 0%, #0e5f6b 50%, #0a2f38 100%); }
+  #fkArahaba::before, #fkArahaba::after{ content:""; position:absolute; border-radius:50%;
+    border:2px solid rgba(255,255,255,0.10); pointer-events:none; }
+  #fkArahaba::before{ width:420px; height:420px; left:-140px; bottom:-200px; }
+  #fkArahaba::after{ width:320px; height:320px; right:-100px; top:-120px; }
+  #fkArahaba.miala{ opacity:0; pointer-events:none; }
+  #fkArahabaHiditra{ margin-top:2rem; padding:0.8rem 2.2rem; border-radius:999px; border:none; cursor:pointer;
+    font:inherit; font-weight:700; font-size:1rem; color:#0a2f38; background:#4fd8e0;
+    box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+  #fkArahabaHiditra:hover{ background:#8ff0f5; }
+  .fk-arahaba-ao{ position:relative; max-width:900px; margin:0 auto; }
+  .fk-arahaba-tongasoa{ font-family:var(--font-mono); font-size:0.78rem; letter-spacing:0.3em; color:#8ff0f5; }
+  #fkArahabaAnarana{ margin:0.7rem 0 0; font-size:clamp(2rem, 8vw, 3.6rem); font-weight:800; line-height:1.15;
+    letter-spacing:0.02em; text-transform:uppercase; color:#fff; text-shadow:0 2px 14px rgba(0,0,0,0.35); }
+  #fkArahabaAmbany{ display:inline-block; margin-top:0.8rem; padding:0.3rem 0.9rem; border-radius:999px;
+    font-size:0.88rem; color:#e6fbfc; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); }
   #fkToast{ display:none; position:fixed; left:50%; transform:translateX(-50%); bottom:24px; z-index:9100;
     width:min(420px, calc(100vw - 32px)); background:var(--panel); color:var(--text); border:1px solid var(--cyan);
     border-radius:14px; padding:0.8rem 0.9rem; font-size:0.82rem; line-height:1.45; box-shadow:0 10px 30px rgba(0,0,0,0.35); }
@@ -117,7 +142,6 @@
   /* L'Administratif Commun voit tout ce que voit le Fokontany — les mêmes
      onglets — mais il regarde sans toucher : la classe .lecture-seule est
      posée sur chaque panneau (fokontany-app.js), jamais sur les onglets. */
-  html:not(.app-commun) #communRechercheBox{ display:none !important; }
   html:not(.app-commun) #ongletFokontany, html:not(.app-commun) #communFokontany{ display:none !important; }
   /* Ce qui sert à écrire n'a rien à faire dans le Commun, qui regarde. */
   html.app-commun .tsy-commun,
@@ -131,8 +155,11 @@
   html.app-commun:not(.commun-jerena) #dash-commun [data-commun="taratasy"],
   html.app-commun:not(.commun-jerena) #dash-commun [data-commun="fianakaviana"],
   html.app-commun.commun-jerena #dash-commun [data-commun="fokontany"],
-  html.app-commun.commun-jerena #ongletFangatahana{ display:none !important; }  /* Dans l'en-tête, sous le nom et le compte, sur toute la largeur. */
-  #communRechercheBox{ display:flex; align-items:center; gap:0.6rem; flex:1 1 100%; order:99; }
+  html.app-commun.commun-jerena #ongletFangatahana{ display:none !important; }  /* Dans l'en-tête, à droite du nom, avant ⚙️ : elle prend la place libre. */
+  #fkBarreAvanana{ flex:1 1 320px; justify-content:flex-end; min-width:0; }
+  #communRechercheBox{ display:none; align-items:center; gap:0.6rem; flex:1 1 auto; min-width:0; max-width:560px; }
+  #fkBarreAvanana.mikaroka #communRechercheBox{ display:flex; }
+  #fkBarreAvanana.mikaroka #fkRechercheBtn{ display:none; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="/gestion-stockage-js/supabase-init.js?v=41d055dd"></script>
@@ -145,15 +172,27 @@
   <span>Tsy misy connexion — mety ho tsy vaovao ny isa.</span>
 </div>
 
+<!-- L'accueil, une page à lui, vue juste après la connexion : au nom du
+     Commun ou du fokontany. « Hiditra » la referme sur l'appli
+     (fokontany-app.js). -->
+<div id="fkArahaba" translate="no" class="notranslate" role="dialog" aria-label="Tongasoa" style="display:none;">
+  <div class="fk-arahaba-ao">
+    <div class="fk-arahaba-tongasoa">👋 TONGASOA</div>
+    <h1 id="fkArahabaAnarana">Fokontany</h1>
+    <div id="fkArahabaAmbany" style="display:none;"></div>
+    <div><button type="button" id="fkArahabaHiditra">Hiditra →</button></div>
+  </div>
+</div>
+
 <div id="loginScreen">
   <div class="login-card">
     <div class="eyebrow" id="fkNomApp">Fokontany</div>
     <h1>Fidirana</h1>
-    <p class="sub">Ny kaonty Ny asako ihany no ampiasaina eto : email sy mot de passe mitovy.</p>
+    <p class="sub">Ny kaonty Ny asako ihany no ampiasaina eto : email na laharana finday, sy mot de passe mitovy.</p>
     <form id="fkLoginForm">
       <div class="field">
-        <label for="fkLoginEmail">Email</label>
-        <input id="fkLoginEmail" type="email" required placeholder="vous@exemple.com" autocomplete="email">
+        <label for="fkLoginEmail">Email na laharana finday</label>
+        <input id="fkLoginEmail" type="text" required placeholder="vous@exemple.com / 034 00 000 00" autocomplete="username">
       </div>
       <div class="field">
         <label for="fkLoginPassword">Mot de passe</label>
@@ -169,25 +208,46 @@
     <button type="button" class="btn btn-sm" id="fkAdinoBtn" style="width:100%; margin-top:0.5rem;">🔑 Adino ny mot de passe</button>
 
     <!-- Kaonty vaovao -->
+    <!-- Deux temps : qui l'on est d'abord, puis le mot de passe dans le cadre
+         « Mila alalana », le même que la porte du Commun (fokontany-app.js). -->
     <form id="fkVaovaoForm" style="display:none; margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.9rem;">
-      <div class="field">
-        <label for="fkVaovaoAnarana">Anarana feno</label>
-        <input id="fkVaovaoAnarana" type="text" required placeholder="Nom et prénoms" autocomplete="name">
+      <div id="fkDingana1">
+        <div class="field">
+          <label for="fkVaovaoAnarana">First name</label>
+          <input id="fkVaovaoAnarana" type="text" required placeholder="Prénom" autocomplete="given-name">
+        </div>
+        <div class="field">
+          <label for="fkVaovaoLast">Last name</label>
+          <input id="fkVaovaoLast" type="text" required placeholder="Nom" autocomplete="family-name">
+        </div>
+        <div class="field">
+          <label for="fkVaovaoEmail">Email (tsy voatery)</label>
+          <input id="fkVaovaoEmail" type="email" placeholder="vous@exemple.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="fkVaovaoFinday">Laharana finday</label>
+          <input id="fkVaovaoFinday" type="tel" placeholder="034 00 000 00" autocomplete="tel">
+        </div>
       </div>
-      <div class="field">
-        <label for="fkVaovaoEmail">Email</label>
-        <input id="fkVaovaoEmail" type="email" required placeholder="vous@exemple.com" autocomplete="email">
+      <!-- La porte du Commun (#communPorte), ici avec le mot de passe : le
+           compte naît au premier bouton, puis la porte de l'appli prend le
+           relais avec la même demande ou le même code (fokontany-app.js). -->
+      <!-- Le mot de passe seul : le compte naît au bouton, puis la porte de
+           l'appli (« Mila alalana ») prend le relais (fokontany-app.js). -->
+      <div id="fkDingana2" style="display:none;">
+        <div class="field">
+          <label for="fkVaovaoMdp">Mot de passe</label>
+          <input id="fkVaovaoMdp" type="password" minlength="6" placeholder="6 litera farafahakeliny" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label for="fkVaovaoMdp2">Hamafiso ny mot de passe</label>
+          <input id="fkVaovaoMdp2" type="password" minlength="6" placeholder="Avereno ilay mot de passe" autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn btn-primary" id="fkVaovaoMangataka" style="width:100%;">🔓 Sokafy ny site</button>
+        <p id="fkVaovaoStatus" style="font-size:0.76rem; color:var(--muted); margin:0.7rem 0 0.9rem; line-height:1.5; min-height:1.1em;"></p>
       </div>
-      <div class="field">
-        <label for="fkVaovaoFinday">Laharana finday</label>
-        <input id="fkVaovaoFinday" type="tel" placeholder="034 00 000 00" autocomplete="tel">
-      </div>
-      <div class="field">
-        <label for="fkVaovaoMdp">Mot de passe</label>
-        <input id="fkVaovaoMdp" type="password" required minlength="6" placeholder="6 litera farafahakeliny" autocomplete="new-password">
-      </div>
-      <p id="fkVaovaoStatus" style="font-size:0.75rem; color:var(--amber); margin:-0.2rem 0 0.8rem; line-height:1.5; min-height:1.1em;"></p>
-      <button type="submit" class="btn btn-primary btn-sm" id="fkVaovaoValider" style="width:100%;">Hamorona ny kaonty sy hiditra</button>
+      <p id="fkVaovaoStatus1" style="font-size:0.75rem; color:var(--amber); margin:-0.2rem 0 0.8rem; line-height:1.5; min-height:1.1em;"></p>
+      <button type="submit" class="btn btn-primary btn-sm" id="fkVaovaoValider" style="width:100%;">Manaraka →</button>
     </form>
 
     <!-- Mot de passe oublié : un code par email, puis le nouveau mot de passe. -->
@@ -226,31 +286,20 @@
 
 <div id="appScreen">
   <header class="fk-barre">
-    <!-- Le Commun ne touche à rien, mais il cherche : la barre filtre les
-         lignes de l'onglet ouvert, et cherche aussi dans tout le Commun —
-         fokontany, livrets, membres, adidy, papiers (fokontany-app.js). Sous
-         le nom, dans l'en-tête qui reste en vue, et hors de .lecture-seule. -->
-    <div id="communRechercheBox" style="position:relative;">
-      <input type="search" id="communRecherche" placeholder="🔍 Hikaroka ato amin'ny Commun rehetra (fokontany, anarana, fonenana, CIN…)" autocomplete="off"
-        style="flex:1; min-width:0; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:0.6rem 0.8rem; font:inherit;">
-      <span id="communRechercheIsa" style="font-size:0.78rem; color:var(--muted); white-space:nowrap;"></span>
-      <div id="communRechercheValiny" role="listbox" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; max-height:60vh; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.4); z-index:70;"></div>
-    </div>
     <div class="brand" id="fkMarque">🗂️ <span>Fokontany</span></div>
-    <div style="display:flex; align-items:center; gap:0.8rem;">
-      <!-- Les avis restent ici, dans le site : une bande qui passe s'oublie,
-           et le fokontany veut relire ce qu'on lui a dit (fokontany-app.js). -->
-      <div style="position:relative;">
-        <button type="button" class="btn btn-sm" id="fkNotifBtn" aria-label="Fampahafantarana" aria-expanded="false" style="width:auto;">
-          🔔 <span id="fkNotifBadge" style="display:none; background:#ff6b6b; color:#fff; font-size:0.62rem; font-weight:700; border-radius:999px; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 4px;">0</span>
-        </button>
-        <div id="fkNotifPanel" style="display:none; position:absolute; top:40px; right:0; width:300px; max-height:340px; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:60; text-align:left;">
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:0.7rem 0.9rem; border-bottom:1px solid var(--line);">
-            <strong style="font-size:0.85rem;">Fampahafantarana</strong>
-            <button type="button" id="fkNotifFafao" style="background:none; border:none; color:var(--cyan); font-size:0.72rem; cursor:pointer;">Fafana</button>
-          </div>
-          <div id="fkNotifList"></div>
-        </div>
+    <div id="fkBarreAvanana" style="display:flex; align-items:center; gap:0.8rem;">
+      <!-- La recherche, là où était la cloche : elle filtre les lignes de
+           l'onglet ouvert, et cherche dans tout le site — pages, livrets,
+           membres, adidy, papiers ; dans le Commun, chez tous ses fokontany
+           (fokontany-app.js). Dans l'en-tête qui reste en vue, et hors de
+           .lecture-seule. -->
+      <!-- Une loupe d'abord : la toucher ouvre la barre (fokontany-app.js). -->
+      <button type="button" class="btn btn-sm" id="fkRechercheBtn" aria-label="Hikaroka" aria-expanded="false" style="width:auto;">🔍</button>
+      <div id="communRechercheBox" style="position:relative;">
+        <input type="search" id="communRecherche" placeholder="🔍 Hikaroka ato amin'ny Commun rehetra (fokontany, anarana, fonenana, CIN…)" autocomplete="off"
+          style="flex:1; min-width:0; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:0.6rem 0.8rem; font:inherit;">
+        <span id="communRechercheIsa" style="font-size:0.78rem; color:var(--muted); white-space:nowrap;"></span>
+        <div id="communRechercheValiny" role="listbox" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; max-height:60vh; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.4); z-index:70;"></div>
       </div>
       <!-- Le réglage, juste après la cloche : le compte ouvert s'y lit
            (fokontany-app.js ouvre et referme le panneau). -->
@@ -333,7 +382,7 @@
           <div id="communContenu">
           <!-- data-commun et non data-dash : ces onglets changent ce qu'on voit
                DANS la fenêtre. Un data-dash ferait basculer la page entière. -->
-          <div class="dash-tabs">
+          <div class="dash-tabs" style="position:relative;">
             <div class="dash-tab active" data-commun="tableau">📊 Tableau de bord</div>
             <div class="dash-tab" data-commun="adidy">💰 Adidy</div>
             <div class="dash-tab" data-commun="historique">📜 Historique</div>
@@ -343,6 +392,20 @@
             <div class="dash-tab" data-commun="fokontany" id="ongletFokontany">🏘️ Fokontany</div>
             <!-- Le propriétaire seul : le style le montre, commun-alalana.js le décide. -->
             <div class="dash-tab" data-commun="fangatahana" id="ongletFangatahana" style="display:none;">🛡️ Fangatahana</div>
+            <!-- Les avis, avec les onglets : une bande qui passe s'oublie, et le
+                 fokontany veut relire ce qu'on lui a dit. Le panneau s'ouvre
+                 sous la rangée, sur toute sa largeur (fokontany-app.js). -->
+            <button type="button" class="dash-tab" id="fkNotifBtn" aria-label="Fampahafantarana" aria-expanded="false"
+              style="background:none; border-top:none; border-left:none; border-right:none; font-family:var(--font-mono); cursor:pointer;">
+              🔔 Fampahafantarana <span id="fkNotifBadge" style="display:none; background:#ff6b6b; color:#fff; font-size:0.62rem; font-weight:700; border-radius:999px; min-width:16px; height:16px; line-height:16px; text-align:center; padding:0 4px;">0</span>
+            </button>
+            <div id="fkNotifPanel" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; max-width:440px; margin-left:auto; max-height:340px; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:60; text-align:left;">
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:0.7rem 0.9rem; border-bottom:1px solid var(--line);">
+                <strong style="font-size:0.85rem;">Fampahafantarana</strong>
+                <button type="button" id="fkNotifFafao" style="background:none; border:none; color:var(--cyan); font-size:0.72rem; cursor:pointer;">Fafana</button>
+              </div>
+              <div id="fkNotifList"></div>
+            </div>
           </div>
           <!-- Le fokontany regardé seul (onglet « Fokontany ») : tout ce qui suit ne
                montre que le sien, à regarder sans rien changer (fokontany-app.js). -->
@@ -856,8 +919,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="/gestion-stockage-js/fokontany-app.js?v=3a934bbd"></script>
-<script src="/gestion-stockage-js/commun-alalana.js?v=14bcf7c9"></script>
+<script src="/gestion-stockage-js/fokontany-app.js?v=76e2100b"></script>
+<script src="/gestion-stockage-js/commun-alalana.js?v=c3a8e119"></script>
 <script src="/gestion-stockage-js/pdf.js?v=b7c1f056"></script>
 <script src="/gestion-stockage-js/taratasy.js?v=7688b0e0"></script>
 <script src="/gestion-stockage-js/fianakaviana.js?v=2d087da0"></script>
