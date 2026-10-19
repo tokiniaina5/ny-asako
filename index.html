@@ -191,6 +191,8 @@
          reste ouvert) et la demande de déblocage (compte fermé, paiement à confirmer). -->
     <div id="forgotWrap" style="display:none;">
 
+      <button type="button" class="btn btn-sm" id="helpBackBtn" style="width:100%; display:none;">← Retour à la connexion</button>
+
       <!-- 1) MOT DE PASSE OUBLIÉ : le code n'arrive que dans la boîte mail du titulaire -->
       <button type="button" class="btn btn-sm" id="resetToggleBtn" style="width:100%; margin-top:0.7rem;">🔑 Mot de passe oublié ?</button>
 
@@ -274,31 +276,49 @@
       </div>
     </div>
 
-    <form id="loginForm">
-      <div class="field">
-        <label for="loginName">Nom</label>
-        <input id="loginName" type="text" required placeholder="Votre nom">
+    <!-- Inscription en trois étapes : le nom, puis comment vous joindre,
+         puis le logo et le mot de passe. -->
+    <form id="loginForm" novalidate>
+      <div class="eyebrow" id="loginStepLabel" style="margin-bottom:0.8rem;">Étape 1 sur 3</div>
+
+      <div class="login-step" data-step="1">
+        <div class="field">
+          <label for="loginFirstName">Prénom</label>
+          <input id="loginFirstName" type="text" required placeholder="Votre prénom" autocomplete="given-name">
+        </div>
+        <div class="field">
+          <label for="loginLastName">Nom</label>
+          <input id="loginLastName" type="text" required placeholder="Votre nom" autocomplete="family-name">
+        </div>
       </div>
-      <div class="field">
-        <label for="loginEmail">Email</label>
-        <input id="loginEmail" type="email" required placeholder="vous@exemple.com">
+
+      <div class="login-step" data-step="2" style="display:none;">
+        <div class="field">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" required placeholder="vous@exemple.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="loginPhone">Numéro de téléphone</label>
+          <input id="loginPhone" type="tel" placeholder="034 00 000 00" autocomplete="tel">
+        </div>
       </div>
-      <div class="field">
-        <label for="loginPhone">Numéro de téléphone</label>
-        <input id="loginPhone" type="tel" placeholder="034 00 000 00">
+
+      <div class="login-step" data-step="3" style="display:none;">
+        <div class="field">
+          <label for="loginLogo">Logo (image)</label>
+          <input id="loginLogo" type="file" accept="image/*">
+          <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Obligatoire uniquement à la 1ère connexion — ensuite votre nom suffit à retrouver votre logo.</p>
+        </div>
+        <div class="field">
+          <label for="loginCode">Mot de passe</label>
+          <input id="loginCode" type="password" required minlength="6" placeholder="6 caractères minimum" autocomplete="new-password">
+          <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Il est conservé chiffré sur le serveur (jamais sur cet appareil) et vous permet de vous connecter depuis n'importe quel téléphone ou ordinateur.</p>
+        </div>
       </div>
-      <div class="field">
-        <label for="loginLogo">Logo (image)</label>
-        <input id="loginLogo" type="file" accept="image/*">
-        <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Obligatoire uniquement à la 1ère connexion — ensuite votre nom suffit à retrouver votre logo.</p>
-      </div>
-      <div class="field">
-        <label for="loginCode">Mot de passe</label>
-        <input id="loginCode" type="password" required minlength="6" placeholder="6 caractères minimum" autocomplete="new-password">
-        <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Il est conservé chiffré sur le serveur (jamais sur cet appareil) et vous permet de vous connecter depuis n'importe quel téléphone ou ordinateur.</p>
-      </div>
+
       <p id="loginStatus" style="font-size:0.78rem; color:var(--amber); margin:-0.2rem 0 0.8rem; line-height:1.5;"></p>
-      <button type="submit" class="btn btn-primary">Se connecter</button>
+      <button type="submit" class="btn btn-primary" id="loginSubmitBtn">Suivant →</button>
+      <button type="button" class="btn btn-sm" id="loginPrevBtn" style="width:100%; margin-top:0.7rem; display:none;">← Retour</button>
       <button type="button" class="btn btn-sm" id="showQuickLoginBtn" style="width:100%; margin-top:0.7rem; display:none;">J’ai déjà un compte — connexion rapide</button>
     </form>
   </div>

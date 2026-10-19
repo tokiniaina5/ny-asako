@@ -2429,7 +2429,32 @@
       const box = document.getElementById(id);
       if(box) box.style.display = 'none';
     });
+    showHelpOnly(null);
   }
+
+  // Un dépannage ouvert prend tout l'écran : la connexion et l'autre dépannage
+  // disparaissent, et « Retour à la connexion » les ramène.
+  function showHelpOnly(openId){
+    const pairs = { resetBox: 'resetToggleBtn', forgotBox: 'forgotToggleBtn' };
+    Object.keys(pairs).forEach(function(id){
+      const btn = document.getElementById(pairs[id]);
+      if(btn) btn.style.display = (!openId || openId === id) ? 'block' : 'none';
+    });
+    const back = document.getElementById('helpBackBtn');
+    if(back) back.style.display = openId ? 'block' : 'none';
+    if(openId && quickLoginForm) quickLoginForm.style.display = 'none';
+  }
+  function openHelpBox(id){
+    const box = document.getElementById(id);
+    const open = box.style.display === 'block';
+    closeHelpBoxes();
+    if(open){ if(quickLoginForm) quickLoginForm.style.display = 'block'; return false; }
+    box.style.display = 'block';
+    showHelpOnly(id);
+    return true;
+  }
+  const helpBackBtn = document.getElementById('helpBackBtn');
+  if(helpBackBtn) helpBackBtn.addEventListener('click', function(){ showLoginMode('quick'); });
   function refreshLoginMode(){
     // On ouvre toujours sur la première connexion (inscription) : c'est là que
     // la personne crée son compte. Celle qui en a déjà un bascule sur
@@ -2449,11 +2474,7 @@
   const resetToggleBtn = document.getElementById('resetToggleBtn');
   if(resetToggleBtn){
     resetToggleBtn.addEventListener('click', function(){
-      const box = document.getElementById('resetBox');
-      const open = box.style.display === 'block';
-      closeHelpBoxes();
-      box.style.display = open ? 'none' : 'block';
-      if(!open){
+      if(openHelpBox('resetBox')){
         const field = document.getElementById('resetEmail');
         const tape = document.getElementById('quickEmail').value.trim();
         const known = (tape.indexOf('@') >= 0 ? tape : '') || loadLastEmail();
@@ -2837,11 +2858,7 @@
   const forgotToggleBtn = document.getElementById('forgotToggleBtn');
   if(forgotToggleBtn){
     forgotToggleBtn.addEventListener('click', function(){
-      const box = document.getElementById('forgotBox');
-      const open = box.style.display === 'block';
-      closeHelpBoxes();
-      box.style.display = open ? 'none' : 'block';
-      if(open) return;
+      if(!openHelpBox('forgotBox')) return;
       // Ce que la personne vient de taper pour se connecter sert déjà : on ne
       // lui redemande pas son email deux fois de suite.
       const quickEmail = document.getElementById('quickEmail').value.trim();
@@ -3062,10 +3079,54 @@
     if(text) console.warn('[connexion] ' + text);
   }
 
+  // ---------------- INSCRIPTION EN TROIS ÉTAPES ----------------
+  // 1) prénom + nom, 2) email + téléphone, 3) logo + mot de passe.
+  // Le formulaire est en novalidate : chaque étape vérifie ses propres champs,
+  // sinon le navigateur bloquerait sur un champ caché d'une autre étape.
+  let loginStep = 1;
+  function loginFullName(){
+    const first = document.getElementById('loginFirstName').value.trim();
+    const last = document.getElementById('loginLastName').value.trim();
+    return (first + ' ' + last).trim();
+  }
+  function showLoginStep(step){
+    loginStep = step;
+    loginForm.querySelectorAll('.login-step').forEach(function(el){
+      el.style.display = Number(el.dataset.step) === step ? 'block' : 'none';
+    });
+    const label = document.getElementById('loginStepLabel');
+    if(label) label.textContent = 'Étape ' + step + ' sur 3';
+    const submitBtn = document.getElementById('loginSubmitBtn');
+    if(submitBtn) submitBtn.textContent = step === 3 ? 'Se connecter' : 'Suivant →';
+    const prevBtn = document.getElementById('loginPrevBtn');
+    if(prevBtn) prevBtn.style.display = step > 1 ? 'block' : 'none';
+    setLoginStatus('');
+    const current = loginForm.querySelector('.login-step[data-step="' + step + '"] input');
+    if(current && loginScreen.style.display !== 'none') current.focus();
+  }
+  function loginStepValid(step){
+    const inputs = loginForm.querySelectorAll('.login-step[data-step="' + step + '"] input');
+    for(let i = 0; i < inputs.length; i++){
+      if(!inputs[i].checkValidity()){ inputs[i].reportValidity(); return false; }
+    }
+    if(step === 2 && !document.getElementById('loginPhone').value.trim()){
+      const known = findProfile(loginFullName());
+      if(!known || !known.phone){ setLoginStatus('Veuillez indiquer votre numéro de téléphone.'); return false; }
+    }
+    return true;
+  }
+  const loginPrevBtn = document.getElementById('loginPrevBtn');
+  if(loginPrevBtn) loginPrevBtn.addEventListener('click', function(){
+    if(loginStep > 1) showLoginStep(loginStep - 1);
+  });
+  loginForm.addEventListener('reset', function(){ setTimeout(function(){ showLoginStep(1); }, 0); });
+
   loginForm.addEventListener('submit', function(e){
     e.preventDefault();
     setLoginStatus('');
-    const name = document.getElementById('loginName').value.trim();
+    if(!loginStepValid(loginStep)) return;
+    if(loginStep < 3){ showLoginStep(loginStep + 1); return; }
+    const name = loginFullName();
     const email = document.getElementById('loginEmail').value.trim();
     const phoneInput = document.getElementById('loginPhone').value.trim();
     const logoFile = document.getElementById('loginLogo').files[0];
@@ -3694,7 +3755,7 @@
     document.getElementById('autoNoticeModal').style.display = 'none';
     // Le champ à remplir dépend du formulaire affiché : « Bon retour » ou inscription.
     const quickVisible = quickLoginForm && quickLoginForm.style.display !== 'none';
-    const firstField = document.getElementById(quickVisible ? 'quickEmail' : 'loginName');
+    const firstField = document.getElementById(quickVisible ? 'quickEmail' : 'loginFirstName');
     if(firstField) firstField.focus();
   });
 
