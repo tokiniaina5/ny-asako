@@ -276,10 +276,10 @@
       </div>
     </div>
 
-    <!-- Inscription en trois étapes : le nom, puis comment vous joindre,
-         puis le logo et le mot de passe. -->
+    <!-- Inscription en quatre étapes : le nom, puis comment vous joindre,
+         puis le logo, enfin le mot de passe et sa confirmation. -->
     <form id="loginForm" novalidate>
-      <div class="eyebrow" id="loginStepLabel" style="margin-bottom:0.8rem;">Étape 1 sur 3</div>
+      <div class="eyebrow" id="loginStepLabel" style="margin-bottom:0.8rem;">Étape 1 sur 4</div>
 
       <div class="login-step" data-step="1">
         <div class="field">
@@ -309,10 +309,17 @@
           <input id="loginLogo" type="file" accept="image/*">
           <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Obligatoire uniquement à la 1ère connexion — ensuite votre nom suffit à retrouver votre logo.</p>
         </div>
+      </div>
+
+      <div class="login-step" data-step="4" style="display:none;">
         <div class="field">
           <label for="loginCode">Mot de passe</label>
           <input id="loginCode" type="password" required minlength="6" placeholder="6 caractères minimum" autocomplete="new-password">
           <p style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">Il est conservé chiffré sur le serveur (jamais sur cet appareil) et vous permet de vous connecter depuis n'importe quel téléphone ou ordinateur.</p>
+        </div>
+        <div class="field">
+          <label for="loginCodeConfirm">Confirmer le mot de passe</label>
+          <input id="loginCodeConfirm" type="password" required minlength="6" placeholder="Retapez le mot de passe" autocomplete="new-password">
         </div>
       </div>
 
