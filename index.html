@@ -44,8 +44,11 @@
     if(location.pathname === '/hotely/'){ location.replace('/hotely' + location.search + location.hash); return; }
     document.documentElement.classList.add('app-hotely');
     document.title = 'Ny asako Hôtel';
+    // Comme le Fokontany : pas de manifeste tant que l'admin n'est pas entré
+    // — le navigateur n'a rien à installer pour personne d'autre. common.js
+    // pose celui de l'Hôtel dès que l'admin est reconnu.
     var m = document.querySelector('link[rel="manifest"]');
-    if(m) m.href = '/hotely.webmanifest';
+    if(m) m.parentNode.removeChild(m);
   })();
 </script>
 <meta name="theme-color" content="#0a0d10">
@@ -800,6 +803,7 @@
         <!-- Installer les deux applications : le propriétaire seul, et d'ici
              seulement — leurs pages ne s'installent pour personne d'autre. -->
         <button type="button" class="nav-action" id="menuInstallFokontany">📲 Télécharger Fokontany</button>
+        <button type="button" class="nav-action" id="menuInstallHotel">📲 Télécharger Hôtel</button>
         <button type="button" class="nav-action" id="menuInstallCommun">📲 Télécharger Commun</button>
         <button type="button" class="nav-action" id="notifToggle" aria-label="Notifications" aria-expanded="false" style="position:relative;">
           <span>🔔 Notifications</span>
