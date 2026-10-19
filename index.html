@@ -34,6 +34,20 @@
 <!-- Application installable : le manifeste décrit le nom, l'icône et la façon
      de s'ouvrir ; le reste est affaire de service worker, enregistré plus bas. -->
 <link rel="manifest" href="/manifest.webmanifest">
+<!-- « /hotely » sert cette même page (_redirects) : Ny asako Hôtel, qui
+     s'installe à part avec son propre manifeste et s'ouvre sur l'Hôtellerie.
+     Avec une barre finale, les chemins relatifs de la page partiraient de
+     /hotely/ : on revient tout de suite à l'adresse sans barre. -->
+<script>
+  (function(){
+    if(!/^\/hotely\/?$/.test(location.pathname)) return;
+    if(location.pathname === '/hotely/'){ location.replace('/hotely' + location.search + location.hash); return; }
+    document.documentElement.classList.add('app-hotely');
+    document.title = 'Ny asako Hôtel';
+    var m = document.querySelector('link[rel="manifest"]');
+    if(m) m.href = '/hotely.webmanifest';
+  })();
+</script>
 <meta name="theme-color" content="#0a0d10">
 <!-- Le mode jour, avant tout le reste : posé plus tard, la page s'ouvrait
      sombre puis s'éclairait d'un coup (theme.js tient le bouton). -->
@@ -116,6 +130,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Ny asako">
+<script>
+  // Sur l'iPhone, le nom proposé sous l'icône est celui de l'Hôtel.
+  if(document.documentElement.classList.contains('app-hotely')){
+    document.querySelector('meta[name="apple-mobile-web-app-title"]').content = 'Ny asako Hôtel';
+  }
+</script>
 <link rel="apple-touch-icon" href="/icone-192.png">
 <!-- Sans image à sa taille exacte, iOS ouvre l'application sur un rectangle
      vide : il ne lit pas le manifeste, d'où Android tire le sien. -->
