@@ -286,7 +286,8 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
   function nouvelId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-  function ariary(n) { return Number(n || 0).toLocaleString('fr-FR') + ' Ar'; }
+  // 24242 → « 24.242 MGA » : le point pour les milliers, comme le menu.
+  function ariary(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' MGA'; }
   function nomSokajy(c) {
     const s = sokajyListe().find(function (x) { return x[0] === c; });
     return s ? s[1] : c;
@@ -426,6 +427,73 @@
   }
   function rohyLatabatra(uid, n) {
     return location.origin + '/menu-sakafo.html?id=' + uid + '&latabatra=' + n;
+  }
+  // ---------- La lakozia ----------
+  // La cuisine reçoit les commandes sur sa page à elle (lakozia.html), sans
+  // compte : son lien porte un code tiré ici, gardé dans hotelerie_lakozia
+  // (supabase/sql/supabase-hotelerie-lakozia.sql). « ♻️ Code vaovao » en tire
+  // un autre : l'ancien lien ne sert plus.
+  function codeVaovao() {
+    const o = new Uint8Array(18);
+    crypto.getRandomValues(o);
+    return Array.from(o, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+  }
+  function rohyLakozia(uid, ovay) {
+    const ecrire = function () {
+      const code = codeVaovao();
+      return sb().from('hotelerie_lakozia')
+        .upsert({ hotel_id: uid, code: code, updated_at: new Date().toISOString() })
+        .then(function (res) { if (res.error) throw res.error; return code; });
+    };
+    const code = ovay ? ecrire() : sb().from('hotelerie_lakozia').select('code').eq('hotel_id', uid).maybeSingle()
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return res.data && res.data.code ? res.data.code : ecrire();
+      });
+    return code.then(function (c) { return location.origin + '/lakozia.html?id=' + uid + '&k=' + c; });
+  }
+  function blocLakozia() {
+    return '<div class="panel" style="margin-top:1rem;">' +
+      '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">' +
+        '<strong style="font-size:0.9rem;">👨‍🍳 Lakozia</strong>' +
+        '<div style="display:flex; gap:0.4rem; flex-wrap:wrap;">' +
+          '<button type="button" class="btn btn-sm" id="lakoziaAdikao" style="width:auto;">🔗 Adikao ny rohy</button>' +
+          '<button type="button" class="btn btn-sm" id="lakoziaSokafy" style="width:auto;">↗️ Sokafy</button>' +
+          '<button type="button" class="btn btn-sm" id="lakoziaOvay" style="width:auto;">♻️ Code vaovao</button>' +
+        '</div>' +
+      '</div>' +
+      '<p style="font-size:0.75rem; color:var(--muted); margin:0.5rem 0 0;">Sokafy amin\'ny téléphone na tablette ao an-dakozia ity rohy ity, dia « 📲 Installer » : miseho ao avy hatrany ny commande avy amin\'ny latabatra rehetra (misy feo), ary ny lakozia no manindry « ✅ Vita ». « ♻️ Code vaovao » : tsy mandeha intsony ny rohy taloha.</p>' +
+    '</div>';
+  }
+  function brancherLakozia(zone) {
+    function avecCompte(f) {
+      (compte ? Promise.resolve(compte) : idDuCompte()).then(function (uid) {
+        if (!uid) { alert('Midira ao amin\'ny kaontinao aloha.'); return; }
+        f(uid);
+      });
+    }
+    zone.querySelector('#lakoziaAdikao').addEventListener('click', function (e) {
+      const bouton = e.target;
+      avecCompte(function (uid) {
+        rohyLakozia(uid, false).then(function (l) { copier(l, bouton, '🔗 Adikao ny rohy'); }, function (err) { alert(err.message || err); });
+      });
+    });
+    zone.querySelector('#lakoziaSokafy').addEventListener('click', function () {
+      // La fenêtre s'ouvre tout de suite (sinon le navigateur la bloque),
+      // l'adresse vient après.
+      const w = window.open('', '_blank');
+      avecCompte(function (uid) {
+        rohyLakozia(uid, false).then(function (l) { if (w) w.location.href = l; else location.href = l; },
+          function (err) { if (w) w.close(); alert(err.message || err); });
+      });
+    });
+    zone.querySelector('#lakoziaOvay').addEventListener('click', function (e) {
+      if (!confirm('Hanova ny code ve ? Tsy mandeha intsony ny rohy lakozia taloha : mila omena ny vaovao ny lakozia.')) return;
+      const bouton = e.target;
+      avecCompte(function (uid) {
+        rohyLakozia(uid, true).then(function (l) { copier(l, bouton, '♻️ Code vaovao'); }, function (err) { alert(err.message || err); });
+      });
+    });
   }
   // ---------- Les latabatra ----------
   // Toutes les latabatra en boutons ; celle qu'on ouvre ne montre plus que
@@ -630,10 +698,113 @@
       alert('Tsy azo ny QR : jereo ny connexion, dia avereno.');
     });
   }
+  // ---------- Effacer en glissant ----------
+  // La carte glissée disparaît tout de suite ; l'effacement part 5 s plus
+  // tard, le temps de « ↩️ Averina ». Pendant qu'un doigt glisse, on ne
+  // redessine pas (la carte serait remplacée sous lui).
+  const effacements = {};
+  let glisseEnCours = false;
+  let aRedessiner = false;
+  function effacerPlusTard(c) {
+    effacements[c.id] = setTimeout(function () {
+      sb().from('hotelerie_commande').delete().eq('id', c.id).then(function (res) {
+        delete effacements[c.id];
+        if (res.error) alert('Tsy voafafa : ' + res.error.message);
+        chargerCommandes(true);
+      });
+      fermerAnnuler();
+    }, 5000);
+    dessinerCommandes();
+    montrerAnnuler(c);
+  }
+  let boiteAnnuler = null;
+  function fermerAnnuler() { if (boiteAnnuler) { boiteAnnuler.remove(); boiteAnnuler = null; } }
+  function montrerAnnuler(c) {
+    fermerAnnuler();
+    const b = document.createElement('div');
+    b.style.cssText = 'position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:9999; display:flex; align-items:center; gap:0.8rem;' +
+      ' background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:999px; padding:0.5rem 0.6rem 0.5rem 1rem; box-shadow:0 6px 24px rgba(0,0,0,0.4); font-size:0.88rem;';
+    b.appendChild(document.createTextNode('🗑️ Voafafa ny commande T' + c.latabatra));
+    const averina = document.createElement('button');
+    averina.type = 'button';
+    averina.className = 'btn btn-sm';
+    averina.style.width = 'auto';
+    averina.textContent = '↩️ Averina';
+    averina.addEventListener('click', function () {
+      clearTimeout(effacements[c.id]);
+      delete effacements[c.id];
+      fermerAnnuler();
+      dessinerCommandes();
+    });
+    b.appendChild(averina);
+    document.body.appendChild(b);
+    boiteAnnuler = b;
+  }
+  function brancherGlisse(zone) {
+    let g = null;
+    zone.addEventListener('pointerdown', function (e) {
+      const carte = e.target.closest('[data-glisse-carte]');
+      if (!carte || e.target.closest('button, a, input, select, textarea')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      g = { carte: carte, cadre: carte.parentNode, x: e.clientX, y: e.clientY, dx: 0, sens: null, id: e.pointerId };
+    });
+    zone.addEventListener('pointermove', function (e) {
+      if (!g || e.pointerId !== g.id) return;
+      const dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.sens) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        // Un geste vertical, c'est le défilement : on laisse.
+        if (Math.abs(dy) > Math.abs(dx)) { g = null; return; }
+        g.sens = 'x';
+        glisseEnCours = true;
+        try { g.carte.setPointerCapture(e.pointerId); } catch (x) { }
+        g.carte.style.transition = 'none';
+      }
+      g.dx = dx;
+      g.carte.style.transform = 'translateX(' + dx + 'px)';
+      const fond = g.cadre.querySelector('[data-glisse-fond]');
+      // Le mot se place du côté qui se découvre.
+      if (fond) { fond.style.left = dx > 0 ? '1rem' : 'auto'; fond.style.right = dx > 0 ? 'auto' : '1rem'; }
+      e.preventDefault();
+    });
+    function fin(e) {
+      if (!g || e.pointerId !== g.id) return;
+      const ici = g;
+      g = null;
+      if (ici.sens !== 'x') return;
+      const largeur = ici.carte.offsetWidth || 300;
+      ici.carte.style.transition = 'transform 0.2s ease';
+      if (Math.abs(ici.dx) > largeur * 0.35 && e.type === 'pointerup') {
+        ici.carte.style.transform = 'translateX(' + (ici.dx > 0 ? largeur : -largeur) + 'px)';
+        const c = commandes.find(function (x) { return x.id === ici.cadre.dataset.glisse; });
+        setTimeout(function () {
+          glisseEnCours = false;
+          if (c) effacerPlusTard(c); else dessinerCommandes();
+        }, 200);
+      } else {
+        ici.carte.style.transform = 'translateX(0)';
+        setTimeout(function () {
+          glisseEnCours = false;
+          if (aRedessiner) { aRedessiner = false; dessinerCommandes(); }
+        }, 200);
+      }
+    }
+    zone.addEventListener('pointerup', fin);
+    zone.addEventListener('pointercancel', fin);
+  }
+
   function dessinerCommandes() {
     const zone = document.getElementById('commandesZone');
     if (!zone) return;
-    const visibles = commandes.filter(function (c) { return voirVita || !c.vita; });
+    if (glisseEnCours) { aRedessiner = true; return; }
+    // Une commande que la lakozia (ou l'hôtel) dit « vita » reste là, marquée
+    // ✅ Vita, jusqu'au lendemain : on la voit changer au lieu de la voir
+    // disparaître. « Asehoy ny vita taloha » montre aussi celles d'avant.
+    const anio = new Date().toDateString();
+    const visibles = commandes.filter(function (c) {
+      if (effacements[c.id]) return false;
+      return voirVita || !c.vita || new Date(c.created_at).toDateString() === anio;
+    });
     const parTable = {};
     visibles.forEach(function (c) { (parTable[c.latabatra] = parTable[c.latabatra] || []).push(c); });
     let tables = Object.keys(parTable).map(Number).sort(function (a, b) { return a - b; });
@@ -659,6 +830,7 @@
         '<p style="font-size:0.75rem; color:var(--muted); margin:0.5rem 0 0;">Ny rohy isaky ny latabatra dia efa misafidy ny latabatra ho an\'ny mpanjifa (🔳 QR eo amin\'ny latabatra tsirairay : printy, dia apetraho eo ambony latabatra). Sokafy amin\'ny téléphone na tablette eo amin\'ilay latabatra, dia « 📲 Installer » : lasa appli « T1 », « T2 »… manokana izy.</p>' +
       '</div>' +
       blocVola() +
+      blocLakozia() +
       blocLatabatra(enAttente) +
       '<div class="panel" style="margin-top:1rem;">' +
         '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">' +
@@ -666,7 +838,7 @@
             ? 'T' + tableOuverte + ' : ' + (enAttente[tableOuverte] || 0) + ' commande mbola tsy vita'
             : nbVaovao + ' commande mbola tsy vita') + '</strong>' +
           '<div style="display:flex; gap:0.4rem; flex-wrap:wrap;">' +
-            '<button type="button" class="btn btn-sm" id="commandesVita" style="width:auto;">' + (voirVita ? '🙈 Afeno ny vita' : '👁️ Asehoy ny vita') + '</button>' +
+            '<button type="button" class="btn btn-sm" id="commandesVita" style="width:auto;">' + (voirVita ? '🙈 Afeno ny vita taloha' : '👁️ Asehoy ny vita taloha') + '</button>' +
             '<button type="button" class="btn btn-sm" id="commandesHavaozina" style="width:auto;">🔄 Havaozina</button>' +
           '</div>' +
         '</div>' +
@@ -684,10 +856,14 @@
               (tsyVoaloa ? '<span style="font-size:0.78rem; color:#ffb020;">💳 Tsy voaloa : ' + ariary(tsyVoaloa) + '</span>' : '') +
             '</div>' +
             liste.map(function (c) {
-              return '<div style="margin-top:0.6rem; padding:0.6rem 0.7rem; border-radius:8px; border:1px solid var(--line);' + (c.vita ? ' opacity:0.55;' : '') + '">' +
+              // Glisser la carte à gauche ou à droite l'efface (le fond rouge
+              // apparaît dessous) ; « ↩️ Averina » la rend pendant 5 s.
+              return '<div data-glisse="' + c.id + '" style="position:relative; margin-top:0.6rem; border-radius:8px; overflow:hidden; background:var(--red);' + (c.vita ? ' opacity:0.8;' : '') + '">' +
+                '<span data-glisse-fond style="position:absolute; top:50%; transform:translateY(-50%); left:1rem; color:#fff; font-weight:700; font-size:0.9rem; pointer-events:none;">🗑️ Esorina</span>' +
+                '<div data-glisse-carte style="position:relative; padding:0.6rem 0.7rem; border-radius:8px; border:1px solid var(--line); background:var(--panel); touch-action:pan-y;' + (c.vita ? ' border-color:#3ecf8e;' : '') + '">' +
                 '<div style="display:flex; justify-content:space-between; gap:0.5rem; font-size:0.75rem; color:var(--muted);">' +
                   '<span>🕒 ' + heure(c.created_at) + '</span>' +
-                  '<span>' + (c.vita ? '✅ Vita' : '⏳ Miandry') + '</span>' +
+                  (c.vita ? '<span style="color:#3ecf8e; font-weight:700;">✅ Vita</span>' : '<span>⏳ Miandry</span>') +
                 '</div>' +
                 (c.plats || []).map(function (p) {
                   return '<div style="display:flex; justify-content:space-between; gap:0.5rem; font-size:0.86rem; margin-top:0.25rem;">' +
@@ -707,7 +883,7 @@
                     '<button type="button" class="btn btn-sm btn-red" data-commande="esory" data-id="' + c.id + '" style="width:auto;">Esorina</button>' +
                   '</div>' +
                 '</div>' +
-              '</div>';
+              '</div></div>';
             }).join('') +
           '</div>';
         }).join('') +
@@ -734,6 +910,7 @@
       dessinerCommandes();
     });
     zone.querySelector('#commandesHavaozina').addEventListener('click', function () { chargerCommandes(true); });
+    brancherLakozia(zone);
     zone.querySelector('#latabatraTehirizo').addEventListener('click', function () {
       const n = Math.round(Number(zone.querySelector('#latabatraIsa').value));
       if (!(n >= 1 && n <= 500)) { alert('Isa 1 ka hatramin\'ny 500.'); return; }
@@ -770,6 +947,7 @@
     // écouteur pour les boutons des commandes.
     if (zone.dataset.branche) return;
     zone.dataset.branche = '1';
+    brancherGlisse(zone);
     zone.addEventListener('click', function (e) {
       const ouvrir = e.target.closest('button[data-ouvrir]');
       if (ouvrir) {
@@ -885,7 +1063,7 @@
               '<select id="sakafoSokajy" style="flex:1 1 auto; min-width:0;">' + optionsSokajy(plat && plat.sokajy) + '</select>' +
               '<button type="button" class="btn btn-sm" id="sokajyOvay" title="Ovay ny sokajy" aria-label="Ovay ny sokajy" style="width:auto; padding:0.25rem 0.55rem; font-size:1rem; line-height:1;">✏️</button>' +
             '</div></div>' +
-          '<div class="field" style="margin-bottom:0;"><label for="sakafoVidiny">Vidiny (Ar)</label>' +
+          '<div class="field" style="margin-bottom:0;"><label for="sakafoVidiny">Vidiny (MGA)</label>' +
             '<input id="sakafoVidiny" type="number" min="0" step="100" placeholder="Ex: 12000" value="' + html(plat ? plat.vidiny : '') + '"></div>' +
         '</div>' +
         '<div id="sokajyMpanova" style="display:none; margin-top:0.8rem; border:1px solid var(--line); border-radius:10px; padding:0.8rem;"></div>' +

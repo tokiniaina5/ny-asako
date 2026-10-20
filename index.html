@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="1b5d8af5">
+<meta name="ny-asako-version" content="a9afa007">
 <title>Ny asako — Tanjona</title>
 <!-- Ouvert par le lien d'un employé ou d'un livreur : la fenêtre porte son
      nom dès le premier instant (gardé la dernière fois par vue-mpiasa.js,
@@ -171,8 +171,8 @@
 <link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2732x2048.png">
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
-<link rel="stylesheet" href="gestion-stockage-css/base.css?v=505a9236">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=54e0f08b">
+<link rel="stylesheet" href="gestion-stockage-css/base.css?v=b2c3c50f">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=eaaed3da">
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
@@ -797,7 +797,8 @@
         <button type="button" class="nav-action" id="menuTableauBord">📊 Tableau de bord</button>
         <button type="button" class="nav-action" id="menuCommun">🗂️ Fokontany</button>
         <button type="button" class="nav-action" id="menuCommunAdmin">🏛️ Commun</button>
-        <!-- L'hôtel : son menu sakafo (hotelerie.js). -->
+        <!-- L'hôtel : son menu sakafo (hotelerie.js). Le logo de Ny asako, que
+             celui de l'hôtel remplace dès qu'il en a un (hotelerie.js). -->
         <div class="nav-item" data-section="hotelerie"><img class="nav-logo nav-logo-img nav-logo-hotel" src="/icone-192.png" alt="" aria-hidden="true" draggable="false">Ny asako Hôtellerie</div>
         <!-- Installer les deux applications : le propriétaire seul, et d'ici
              seulement — leurs pages ne s'installent pour personne d'autre. -->
@@ -3379,22 +3380,22 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=ac16d992"></script>
+<script src="gestion-stockage-js/common.js?v=d8cf68ed"></script>
 <script src="gestion-stockage-js/herinaratra.js?v=622d64e8"></script>
 <script src="gestion-stockage-js/stock.js?v=d33d19a7"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=92ad47d0"></script>
 <script src="gestion-stockage-js/factures.js?v=69af0cd7"></script>
 <script src="gestion-stockage-js/factures-modely.js?v=8fbf4a42"></script>
-<script src="gestion-stockage-js/inviter.js?v=437d899c"></script>
+<script src="gestion-stockage-js/inviter.js?v=6e0a83c1"></script>
 <script src="gestion-stockage-js/contact.js?v=b7517b12"></script>
 <!-- Montre au client qui vient de s'inscrire, à sa première entrée, tous les
      canaux du propriétaire (contact.js les tient). -->
-<script src="gestion-stockage-js/serasera-voalohany.js?v=55330613"></script>
-<script src="gestion-stockage-js/zara-rehetra.js?v=b4bc508d"></script>
+<script src="gestion-stockage-js/serasera-voalohany.js?v=fc02a4e2"></script>
+<script src="gestion-stockage-js/zara-rehetra.js?v=9b9c2469"></script>
 <script src="gestion-stockage-js/live.js?v=7720b6ae"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=9c286435"></script>
+<script src="gestion-stockage-js/parametres.js?v=82b459de"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=bfe2ae80"></script>
@@ -3403,17 +3404,17 @@
 <script src="gestion-stockage-js/carte-libre.js?v=da42db8a"></script>
 <script src="gestion-stockage-js/equipe.js?v=307dc2cd"></script>
 <script src="gestion-stockage-js/vue-mpiasa.js?v=1e6cfbec"></script>
-<script src="gestion-stockage-js/vue-suivi.js?v=77f7b0f5"></script>
-<script src="gestion-stockage-js/hotelerie.js?v=8530cfd9"></script>
+<script src="gestion-stockage-js/vue-suivi.js?v=2a4b45f9"></script>
+<script src="gestion-stockage-js/hotelerie.js?v=320204ff"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=bf90a8a5"></script>
 <script src="gestion-stockage-js/photocopie.js?v=be4f35a5"></script>
 <script src="gestion-stockage-js/pdf.js?v=b7c1f056"></script>
 <script src="gestion-stockage-js/commun-alalana.js?v=c3a8e119"></script>
 <!-- Les explications deviennent des fiches « 💡 Fanazavana » qu'un ✕ referme. -->
-<script src="gestion-stockage-js/fanazavana.js"></script>
+<script src="gestion-stockage-js/fanazavana.js?v=9de0318c"></script>
 <script src="gestion-stockage-js/taratasy.js?v=7688b0e0"></script>
 <script src="gestion-stockage-js/fianakaviana.js?v=2d087da0"></script>
-<script src="gestion-stockage-js/validation-install.js?v=a2f98f46"></script>
+<script src="gestion-stockage-js/validation-install.js?v=322302c3"></script>
 <script src="gestion-stockage-js/adidy.js?v=0f6b4f4c"></script>
 <script src="gestion-stockage-js/theme.js?v=096262fd"></script>
 <script src="gestion-stockage-js/mot-de-passe.js?v=fa311136"></script>
