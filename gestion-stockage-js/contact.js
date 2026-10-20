@@ -4,10 +4,9 @@
   // Fifandraisan'ny champ admin sy ny clé voatahiry. Ny endrika sy ny fitondran'ny
   // bokotra dia voafaritra ao amin'ny renderContactButtons, araka ny vondrona.
   const CONTACT_FIELD_MAP = [
-    // Adiresy publique an'ny site : io no ampiasaina amin'ny rohy rehetra zaraina
-    // (invitation, fanambarana Live…). Raha tsy voafeno dia ny adiresy an'ity
-    // pejy ity no alaina — izay tsy misokatra amin'ny olon-kafa raha localhost.
-    { key: 'site_url', inputId: 'contactSiteUrlInput' },
+    // L'adresse publique du site n'a plus de case (20/10/2026) : vide en base,
+    // elle laissait les liens partagés sur ny-asako.netlify.app (inviter.js),
+    // ce qu'ils font tout seuls. La colonne site_url reste, et n'est plus écrite.
     // Les coordonnées de paiement (PayPal, carte, virement, Mobile Money) ne
     // sont plus demandées : le déblocage se règle avec les crédits du
     // portefeuille, sans que rien ne sorte de l'application. Les colonnes
@@ -605,8 +604,10 @@
       (l.lien || l.canal ? ' cursor:pointer;' : '') + (l.vide ? ' opacity:0.45;' : '') + '"';
     // Un canal des cases : le logo ouvre sa case (le lien est dedans).
     if(l.canal){
-      return '<button type="button" data-canal="' + l.canal + '" aria-pressed="false" ' + attrs.replace('style="', 'style="background:none; border:0; padding:0; font:inherit; ') + '>' +
+      const logo = '<button type="button" data-canal="' + l.canal + '" aria-pressed="false" ' + attrs.replace('style="', 'style="background:none; border:0; padding:0; font:inherit; ') + '>' +
         carre + nom + '</button>';
+      // Rempli, il s'efface aussi d'un ✕ : la case est vidée et enregistrée.
+      return l.vide ? logo : '<span style="position:relative; display:inline-flex;">' + logo + boutonFafana('data-vider="' + l.canal + '"', l.nom) + '</span>';
     }
     const corps = l.lien
       ? '<a href="' + escapeHtml(l.lien) + '" target="_blank" rel="noopener" ' + attrs + '>' + carre + nom + '</a>'
@@ -614,9 +615,32 @@
     // Un canal ajouté à la main s'efface d'un ✕ (surtout quand il est faux).
     if(!l.id) return corps;
     return '<span style="position:relative; display:inline-flex;">' + corps +
-      '<button type="button" data-fafana="' + escapeHtml(l.id) + '" data-nom="' + escapeHtml(l.nom) + '" title="Fafana" aria-label="Fafana ' + escapeHtml(l.nom) + '" ' +
+      boutonFafana('data-fafana="' + escapeHtml(l.id) + '"', l.nom) + '</span>';
+  }
+  function boutonFafana(attr, nom){
+    return '<button type="button" ' + attr + ' data-nom="' + escapeHtml(nom) + '" title="Fafana" aria-label="Fafana ' + escapeHtml(nom) + '" ' +
       'style="position:absolute; top:-0.55rem; left:-0.55rem; width:1.5rem; height:1.5rem; padding:0; border-radius:50%; ' +
-      'border:2px solid var(--panel); background:#e05a5a; color:#fff; font-size:0.8rem; font-weight:700; line-height:1; cursor:pointer;">✕</button></span>';
+      'border:2px solid var(--panel); background:#e05a5a; color:#fff; font-size:0.8rem; font-weight:700; line-height:1; cursor:pointer;">✕</button>';
+  }
+  // Un réseau des cases : on vide sa colonne seule, sans toucher aux autres
+  // cases qu'on serait en train d'écrire.
+  function viderCanal(cle, nom){
+    if(!confirm('Fafana ve ny ' + nom + ' ? Tsy hitan\'ny client intsony izy.')) return;
+    const champ = CONTACT_FIELD_MAP.find(function(f){ return f.key === cle; });
+    const input = champ && document.getElementById(champ.inputId);
+    const fini = function(){
+      if(input){ input.value = ''; input.dispatchEvent(new Event('input')); }
+      const local = loadContactChannelsLocal(); local[cle] = ''; saveContactChannelsLocal(local);
+      if(caseOuverte === cle) ouvrirLaCase(cle);
+      afficherLesEnregistres();
+      renderContactButtons();
+    };
+    if(!window.__sb){ fini(); return; }
+    const modif = {}; modif[cle] = '';
+    window.__sb.from('contact_channels').update(modif).eq('id', 1).select('id').then(function(res){
+      if(res && res.error){ alert('Tsy voafafa : ' + (res.error.message || 'erreur')); return; }
+      fini();
+    }, function(err){ alert('Tsy voafafa : ' + ((err && err.message) || 'réessayez')); });
   }
   function fafanaCanal(id, nom){
     if(!window.__sb || !id) return;
@@ -667,6 +691,9 @@
       });
       zone.querySelectorAll('[data-fafana]').forEach(function(b){
         b.addEventListener('click', function(e){ e.preventDefault(); fafanaCanal(b.dataset.fafana, b.dataset.nom); });
+      });
+      zone.querySelectorAll('[data-vider]').forEach(function(b){
+        b.addEventListener('click', function(e){ e.preventDefault(); viderCanal(b.dataset.vider, b.dataset.nom); });
       });
       if(caseOuverte) marquerLogo(caseOuverte);
     });
