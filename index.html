@@ -2435,28 +2435,29 @@
         </div>
       </section>
 
-      <!-- ---- SERVICE CLIENT : antso, antso video, fizarana (contact.js) ---- -->
+      <!-- ---- MESSAGE : hafatra amin'ny nanao inscription sy ny réseaux (contact.js, live.js) ---- -->
       <section class="section" id="section-serviceclient">
         <div class="section-head">
           <div>
             <h2>💬 Message</h2>
-            <p>Antso, antso video na fizarana : mifandraisa mivantana amin'ny service client.</p>
+            <p>Ireo nanao inscription sy ny réseaux sociaux. Tsindrio ny iray handefasana hafatra.</p>
           </div>
         </div>
 
-        <div class="panel">
-          <h3>Contactez le service client</h3>
-          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:1rem;">
-            Bokotra telo ihany : antso, antso video, fizarana. Rehefa maro ny canal
-            misokatra dia asehoina ny lisitra mba hisafidiananao.
-          </p>
+            <!-- 1) Admin ihany : ireo nanao inscription, handefasana hafatra (live.js). -->
+            <div class="panel" id="msgMpisoratraPanel" style="display:none; margin-top:0;">
+              <h3>👥 Ireo nanao inscription</h3>
+              <div id="msgMpisoratra"></div>
+              <p class="empty-hint" id="msgMpisoratraEmpty" style="display:none;">Mbola tsy misy nanao inscription.</p>
+            </div>
 
-          <div class="actions-row" id="contactMainActions" style="flex-wrap:wrap; gap:0.6rem;"></div>
-
-          <p class="empty-hint" id="contactButtonsEmptyHint" style="display:none;">
-            Aucun canal de contact n'a encore été configuré. Revenez bientôt !
-          </p>
-        </div>
+            <!-- 2) Les liens de « 🔗 Ajouter les liens » : un appui ouvre la
+                 conversation (contact.js, renderContactButtons). -->
+            <div class="panel">
+              <h3>🌐 Réseaux sociaux</h3>
+              <div class="actions-row" id="msgCanaux" style="flex-direction:column; align-items:stretch; gap:0.5rem;"></div>
+              <p class="empty-hint" id="msgCanauxEmpty" style="display:none;">Mbola tsy misy rohy nampidirina.</p>
+            </div>
 
       </section>
 
