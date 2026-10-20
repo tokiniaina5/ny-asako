@@ -167,8 +167,8 @@
       const phone = (channels.whatsapp || '').replace(/[^\d]/g, '');
       if(phone){
         const wa = 'https://wa.me/' + toInternationalNumber(phone);
-        voice.push({ label: '☎️ Antso an-tariby', color: '#25D366', run: dialNumber(phone) });
-        voice.push({ label: '💬 WhatsApp', color: '#25D366', run: openUrl(wa) });
+        voice.push({ label: '☎️ Antso an-tariby', color: '#25D366', run: dialNumber(phone), tel: true, rohy: phone });
+        voice.push({ label: '💬 WhatsApp', color: '#25D366', run: openUrl(wa), rohy: wa });
         video.push({ label: '💬 WhatsApp', color: '#25D366', run: openUrl(wa) });
       }
 
@@ -178,14 +178,14 @@
       const fb = adresseDeProfil('facebook', channels.facebook);
       const messenger = fb ? facebookToMessenger(fb) : null;
       if(messenger){
-        voice.push({ label: '📘 Messenger', color: '#1877F2', run: openUrl(messenger) });
+        voice.push({ label: '📘 Messenger', color: '#1877F2', run: openUrl(messenger), rohy: messenger });
         video.push({ label: '📘 Messenger', color: '#1877F2', run: openUrl(messenger) });
       }
 
       // Canal tsy mahavita antso : hafatra na profil, ampidirina ao amin'ny "Antso"
       // mba tsy ho very — afaka manoratra any ny mpanjifa.
       if(fb && !messenger){
-        voice.push({ label: '📘 Facebook', color: '#1877F2', run: openUrl(fb) });
+        voice.push({ label: '📘 Facebook', color: '#1877F2', run: openUrl(fb), rohy: fb });
       }
       [
         { key: 'instagram', label: '📸 Instagram', color: '#E1306C' },
@@ -194,11 +194,11 @@
         { key: 'twitter', label: '✖️ X (Twitter)', color: '#e7e9ea' }
       ].forEach(function(f){
         const url = adresseDeProfil(f.key, channels[f.key]);
-        if(url) voice.push({ label: f.label, color: f.color, run: openUrl(url) });
+        if(url) voice.push({ label: f.label, color: f.color, run: openUrl(url), rohy: url });
       });
       const wechat = (channels.wechat || '').trim();
       if(wechat){
-        voice.push({ label: '💚 WeChat', color: '#07C160', run: copyIdentifier('WeChat', wechat) });
+        voice.push({ label: '💚 WeChat', color: '#07C160', run: copyIdentifier('WeChat', wechat), rohy: wechat });
       }
 
       (extra || []).forEach(function(item){
@@ -209,24 +209,24 @@
           // ouvre le Telegram du client, pas le vôtre.
           const propre = adresseDeProfil('', value);
           // Un nom avec une espace (« t.me/tokiniaina tanjona ») n'ouvre personne.
-          if(propre && !/\s/.test(propre)) voice.push({ label: item.name, color: 'var(--cyan)', run: openUrl(propre) });
+          if(propre && !/\s/.test(propre)) voice.push({ label: item.name, color: 'var(--cyan)', run: openUrl(propre), rohy: propre });
           return;
         }
         // viber://, mailto: : un lien d'application, à ouvrir tel quel — et
         // non un numéro à composer, malgré les chiffres qu'il contient.
         if(/^(viber|mailto|tg|sgnl):/i.test(value)){
-          voice.push({ label: item.name, color: 'var(--cyan)', run: openUrl(value) });
+          voice.push({ label: item.name, color: 'var(--cyan)', run: openUrl(value), rohy: value });
           return;
         }
         const digits = value.replace(/[^\d]/g, '');
         if(digits.length >= 7){
-          voice.push({ label: '☎️ ' + item.name, color: 'var(--cyan)', run: dialNumber(digits) });
+          voice.push({ label: '☎️ ' + item.name, color: 'var(--cyan)', run: dialNumber(digits), tel: true, rohy: value });
           video.push({ label: item.name, color: 'var(--cyan)', run: openUrl('https://wa.me/' + toInternationalNumber(digits)) });
           return;
         }
         voice.push({
           label: item.name,
-          color: 'var(--cyan)',
+          color: 'var(--cyan)', rohy: value,
           run: value ? copyIdentifier(item.name, value)
                      : function(){ alert('Ouvrez ' + item.name + ' pour nous contacter.'); }
         });
@@ -276,6 +276,68 @@
 
       document.getElementById('contactButtonsEmptyHint').style.display =
         (voice.length || video.length) ? 'none' : 'block';
+
+      // Pejy « 📞 Call » : antso ao anaty appli (feo sy video) aloha, avy eo
+      // ny laharana — antso tena mivantana ihany.
+      const callRow = document.getElementById('callCanaux');
+      if(callRow){
+        callRow.innerHTML = '';
+        const liens = [];
+        // Ny admin no antsoin'ny mpanjifa ; izy kosa misafidy amin'ireo
+        // miditra ankehitriny izay hantsoiny.
+        // Jerena rehefa tsindriana : mety mbola tsy fantatra hoe admin ve
+        // rehefa vao nalaina ny canal.
+        function antso(type){
+          return function(){
+            const me = (typeof myIdentity === 'function') ? myIdentity() : { isAdmin: false };
+            if(!me.isAdmin){
+              const p = (typeof presenceState === 'object') ? presenceState[OWNER_EMAIL.toLowerCase()] : null;
+              startCall(OWNER_EMAIL.toLowerCase(), (p && p.name) || 'Admin', type);
+              return;
+            }
+            const ireo = (typeof presenceState === 'object') ? Object.keys(presenceState).filter(function(email){ return email !== me.email; }) : [];
+            if(!ireo.length){ alert('Tsy misy olona miditra ankehitriny.'); return; }
+            runOrChoose(type === 'video' ? '📹 Antso video' : '📞 Appel mivantana', 'Safidio izay hantsoina.',
+              ireo.map(function(email){
+                const p = presenceState[email] || {};
+                return { label: p.name || email, color: 'var(--cyan)', run: function(){ startCall(email, p.name || email, type); } };
+              }));
+          };
+        }
+        // Ny admin dia manana ny lisitry ny nanao inscription eo ambony
+        // (📞/📹 isaky ny olona) : tsy averina eto ireo bokotra roa ireo.
+        const meRender = (typeof myIdentity === 'function') ? myIdentity() : { isAdmin: false };
+        if(window.__sb && !meRender.isAdmin){
+          liens.push({ label: '📞 Appel mivantana', color: '#25D366', run: antso('audio') });
+          liens.push({ label: '📹 Antso video', color: '#1877F2', run: antso('video') });
+        }
+        // Ary ny laharana (tel:) : izy irery no manomboka antso avy hatrany.
+        // Ny rohy WhatsApp, Messenger, Instagram… dia manokatra resaka fotsiny.
+        voice.forEach(function(o){ if(o.tel) liens.push(o); });
+        liens.forEach(function(opt){
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn';
+          btn.style.width = '100%';
+          btn.style.textAlign = 'left';
+          btn.style.borderColor = opt.color;
+          btn.style.color = opt.color;
+          btn.textContent = opt.label;
+          // Ny rohy (na laharana) eo ambanin'ny anarany.
+          if(opt.rohy){
+            btn.style.flexDirection = 'column';
+            btn.style.alignItems = 'flex-start';
+            const sous = document.createElement('span');
+            sous.style.cssText = 'display:block; font-size:0.72rem; color:var(--muted); margin-top:0.15rem; ' +
+              'max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+            sous.textContent = String(opt.rohy).replace(/^https?:\/\/(www\.)?/i, '');
+            btn.appendChild(sous);
+          }
+          btn.addEventListener('click', opt.run);
+          callRow.appendChild(btn);
+        });
+        document.getElementById('callCanauxEmpty').style.display = liens.length ? 'none' : 'block';
+      }
     });
   }
 
