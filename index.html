@@ -1239,6 +1239,11 @@
                   <input type="number" id="newsPrice" min="0" step="100" placeholder="Vidiny (Ar)" style="display:none; width:130px;">
                   <button type="button" class="btn btn-primary btn-sm" id="postNewsBtn" style="width:auto;">Publier</button>
                 </div>
+                <!-- 🎬 l'ouvre : le lien de la vidéo, collé ici (parametres.js). -->
+                <div id="newsVideoRohy" style="display:none; gap:0.4rem; align-items:center; margin-top:0.6rem;">
+                  <input type="url" id="newsVideoRohyInput" placeholder="Rohy video (YouTube, Facebook, TikTok…)" style="flex:1; min-width:0; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.82rem;">
+                  <button type="button" class="btn btn-sm" id="newsVideoRohyOk" style="width:auto;">OK</button>
+                </div>
                 <!-- Sous la rangée des boutons, là où l'on vient de cocher 🛒 : au-dessus,
                      elle s'ouvrait hors de vue dans une boîte déjà défilée.
                      La fiche de l'article, dès que 🛒 est coché : les rubriques
