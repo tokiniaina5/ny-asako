@@ -1229,11 +1229,10 @@
                        pour qui ne voit pas l'image. -->
                   <label for="newsImage" class="composer-icone" title="Sary (maromaro azo alaina)" aria-label="Sary (maromaro azo alaina)">🖼️</label>
                   <input type="file" id="newsImage" accept="image/*" multiple style="display:none;">
-                  <!-- Une seule vidéo, et elle ne voyage pas dans la ligne
-                       comme les photos : elle part au bucket, la ligne garde
-                       son adresse. -->
-                  <label for="newsVideo" class="composer-icone" title="Video (iray, 25 Mo farany ambony)" aria-label="Video (iray, 25 Mo farany ambony)">🎬</label>
-                  <input type="file" id="newsVideo" accept="video/*" style="display:none;">
+                  <!-- La vidéo ne s'envoie plus : on colle son lien (YouTube,
+                       Facebook, TikTok…), et c'est ce site-là qui la sert
+                       (parametres.js). -->
+                  <button type="button" id="newsVideoBtn" class="composer-icone" title="Rohy video (YouTube, Facebook, TikTok…)" aria-label="Rohy video (YouTube, Facebook, TikTok…)" style="padding:0; cursor:pointer; color:inherit;">🎬</button>
                   <label class="composer-icone" id="newsIsGoodsLabel" title="Entana amidy" aria-label="Entana amidy">
                     <input type="checkbox" id="newsIsGoods" class="composer-case"> 🛒
                   </label>
