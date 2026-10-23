@@ -193,6 +193,31 @@
     const chemin = cheminSary(adresse);
     if (chemin && sb()) sb().storage.from(BUCKET_SARY).remove([chemin]).catch(function () { });
   }
+  // La photo d'un mpiasa, choisie depuis 👷 Mpiasa (equipe.js) : même
+  // réduction, même bucket, carrée et petite (un visage, pas un plat).
+  window.__saryMpiasa = {
+    safidio: function (fin) {
+      const champ = document.createElement('input');
+      champ.type = 'file';
+      champ.accept = ACCEPT_SARY;
+      champ.addEventListener('change', function () { if (champ.files && champ.files[0]) fin(champ.files[0]); });
+      ouvrirFichier(champ);
+    },
+    alefa: function (mpiasaId, fichier) {
+      return idDuCompte().then(function (uid) {
+        if (!uid) throw new Error('Midira ao amin\'ny kaontinao aloha.');
+        return reduireSary(fichier, 320, 0.8).then(function (r) {
+          const nom = uid + '/mpiasa-' + mpiasaId + '-' + Date.now().toString(36) + '.jpg';
+          return sb().storage.from(BUCKET_SARY).upload(nom, r.blob, { contentType: 'image/jpeg', upsert: true })
+            .then(function (res) {
+              if (res.error) throw new Error(res.error.message);
+              return sb().storage.from(BUCKET_SARY).getPublicUrl(nom).data.publicUrl;
+            });
+        });
+      });
+    },
+    fafao: effacerSary
+  };
 
   function direEnLigne(t) {
     etatEnLigne = t;
@@ -376,6 +401,7 @@
         onglet = b.dataset.onglet;
         rendre();
         if (onglet === 'commandes') chargerCommandes();
+        if (onglet === 'lakozia') chargerMpiasa();
       });
     });
     brancherTete(z);
@@ -483,6 +509,148 @@
       '</div>' +
       '<p style="font-size:0.75rem; color:var(--muted); margin:0.5rem 0 0;">Sokafy amin\'ny téléphone na tablette ao an-dakozia ity rohy ity, dia « 📲 Installer » : miseho ao avy hatrany ny commande avy amin\'ny latabatra rehetra (misy feo), ary ny lakozia no manindry « ✅ Vita ». « ♻️ Code vaovao » : tsy mandeha intsony ny rohy taloha.</p>' +
     '</div>';
+  }
+  // Les mpiasa inscrits dans 👷 Mpiasa (table equipe, rôle « mpiasa ») :
+  // l'hôtel les voit ici, sans rien pouvoir y toucher ; on les ajoute ou les
+  // change là-bas seulement. lakozia.html, elle, n'en montre rien.
+  let mpiasaLakozia = [];
+  let etatMpiasa = 'Miandry...';
+  function chargerMpiasa() {
+    const c = sb();
+    if (!c || !c.auth) return;
+    c.auth.getSession().then(function (r) {
+      const u = r && r.data && r.data.session ? r.data.session.user : null;
+      const email = u && u.email ? String(u.email).trim().toLowerCase() : '';
+      if (!email) { etatMpiasa = 'Midira ao amin\'ny kaontinao mba hahitana ny mpiasa.'; dessinerMpiasa(); return; }
+      return c.from('equipe').select('id,nom,role,telephone,email,ora_andrasana,sary').eq('owner_email', email).in('role', ['mpiasa', 'livreur'])
+        .order('created_at', { ascending: true }).then(function (res) {
+          if (res.error) { etatMpiasa = '⚠️ ' + res.error.message; dessinerMpiasa(); return; }
+          mpiasaLakozia = res.data || [];
+          etatMpiasa = '';
+          dessinerMpiasa();
+          // La photo de leur inscription (supabase-profil-sary.sql) passe
+          // avant celle posée à la main par « 📷 Sary ».
+          return c.rpc('equipe_sary_profil').then(function (r2) {
+            if (r2.error || !r2.data) return;
+            const parId = {};
+            r2.data.forEach(function (x) { parId[x.equipe_id] = x.sary; });
+            mpiasaLakozia.forEach(function (m) { if (parId[m.id]) m.saryProfil = parId[m.id]; });
+            dessinerMpiasa();
+          });
+        });
+    }).catch(function () { etatMpiasa = '⚠️ Tsy azo ny mpiasa (connexion ?).'; dessinerMpiasa(); });
+  }
+  // Les mpiasa, puis les livreurs (🛵 Livreur) : chacun son panneau, la même
+  // ligne et les mêmes boutons.
+  const SOKAJY_EKIPA = {
+    mpiasa: { lohateny: '👷 Ny mpiasa', pejy: '👷 Mpiasa', tsisy: 'mpiasa' },
+    livreur: { lohateny: '🛵 Ny livreur', pejy: '🛵 Livreur', tsisy: 'livreur' }
+  };
+  function vueEkipa() { return vueMpiasa('mpiasa') + vueMpiasa('livreur'); }
+  function vueMpiasa(role) {
+    const s = SOKAJY_EKIPA[role];
+    const l = mpiasaLakozia.filter(function (m) { return (m.role || 'mpiasa') === role; });
+    let corps;
+    if (etatMpiasa) corps = '<p style="font-size:0.82rem; color:var(--muted); margin:0;">' + html(etatMpiasa) + '</p>';
+    else if (!l.length) corps = '<p style="font-size:0.85rem; color:var(--muted); margin:0;">Mbola tsy misy ' + s.tsisy + ' voasoratra ao amin\'ny ' + s.pejy + '.</p>';
+    // Une ligne par mpiasa, l'un sous l'autre : la photo et le nom à gauche,
+    // les boutons à droite (dessous sur un écran étroit).
+    else corps = '<div style="display:flex; flex-direction:column; gap:0.5rem;">' +
+      l.map(function (m) {
+        const details = [m.telephone ? html(m.telephone) : '', m.ora_andrasana ? '🕒 ' + html(m.ora_andrasana) + ' h/andro' : ''].filter(Boolean).join(' · ');
+        const src = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(m.saryProfil || '') ? m.saryProfil
+          : (/^https:\/\//.test(m.sary || '') ? m.sary : '');
+        const sary = src
+          ? '<img src="' + html(src) + '" alt="" style="width:100%; height:100%; object-fit:cover; display:block;">'
+          : (role === 'livreur' ? '🛵' : '👷');
+        // Antsoy / Hafatra passent par le site (live.js) ; le téléphone de
+        // l'appareil ne sert qu'à défaut. WhatsApp, lui, a son numéro.
+        const wa = whatsappDe(m.telephone);
+        const enLigne = !!adresseMpiasa(m);
+        const bouton = 'display:inline-flex; align-items:center; justify-content:center; gap:0.3rem; flex:0 0 auto; min-height:2.2rem; padding:0 0.7rem; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--text); font-size:0.78rem; font-weight:600; text-decoration:none; white-space:nowrap; cursor:pointer; font-family:inherit;';
+        const point = enLigne ? ' <span style="color:#2e7d32;">●</span>' : '';
+        const actions = '<div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-left:auto;">' +
+            '<button type="button" data-mpiasa-antso="' + html(m.id) + '" style="' + bouton + '" title="Antsoy i ' + html(m.nom) + '">📞 Antsoy' + point + '</button>' +
+            '<button type="button" data-mpiasa-hafatra="' + html(m.id) + '" style="' + bouton + '" title="Hafatra ho an\'i ' + html(m.nom) + '">💬 Hafatra</button>' +
+            (wa ? '<a href="https://wa.me/' + wa + '" target="_blank" rel="noopener" style="' + bouton + ' color:#25d366;" title="WhatsApp ho an\'i ' + html(m.nom) + '">🟢 WhatsApp</a>' : '') +
+          '</div>';
+        return '<div style="display:flex; align-items:center; flex-wrap:wrap; gap:0.6rem 0.8rem; padding:0.6rem 0.7rem; border:1px solid var(--line); border-radius:12px; background:var(--panel-2);">' +
+          '<div style="display:flex; align-items:center; gap:0.7rem; flex:1 1 200px; min-width:0;">' +
+            '<span style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; width:3.4rem; height:3.4rem; border-radius:50%; overflow:hidden; background:rgba(79,216,224,0.15); font-size:1.6rem;">' + sary + '</span>' +
+            '<span style="min-width:0;">' +
+              '<strong style="display:block; font-size:0.95rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + html(m.nom) + '</strong>' +
+              (details ? '<small style="color:var(--muted);">' + details + '</small>' : '') +
+            '</span>' +
+          '</div>' +
+          actions +
+        '</div>';
+      }).join('') + '</div>';
+    return '<div class="panel" style="margin-top:1rem;">' +
+      '<h4 style="margin:0 0 0.2rem;">' + s.lohateny + ' (' + l.length + ')</h4>' +
+      '<p style="font-size:0.75rem; color:var(--muted); margin:0 0 0.8rem;">Ao amin\'ny ' + s.pejy + ' no anampiana azy sy ametrahana ny sariny.</p>' +
+      corps +
+    '</div>';
+  }
+  // WhatsApp veut le numéro international, sans « + » : 034 12 345 67 à
+  // Madagascar devient 261341234567.
+  function whatsappDe(finday) {
+    let n = String(finday || '').replace(/\D/g, '');
+    if (/^0\d{9}$/.test(n)) n = '261' + n.slice(1);
+    return n.length >= 10 ? n : '';
+  }
+  // Où joindre le mpiasa dans le site, s'il y est en ce moment (présence de
+  // live.js) : son compte Ny asako, ou la page de son lien (vue-mpiasa.js,
+  // la même adresse qu'equipe.js appelle).
+  // La page du lien passe d'abord : c'est elle que le mpiasa a ouverte. Son
+  // email ne compte que s'il n'est pas le nôtre — noté par erreur dans
+  // 👷 Mpiasa, il faisait écrire et sonner chez soi-même.
+  function lienMpiasa(m) { return 'mpiasa-' + m.id + '@ny-asako.invalid'; }
+  function emailMpiasa(m) {
+    const email = String(m.email || '').trim().toLowerCase();
+    const moi = typeof currentUser !== 'undefined' && currentUser && currentUser.email ? String(currentUser.email).trim().toLowerCase() : '';
+    return email && email !== moi ? email : '';
+  }
+  function adresseMpiasa(m) {
+    if (typeof presenceState === 'undefined') return '';
+    if (presenceState[lienMpiasa(m)]) return lienMpiasa(m);
+    const email = emailMpiasa(m);
+    return email && presenceState[email] ? email : '';
+  }
+  function chiffres(t) { return String(t || '').replace(/[^\d+]/g, ''); }
+  function antsoyMpiasa(m) {
+    const adresse = adresseMpiasa(m);
+    if (adresse && typeof startCall === 'function') { startCall(adresse, m.nom || 'Mpiasa', 'audio'); return; }
+    // Pas là : ses appareils abonnés reçoivent « 📞 Antso avy amin'i … »
+    // (live.js, fonction « push »), sur son compte comme sur la page de son lien.
+    if (typeof alefaPush === 'function') {
+      const email = emailMpiasa(m);
+      if (email) alefaPush(email, 'antso', { callType: 'audio' });
+      alefaPush(lienMpiasa(m), 'antso', { callType: 'audio' });
+    }
+    const finday = chiffres(m.telephone);
+    if (finday.replace(/\D/g, '').length >= 9) { location.href = 'tel:' + finday; return; }
+    alert('Tsy misokatra ny Ny asako-n\'i ' + (m.nom || 'ilay mpiasa') + ' amin\'izao : nalefa any aminy ny notification « 📞 Antso », hiantso anao izy rehefa mahita azy.');
+  }
+  // Pas là : vers son compte s'il en a un, sinon vers la page de son lien —
+  // le hafatra y part en notification (live.js, alefaPush).
+  function hafatraMpiasa(m) {
+    const adresse = adresseMpiasa(m) || emailMpiasa(m) || lienMpiasa(m);
+    if (typeof window.__sokafyResaka === 'function') { window.__sokafyResaka(adresse, m.nom || 'Mpiasa'); return; }
+    const finday = chiffres(m.telephone);
+    if (finday.replace(/\D/g, '').length >= 9) { location.href = 'sms:' + finday; return; }
+    alert('Tsy azo alefa ny hafatra ho an\'i ' + (m.nom || 'ilay mpiasa') + ' amin\'izao.');
+  }
+  function dessinerMpiasa() {
+    const z = document.getElementById('lakoziaMpiasa');
+    if (!z) return;
+    z.innerHTML = vueEkipa();
+    const par = function (id) { return mpiasaLakozia.find(function (m) { return String(m.id) === id; }); };
+    z.querySelectorAll('[data-mpiasa-antso]').forEach(function (b) {
+      b.addEventListener('click', function () { const m = par(b.dataset.mpiasaAntso); if (m) antsoyMpiasa(m); });
+    });
+    z.querySelectorAll('[data-mpiasa-hafatra]').forEach(function (b) {
+      b.addEventListener('click', function () { const m = par(b.dataset.mpiasaHafatra); if (m) hafatraMpiasa(m); });
+    });
   }
   function brancherLakozia(zone) {
     function avecCompte(f) {
@@ -876,9 +1044,10 @@
             liste.map(function (c) {
               // Glisser la carte à gauche ou à droite l'efface (le fond rouge
               // apparaît dessous) ; « ↩️ Averina » la rend pendant 5 s.
-              return '<div data-glisse="' + c.id + '" style="position:relative; margin-top:0.6rem; border-radius:8px; overflow:hidden; background:var(--red);' + (c.vita ? ' opacity:0.8;' : '') + '">' +
+              return '<div data-glisse="' + c.id + '" style="position:relative; margin-top:0.6rem; border-radius:8px; overflow:hidden; background:var(--red);' + (c.vita && c.voaloa ? ' opacity:0.8;' : '') + '">' +
                 '<span data-glisse-fond style="position:absolute; top:50%; transform:translateY(-50%); left:1rem; color:#fff; font-weight:700; font-size:0.9rem; pointer-events:none;">🗑️ Esorina</span>' +
-                '<div data-glisse-carte style="position:relative; padding:0.6rem 0.7rem; border-radius:8px; border:1px solid var(--line); background:var(--panel); touch-action:pan-y;' + (c.vita ? ' border-color:#3ecf8e;' : '') + '">' +
+                // Vita mais pas encore payé : le cadre vert clignote jusqu'à « Voaloa ».
+                '<div data-glisse-carte' + (c.vita && !c.voaloa ? ' class="hotely-tsy-voaloa"' : '') + ' style="position:relative; padding:0.6rem 0.7rem; border-radius:8px; border:1px solid var(--line); background:var(--panel); touch-action:pan-y;' + (c.vita ? ' border-color:#3ecf8e;' : '') + '">' +
                 '<div style="display:flex; justify-content:space-between; gap:0.5rem; font-size:0.75rem; color:var(--muted);">' +
                   '<span>🕒 ' + heure(c.created_at) + '</span>' +
                   (c.vita ? '<span style="color:#3ecf8e; font-weight:700;">✅ Vita</span>' : '<span>⏳ Miandry</span>') +
@@ -889,9 +1058,14 @@
                     '<span style="white-space:nowrap;">' + ariary((Number(p.isa) || 0) * (Number(p.vidiny) || 0)) + '</span></div>';
                 }).join('') +
                 (c.fanamarihana ? '<p data-fz-tsia style="font-size:0.8rem; margin:0.35rem 0 0; color:var(--muted);">📝 ' + html(c.fanamarihana) + '</p>' : '') +
-                '<p style="font-size:0.8rem; margin:0.35rem 0 0;">' + html(NOM_FOMBA[c.fandoavana] || '💳 Tsy voalaza ny fandoavana') +
-                  (c.fandoavana_ref ? ' · Réf : <strong>' + html(c.fandoavana_ref) + '</strong>' : '') +
-                  ' · ' + (c.voaloa ? '<span style="color:#3ecf8e; font-weight:700;">💰 Voaloa</span>' : '<span style="color:#ffb020;">⏳ Tsy mbola voaloa</span>') + '</p>' +
+                // Pas encore payé : le moyen de paiement devient un grand bouton
+                // vert plein ; le toucher, c'est « Voaloa », et il s'en va.
+                (c.voaloa ? '' :
+                  '<button type="button" class="hotely-mandoa" data-commande="voaloa" data-id="' + c.id + '" title="Tsindrio rehefa voaray ny vola">' +
+                    '<span>' + html(NOM_FOMBA[c.fandoavana] || '💳 Tsy voalaza ny fandoavana') +
+                      (c.fandoavana_ref ? ' · Réf : <strong>' + html(c.fandoavana_ref) + '</strong>' : '') + '</span>' +
+                    '<small>Tsindrio rehefa voaray ny vola</small>' +
+                  '</button>') +
                 '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem;">' +
                   '<strong style="font-size:0.88rem;">Total : ' + ariary(totalDe(c)) + '</strong>' +
                   '<div style="display:flex; gap:0.35rem; flex-wrap:wrap;">' +
@@ -1065,7 +1239,7 @@
         '<button type="button" class="dash-tab' + (onglet === 'lakozia' ? ' active' : '') + '" data-onglet="lakozia" style="width:auto;">👨‍🍳 Lakozia</button>' +
       '</div>';
     if (onglet === 'lakozia') {
-      z.innerHTML = tete + blocLakozia();
+      z.innerHTML = tete + blocLakozia() + '<div id="lakoziaMpiasa">' + vueEkipa() + '</div>';
       brancherOnglets(z);
       brancherLakozia(z);
       return;

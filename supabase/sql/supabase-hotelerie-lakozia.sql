@@ -27,7 +27,10 @@ grant select, insert, update, delete on public.hotelerie_lakozia to authenticate
 -- Les commandes du jour, pour la cuisine : ce qu'il faut préparer, sans
 -- l'argent (ni prix payé, ni moyen de paiement). Un code faux est une
 -- erreur, et non une liste vide : la page dit alors que le lien ne vaut plus.
-create or replace function public.hotelerie_lakozia_lisitra(hotel uuid, code text)
+-- (Remplacée plus bas avec la colonne « robot » : on l'ôte d'abord, sinon
+-- relancer ce fichier buterait sur le changement de type de retour.)
+drop function if exists public.hotelerie_lakozia_lisitra(uuid, text);
+create function public.hotelerie_lakozia_lisitra(hotel uuid, code text)
 returns table (id uuid, latabatra int, plats jsonb, fanamarihana text, vita boolean, created_at timestamptz)
 language plpgsql stable security definer set search_path = public
 as $$
@@ -88,14 +91,145 @@ $$;
 revoke all on function public.hotelerie_lakozia_re(uuid, text, uuid[]) from public;
 grant execute on function public.hotelerie_lakozia_re(uuid, text, uuid[]) to anon, authenticated;
 
--- L'état du reçu porte désormais « lakozia » : le type de retour change, la
--- fonction de supabase-hotelerie-commande.sql est donc remplacée en entier.
+-- ---------- Le 🔔 de la cuisine sonne à la latabatra ----------
+-- Chaque appui sur le 🔔 d'un bon date antso_at ; le reçu du client voit la
+-- date changer et sonne à son tour.
+alter table public.hotelerie_commande add column if not exists antso_at timestamptz;
+
+create or replace function public.hotelerie_lakozia_antso(hotel uuid, code text, commande uuid)
+returns integer
+language plpgsql volatile security definer set search_path = public
+as $$
+declare n integer;
+begin
+  if not exists (select 1 from public.hotelerie_lakozia l where l.hotel_id = hotel and l.code = hotelerie_lakozia_antso.code) then
+    raise exception 'code diso' using errcode = '28000';
+  end if;
+  update public.hotelerie_commande c set antso_at = now()
+   where c.id = commande and c.hotel_id = hotel;
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+revoke all on function public.hotelerie_lakozia_antso(uuid, text, uuid) from public;
+grant execute on function public.hotelerie_lakozia_antso(uuid, text, uuid) to anon, authenticated;
+
+-- ---------- Les livreurs, pour la cuisine ----------
+-- La lakozia voit les livreurs de l'hôtel (🛵 Livreur) pour les appeler
+-- quand un plat part : nom, numéro, photo. Ni email, ni jeton, ni le reste.
+-- La photo : celle de l'inscription (profil_sary), sinon celle de 📷 Sary.
+create or replace function public.hotelerie_lakozia_livreur(hotel uuid, code text)
+returns table (id uuid, nom text, telephone text, sary text)
+language plpgsql stable security definer set search_path = public
+as $$
+declare tompony text;
+begin
+  if not exists (select 1 from public.hotelerie_lakozia l where l.hotel_id = hotel and l.code = hotelerie_lakozia_livreur.code) then
+    raise exception 'code diso' using errcode = '28000';
+  end if;
+  select lower(trim(u.email)) into tompony from auth.users u where u.id = hotel;
+  return query
+    select e.id, e.nom, e.telephone,
+      coalesce((select p.sary from public.profil_sary p
+                 where e.email is not null and p.email = lower(trim(e.email)) and p.email <> tompony limit 1), e.sary)
+    from public.equipe e
+    where e.owner_email = tompony and e.role = 'livreur' and coalesce(e.actif, true)
+    order by e.created_at asc
+    limit 50;
+end;
+$$;
+revoke all on function public.hotelerie_lakozia_livreur(uuid, text) from public;
+grant execute on function public.hotelerie_lakozia_livreur(uuid, text) to anon, authenticated;
+
+-- L'état du reçu porte désormais « lakozia » et « antso » : le type de retour
+-- change, la fonction de supabase-hotelerie-commande.sql est donc remplacée en entier.
 drop function if exists public.hotelerie_commande_sata(uuid[]);
 create function public.hotelerie_commande_sata(ids uuid[])
-returns table (id uuid, vita boolean, voaloa boolean, lakozia boolean)
+returns table (id uuid, vita boolean, voaloa boolean, lakozia boolean, antso timestamptz)
 language sql stable security definer set search_path = public
 as $$
-  select c.id, c.vita, c.voaloa, c.lakozia_at is not null from public.hotelerie_commande c
+  select c.id, c.vita, c.voaloa, c.lakozia_at is not null, c.antso_at from public.hotelerie_commande c
+  where c.id = any (ids[1:30]);
+$$;
+revoke all on function public.hotelerie_commande_sata(uuid[]) from public;
+grant execute on function public.hotelerie_commande_sata(uuid[]) to anon, authenticated;
+
+-- ---------- 🤖 Le livreur robot, vu aussi de la latabatra ----------
+-- robot_sata : 'mandeha' (« Go to the table » en cuisine : il apporte le
+-- plat), 'miverina' (il a quitté la table : le client a touché « ✅ Voaray »),
+-- null (rentré en cuisine). La table clignote tant que c'est 'mandeha' ; la
+-- cuisine, tant que ce n'est pas null.
+alter table public.hotelerie_commande add column if not exists robot_sata text check (robot_sata in ('mandeha', 'miverina'));
+alter table public.hotelerie_commande add column if not exists robot_at timestamptz;
+
+-- La cuisine l'envoie (sata = 'mandeha') ou le dit rentré (sata = null).
+create or replace function public.hotelerie_lakozia_robot(hotel uuid, code text, commande uuid, sata text)
+returns integer
+language plpgsql volatile security definer set search_path = public
+as $$
+declare n integer;
+begin
+  if not exists (select 1 from public.hotelerie_lakozia l where l.hotel_id = hotel and l.code = hotelerie_lakozia_robot.code) then
+    raise exception 'code diso' using errcode = '28000';
+  end if;
+  update public.hotelerie_commande c
+     set robot_sata = case when sata = 'mandeha' then 'mandeha' else null end,
+         robot_at = now()
+   where c.id = commande and c.hotel_id = hotel;
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+revoke all on function public.hotelerie_lakozia_robot(uuid, text, uuid, text) from public;
+grant execute on function public.hotelerie_lakozia_robot(uuid, text, uuid, text) to anon, authenticated;
+
+-- La table : le plat est arrivé, le robot repart. Seulement s'il venait
+-- (l'id de la commande, que seul son reçu connaît, tient lieu de clé).
+create or replace function public.hotelerie_robot_voaray(commande uuid)
+returns integer
+language plpgsql volatile security definer set search_path = public
+as $$
+declare n integer;
+begin
+  update public.hotelerie_commande c set robot_sata = 'miverina', robot_at = now()
+   where c.id = commande and c.robot_sata = 'mandeha';
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+revoke all on function public.hotelerie_robot_voaray(uuid) from public;
+grant execute on function public.hotelerie_robot_voaray(uuid) to anon, authenticated;
+
+-- La liste de la cuisine et l'état du reçu portent désormais « robot ».
+drop function if exists public.hotelerie_lakozia_lisitra(uuid, text);
+create function public.hotelerie_lakozia_lisitra(hotel uuid, code text)
+returns table (id uuid, latabatra int, plats jsonb, fanamarihana text, vita boolean, created_at timestamptz, robot text)
+language plpgsql stable security definer set search_path = public
+as $$
+begin
+  if not exists (select 1 from public.hotelerie_lakozia l where l.hotel_id = hotel and l.code = hotelerie_lakozia_lisitra.code) then
+    raise exception 'code diso' using errcode = '28000';
+  end if;
+  return query
+    select c.id, c.latabatra, c.plats, c.fanamarihana, c.vita, c.created_at, c.robot_sata
+    from public.hotelerie_commande c
+    where c.hotel_id = hotel and c.created_at > now() - interval '24 hours'
+    order by c.created_at asc
+    limit 200;
+end;
+$$;
+revoke all on function public.hotelerie_lakozia_lisitra(uuid, text) from public;
+grant execute on function public.hotelerie_lakozia_lisitra(uuid, text) to anon, authenticated;
+
+drop function if exists public.hotelerie_commande_sata(uuid[]);
+create function public.hotelerie_commande_sata(ids uuid[])
+returns table (id uuid, vita boolean, voaloa boolean, lakozia boolean, antso timestamptz, robot text)
+language sql stable security definer set search_path = public
+as $$
+  select c.id, c.vita, c.voaloa, c.lakozia_at is not null, c.antso_at,
+    -- Un trajet de plus de 30 minutes est fini, même si personne ne l'a dit.
+    case when c.robot_at > now() - interval '30 minutes' then c.robot_sata end
+  from public.hotelerie_commande c
   where c.id = any (ids[1:30]);
 $$;
 revoke all on function public.hotelerie_commande_sata(uuid[]) from public;

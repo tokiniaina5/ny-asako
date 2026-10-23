@@ -20,7 +20,7 @@
 <script src="/mazava.js?v=2bcdcfad" defer></script>
 <!-- 🔄 La page se met à jour seule quand une version neuve est en ligne (pejy-version.js) ;
      l'empreinte est écrite par outils/versionner.mjs. -->
-<meta name="pejy-version" content="70dfbfdc">
+<meta name="pejy-version" content="e91af849">
 <script src="/pejy-version.js?v=97acc3b0" defer></script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -55,17 +55,57 @@
   ul{ list-style:none; margin:0.7rem 0 0; padding:0; flex:1; }
   li{ font-size:1.15rem; padding:0.3rem 0; border-bottom:1px solid var(--line); }
   li b{ display:inline-block; min-width:2.4rem; color:var(--accent); }
-  .note{ margin:0.6rem 0 0; padding:0.4rem 0.6rem; border-radius:8px; background:rgba(255,176,32,0.12); font-size:0.95rem; }
+  /* Ce que le client demande (« sans piment »…) : à ne pas manquer, même de
+     loin — grand, gras, sur fond orange vif. */
+  .note{ margin:0.6rem 0 0; padding:0.6rem 0.75rem; border-radius:10px; border:2px solid var(--vaovao); border-left-width:6px; background:rgba(255,176,32,0.22); color:var(--text); font-size:1.1rem; font-weight:700; line-height:1.35; }
+  :root[data-theme="light"] .note{ background:#fff1d6; }
   .bon .vita-btn{ margin-top:0.8rem; width:100%; padding:0.7rem; font-size:1.05rem; font-weight:700; background:var(--ok); border-color:var(--ok); color:#fff; }
   .bon.vita .vita-btn{ background:transparent; color:var(--muted); border-color:var(--line); font-weight:400; font-size:0.9rem; padding:0.4rem; }
   .vide{ color:var(--muted); background:var(--card); border:1px dashed var(--line); border-radius:12px; padding:1.4rem; text-align:center; }
   .erreur{ border-color:#e05a5a; color:#e05a5a; }
   .installer{ display:none; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:0.6rem 0.8rem; margin:0 0 1rem; }
   .installer p{ margin:0; font-size:0.85rem; color:var(--muted); flex:1 1 200px; }
+  /* Les livreurs : un bouton dans chaque bon, qui ouvre leur page par-dessus
+     la cuisine (✕ pour la fermer). */
+  .livreur-ouvrir{ display:block; width:100%; margin:0 0 0.6rem; padding:0.45rem; font-weight:600; }
+  .livreur-pejy{ position:fixed; inset:0; z-index:50; display:flex; align-items:flex-start; justify-content:center; padding:max(16px, env(safe-area-inset-top)) 16px 16px; background:rgba(0,0,0,0.55); overflow-y:auto; }
+  .livreur-boite{ width:min(560px, 100%); background:var(--bg); border:1px solid var(--line); border-radius:16px; padding:1rem; display:flex; flex-direction:column; gap:0.6rem; }
+  .livreur-tete{ display:flex; align-items:center; justify-content:space-between; gap:0.6rem; }
+  .livreur-tete h2{ margin:0; color:var(--text); font-size:1.15rem; }
+  .livreur-hidy{ width:2.6rem; height:2.6rem; padding:0; border-radius:50%; font-size:1.2rem; font-weight:700; line-height:1; }
+  .livreur-commande{ margin:0; padding:0.5rem 0.7rem; border-radius:10px; background:var(--card); color:var(--muted); font-size:0.9rem; }
+  .livreur{ display:flex; align-items:center; flex-wrap:wrap; gap:0.6rem 0.8rem; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:0.6rem 0.7rem; }
+  .livreur-sary{ flex:0 0 auto; display:flex; align-items:center; justify-content:center; width:3rem; height:3rem; border-radius:50%; overflow:hidden; background:rgba(79,216,224,0.15); font-size:1.5rem; }
+  .livreur-sary img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .livreur-nom{ flex:1 1 140px; min-width:0; display:flex; flex-direction:column; }
+  .livreur-nom strong{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .livreur-nom small, .livreur-tel{ color:var(--muted); font-size:0.8rem; }
+  .livreur-btns{ display:flex; gap:0.4rem; flex-wrap:wrap; margin-left:auto; }
+  .livreur-btns a{ display:inline-flex; align-items:center; gap:0.3rem; min-height:2.4rem; padding:0 0.8rem; border:1px solid var(--line); border-radius:8px; color:var(--text); text-decoration:none; font-weight:600; font-size:0.85rem; }
+  .livreur-btns a.wa{ color:#25d366; }
+  .livreur.robot{ opacity:0.6; border-style:dashed; }
+  /* En route : le robot (et le bouton de son bon) clignote. */
+  .livreur.robot.mipipika{ opacity:1; border-style:solid; border-color:var(--vaovao); }
+  .mipipika{ animation:mipipika 1s ease-in-out infinite; }
+  @keyframes mipipika{ 50%{ opacity:0.35; } }
+  @media (prefers-reduced-motion: reduce){ .mipipika{ animation:none; outline:2px solid var(--vaovao); } }
+  .livreur-ouvrir.mipipika{ border-color:var(--vaovao); color:var(--vaovao); }
+  .robot-marika{ margin-left:auto; padding:0.25rem 0.6rem; border-radius:999px; background:rgba(255,176,32,0.15); color:var(--vaovao); font-size:0.78rem; font-weight:700; white-space:nowrap; }
+  .robot-code{ display:flex; flex-direction:column; gap:0.3rem; font-size:0.85rem; color:var(--muted); font-weight:600; }
+  .robot-code input{ font:inherit; font-size:1rem; font-weight:400; color:var(--text); background:var(--card); border:1px solid var(--line); border-radius:10px; padding:0.6rem 0.75rem; }
+  .robot-code input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .robot-code-ligne{ display:flex; gap:0.5rem; }
+  .robot-code-ligne input{ flex:1 1 auto; min-width:0; }
+  .robot-save{ flex:0 0 auto; font-weight:700; }
+  .livreur-ampio:disabled{ opacity:0.45; cursor:not-allowed; }
+  .robot-etat{ margin:0; font-size:0.85rem; color:var(--accent); }
+  .robot-etat:empty{ display:none; }
+  .robot-etat.diso{ color:#e05a5a; }
+  .livreur-ampio{ width:100%; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; min-height:3rem; border:1px solid var(--accent); border-radius:12px; color:var(--accent); text-decoration:none; font-weight:700; font-size:1rem; }
 </style>
 <!-- Les émojis dessinés en 3D (emoji-3d.js). -->
 <!-- Les explications en visite guidée (fanazavana.js). -->
-<script src="/gestion-stockage-js/fanazavana.js?v=8a03d242" defer></script>
+<script src="/gestion-stockage-js/fanazavana.js?v=adfa06d4" defer></script>
 <script src="/gestion-stockage-js/emoji-3d.js?v=66dad412" defer></script>
 </head>
 <body>
@@ -115,6 +155,7 @@
   const zoneVita = document.getElementById('vitaZone');
 
   let commandes = [];
+  let livreurs = []; // ceux de 🛵 Livreur, posés dans chaque bon qui attend
   let connues = null; // les ids déjà vus : ce qui n'y est pas est neuf
   let neuves = {};
   let signature = '';
@@ -278,13 +319,14 @@
     const tete = el('div', null, 'bon-tete');
     const gauche = el('span', null, 'bon-gauche');
     gauche.appendChild(el('span', 'T' + c.latabatra, 'bon-table'));
-    // 🔔 : refaire entendre la sonnerie de cette commande.
+    // 🔔 : refaire entendre la sonnerie de cette commande, ici et à la latabatra.
     const feo = el('button', '🔔', 'feo-btn');
     feo.type = 'button';
-    feo.title = 'Avereno ny feo (T' + c.latabatra + ')';
+    feo.title = 'Ampanenoina ny T' + c.latabatra;
     feo.setAttribute('aria-label', feo.title);
     feo.addEventListener('click', function () {
       sonner(true);
+      antsoy(c);
       feo.classList.add('maneno');
       setTimeout(function () { feo.classList.remove('maneno'); }, 5500);
     });
@@ -304,11 +346,265 @@
     });
     b.appendChild(ul);
     if (c.fanamarihana) b.appendChild(el('p', '📝 ' + c.fanamarihana, 'note'));
+    // Dans tous les bons : vita, c'est justement l'heure où le plat part.
+    b.appendChild(blocLivreurs(c));
     const v = el('button', c.vita ? '↩️ Tsy mbola vita' : '✅ Vita', 'vita-btn');
     v.type = 'button';
     v.addEventListener('click', function () { marquer(c, v); });
     b.appendChild(v);
     return b;
+  }
+
+  // Les livreurs, dans le bon : on appelle celui qui part avec ce plat. Le
+  // SMS et WhatsApp emportent déjà la commande (table, plats, note).
+  // Les livreurs, depuis le bon : un bouton « 🛵 Livreur » ouvre leur page,
+  // par-dessus la cuisine, avec son ✕. On y appelle celui qui part avec ce
+  // plat ; le SMS et WhatsApp emportent déjà la commande (table, plats, note).
+  // Le trajet du robot en cours (« Go to the table ») : { latabatra, commande,
+  // at }, ou rien. Il dure jusqu'au retour du robot : celui-ci le dit en
+  // ouvrant lakozia.html?robot=tafaverina (ou un autre onglet le note) ; à
+  // défaut, au bout de 30 minutes, pour ne pas clignoter pour toujours.
+  const DIA_MAX = 30 * 60000;
+  function diaRobot() {
+    try {
+      const d = JSON.parse(retenuLire('robot_dia') || 'null');
+      if (!d || !d.commande) return null;
+      if (Date.now() - new Date(d.at).getTime() > DIA_MAX) { retenuEcrire('robot_dia', ''); robotServeur(d.commande, null); return null; }
+      return d;
+    } catch (e) { return null; }
+  }
+  // Le serveur garde l'état du trajet (hotelerie_lakozia_robot) : c'est lui
+  // qui fait clignoter la latabatra (menu-sakafo.html).
+  function robotServeur(commande, sata) {
+    if (!id || !code || !commande) return;
+    fetch(URL_SB + '/rest/v1/rpc/hotelerie_lakozia_robot', {
+      method: 'POST',
+      headers: { apikey: CLE_SB, Authorization: 'Bearer ' + CLE_SB, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hotel: id, code: code, commande: commande, sata: sata })
+    }).catch(function () { });
+  }
+  // Le client a touché « ✅ Voaray » : le robot a quitté la table et revient.
+  function robotMiverina(commande) {
+    const c = commandes.find(function (x) { return x.id === commande; });
+    return !!(c && c.robot === 'miverina');
+  }
+  function finRobot() {
+    const d = diaRobot();
+    if (d) robotServeur(d.commande, null);
+    retenuEcrire('robot_dia', '');
+    signature = '';
+    dessiner();
+    const e = document.getElementById('livreurPejy');
+    if (e) fermerLivreurs();
+  }
+  // Le robot est presque rentré : on compte 5 secondes, puis il ne clignote
+  // plus. Il le dit en ouvrant lakozia.html?robot=akaiky (ou =tafaverina).
+  const ISA_AKAIKY = 5;
+  function segondraSisa(d) {
+    if (!d || !d.akaiky_at) return null;
+    return Math.max(0, ISA_AKAIKY - Math.floor((Date.now() - new Date(d.akaiky_at).getTime()) / 1000));
+  }
+  function robotAkaiky() {
+    const d = diaRobot();
+    if (!d) return;
+    if (!d.akaiky_at) { d.akaiky_at = new Date().toISOString(); retenuEcrire('robot_dia', JSON.stringify(d)); }
+    tsingerinaAkaiky();
+  }
+  let akaikyMinitra = null;
+  function tsingerinaAkaiky() {
+    clearInterval(akaikyMinitra);
+    function tick() {
+      const d = diaRobot();
+      const sisa = segondraSisa(d);
+      if (sisa === null) { clearInterval(akaikyMinitra); return; }
+      if (sisa <= 0) { clearInterval(akaikyMinitra); finRobot(); return; }
+      signature = '';
+      dessiner();
+      const s = document.getElementById('robotSoratra');
+      if (s) s.textContent = '📍 Efa akaiky ny lakozia ny robot : mijanona afaka ' + sisa + ' s';
+    }
+    tick();
+    akaikyMinitra = setInterval(tick, 1000);
+  }
+  if (params.get('robot') === 'akaiky' || params.get('robot') === 'tafaverina') robotAkaiky();
+  else if (segondraSisa(diaRobot()) !== null) tsingerinaAkaiky();
+  window.addEventListener('storage', function (ev) {
+    if (ev.key !== 'lakozia_robot_dia') return;
+    if (segondraSisa(diaRobot()) !== null) tsingerinaAkaiky();
+    signature = ''; dessiner();
+  });
+  // Après chaque pas du trajet : la page du robot et le bon se redessinent.
+  function majDia(c) {
+    signature = '';
+    dessiner();
+    if (document.getElementById('livreurPejy')) ouvrirLivreurs(c);
+  }
+  function blocLivreurs(c) {
+    const dia = diaRobot();
+    const enRoute = dia && dia.commande === c.id;
+    const sisa = enRoute ? segondraSisa(dia) : null;
+    const b = el('button', enRoute
+      ? (sisa !== null ? '🤖 Efa akaiky… ' + sisa
+        : c.robot === 'miverina' ? '🤖 Miverina avy amin\'ny T' + c.latabatra + '…' : '🤖 Mandeha any amin\'ny T' + c.latabatra + '…')
+      : '🛵 Livreur' + (livreurs.length ? ' (' + livreurs.length + ')' : ''), 'livreur-ouvrir' + (enRoute ? ' mipipika' : ''));
+    b.type = 'button';
+    b.addEventListener('click', function () { ouvrirLivreurs(c); });
+    return b;
+  }
+  function fermerLivreurs() {
+    const e = document.getElementById('livreurPejy');
+    if (e) e.remove();
+    document.removeEventListener('keydown', echapLivreurs);
+  }
+  function echapLivreurs(ev) { if (ev.key === 'Escape') fermerLivreurs(); }
+  function ouvrirLivreurs(c) {
+    fermerLivreurs();
+    const fond = el('div', null, 'livreur-pejy');
+    fond.id = 'livreurPejy';
+    fond.addEventListener('click', function (ev) { if (ev.target === fond) fermerLivreurs(); });
+    const boite = el('div', null, 'livreur-boite');
+    const tete = el('div', null, 'livreur-tete');
+    tete.appendChild(el('h2', '🛵 Livreur · T' + c.latabatra));
+    const x = el('button', '✕', 'livreur-hidy');
+    x.type = 'button';
+    x.title = 'Hidio';
+    x.setAttribute('aria-label', 'Hidio');
+    x.addEventListener('click', fermerLivreurs);
+    tete.appendChild(x);
+    boite.appendChild(tete);
+    const soratra = 'T' + c.latabatra + ' : ' + (c.plats || []).map(function (p) { return (Number(p.isa) || 0) + ' × ' + p.anarana; }).join(', ') +
+      (c.fanamarihana ? ' (' + c.fanamarihana + ')' : '');
+    boite.appendChild(el('p', soratra, 'livreur-commande'));
+    // « Go to the table » envoie le robot à la latabatra ; sous lui, le lien
+    // du robot (son adresse web), retenu sur la tablette une fois enregistré.
+    // Le bouton ouvre ce lien avec la latabatra et la commande dans l'adresse
+    // (?latabatra=…&commande=…), ce que le robot lira quand il sera construit.
+    const ampio = el('button', '🍽️ Go to the table', 'livreur-ampio');
+    ampio.type = 'button';
+    // Écrit en anglais, et laissé tel quel par les traducteurs (translate="no").
+    ampio.setAttribute('translate', 'no');
+    boite.appendChild(ampio);
+    const champBloc = el('label', null, 'robot-code');
+    champBloc.appendChild(el('span', "🤖 Rohy an'ny robot"));
+    const champ = el('input');
+    champ.type = 'url';
+    champ.inputMode = 'url';
+    champ.autocomplete = 'off';
+    champ.maxLength = 500;
+    champ.placeholder = 'https://…';
+    champ.value = retenuLire('robot_rohy') || '';
+    const ligneCode = el('div', null, 'robot-code-ligne');
+    ligneCode.appendChild(champ);
+    const tahiry = el('button', '💾 Save', 'robot-save');
+    tahiry.type = 'button';
+    tahiry.setAttribute('translate', 'no');
+    ligneCode.appendChild(tahiry);
+    champBloc.appendChild(ligneCode);
+    boite.appendChild(champBloc);
+    const robotEtat = el('p', null, 'robot-etat');
+    boite.appendChild(robotEtat);
+    // Un lien web, et rien d'autre : pas de « javascript: » ni d'adresse locale.
+    function rohyMety(v) {
+      try { const u = new URL(v); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch (e) { return ''; }
+    }
+    // « Go to the table » marche toujours : le robot clignote. Le lien, s'il
+    // est enregistré, est ouvert en plus ; sans lui, rien d'autre ne part.
+    function majBouton() {
+      ampio.disabled = false;
+      ampio.title = rohyMety(retenuLire('robot_rohy') || '') ? '' : "Tsy misy rohy an'ny robot : mipipika fotsiny izy.";
+    }
+    majBouton();
+    function tehirizo() {
+      let v = champ.value.trim();
+      if (v && !/^https?:\/\//i.test(v)) v = 'https://' + v;
+      const rohy = v ? rohyMety(v) : '';
+      if (v && !rohy) {
+        robotEtat.classList.add('diso');
+        robotEtat.textContent = 'Tsy rohy mety io (ohatra : https://robot.example.mg).';
+        champ.focus();
+        return;
+      }
+      retenuEcrire('robot_rohy', rohy);
+      champ.value = rohy;
+      robotEtat.classList.toggle('diso', !rohy);
+      robotEtat.textContent = rohy ? '✅ Voatahiry ny rohy.' : "Apetaho aloha ny rohy an'ny robot.";
+      majBouton();
+      if (!rohy) champ.focus();
+    }
+    tahiry.addEventListener('click', tehirizo);
+    champ.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') tehirizo(); });
+    ampio.addEventListener('click', function () {
+      // Un trajet déjà en cours pour une autre commande : celui-là est fini.
+      const avant = diaRobot();
+      if (avant && avant.commande !== c.id) robotServeur(avant.commande, null);
+      retenuEcrire('robot_dia', JSON.stringify({ latabatra: c.latabatra, commande: c.id, at: new Date().toISOString() }));
+      robotServeur(c.id, 'mandeha');
+      const rohy = rohyMety(retenuLire('robot_rohy') || '');
+      if (rohy) {
+        const u = new URL(rohy);
+        u.searchParams.set('latabatra', String(c.latabatra));
+        u.searchParams.set('commande', String(c.id));
+        window.open(u.href, '_blank', 'noopener');
+      }
+      majDia(c);
+    });
+    livreurs.forEach(function (x) {
+      const ligne = el('div', null, 'livreur');
+      const sary = el('span', null, 'livreur-sary');
+      if (/^(https:\/\/|data:image\/jpeg;base64,)/.test(x.sary || '')) { const i = el('img'); i.src = x.sary; i.alt = ''; sary.appendChild(i); }
+      else sary.textContent = '🛵';
+      ligne.appendChild(sary);
+      const nom = el('span', null, 'livreur-nom');
+      nom.appendChild(el('strong', x.nom || 'Livreur'));
+      if (x.telephone) nom.appendChild(el('small', x.telephone));
+      ligne.appendChild(nom);
+      const finday = String(x.telephone || '').replace(/[^\d+]/g, '');
+      if (finday.replace(/\D/g, '').length >= 9) {
+        const btns = el('span', null, 'livreur-btns');
+        const lien = function (href, t, classe) { const a = el('a', t, classe); a.href = href; btns.appendChild(a); return a; };
+        lien('tel:' + finday, '📞 Antsoy');
+        lien('sms:' + finday + '?body=' + encodeURIComponent(soratra), '💬 SMS');
+        const wa = whatsappDe(finday);
+        if (wa) { const a = lien('https://wa.me/' + wa + '?text=' + encodeURIComponent(soratra), '🟢 WhatsApp', 'wa'); a.target = '_blank'; a.rel = 'noopener'; }
+        ligne.appendChild(btns);
+      } else ligne.appendChild(el('span', 'tsy misy laharana', 'livreur-tel'));
+      boite.appendChild(ligne);
+    });
+    // 🤖 Le livreur robot. Au repos : « Mbola amboarina ». Après « Go to the
+    // table », il clignote jusqu'à ce qu'il soit revenu (finRobot) : aller,
+    // livrer, revenir. Rien à toucher pendant ce temps.
+    const dia = diaRobot();
+    const robot = el('div', null, 'livreur robot' + (dia ? ' mipipika' : ''));
+    robot.appendChild(el('span', '🤖', 'livreur-sary'));
+    const robotNom = el('span', null, 'livreur-nom');
+    robotNom.appendChild(el('strong', 'Livreur robot'));
+    const sisaRobot = segondraSisa(dia);
+    const robotSoratra = el('small', !dia ? 'Mbola amboarina — ho avy tsy ho ela'
+      : sisaRobot !== null ? '📍 Efa akaiky ny lakozia ny robot : mijanona afaka ' + sisaRobot + ' s'
+      : (robotMiverina(dia.commande) ? '↩️ Voaray ny sakafo tao amin\'ny T' + dia.latabatra + ' : miverina ny robot…'
+        : '🍽️ Mitondra ny sakafo any amin\'ny T' + dia.latabatra + ', dia miverina…'));
+    robotSoratra.id = 'robotSoratra';
+    robotNom.appendChild(robotSoratra);
+    robot.appendChild(robotNom);
+    robot.appendChild(el('span', dia ? '🤖 Mandeha' : '🔧 Mbola amboarina', 'robot-marika'));
+    boite.appendChild(robot);
+    fond.appendChild(boite);
+    document.body.appendChild(fond);
+    document.addEventListener('keydown', echapLivreurs);
+    x.focus();
+  }
+
+  // Le reçu de la latabatra voit antso_at changer et sonne à son tour.
+  function antsoy(c) {
+    fetch(URL_SB + '/rest/v1/rpc/hotelerie_lakozia_antso', {
+      method: 'POST',
+      headers: { apikey: CLE_SB, Authorization: 'Bearer ' + CLE_SB, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hotel: id, code: code, commande: c.id })
+    }).then(function (r) {
+      if (!r.ok) throw new Error(String(r.status));
+    }).catch(function () {
+      etat.textContent = '🔴 Tsy tonga tany amin\'ny T' + c.latabatra + ' ny feo — avereno';
+    });
   }
 
   function marquer(c, v) {
@@ -360,6 +656,35 @@
       boiteInst.style.display = 'flex';
     }
   })();
+
+  // ---------- Les livreurs ----------
+  // Ceux de 🛵 Livreur (hotelerie_lakozia_livreur, supabase-hotelerie-lakozia.sql),
+  // montrés dans chaque bon qui attend (blocLivreurs). Relus chaque minute —
+  // ils changent peu.
+  let sigLivreur = '';
+  function whatsappDe(t) {
+    let n = String(t || '').replace(/\D/g, '');
+    if (/^0\d{9}$/.test(n)) n = '261' + n.slice(1);
+    return n.length >= 10 ? n : '';
+  }
+  function chargerLivreurs() {
+    if (!id || !code) return;
+    fetch(URL_SB + '/rest/v1/rpc/hotelerie_lakozia_livreur', {
+      method: 'POST',
+      headers: { apikey: CLE_SB, Authorization: 'Bearer ' + CLE_SB, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hotel: id, code: code }), cache: 'no-store'
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (l) {
+      if (!Array.isArray(l)) return;
+      const sig = JSON.stringify(l);
+      if (sig === sigLivreur) return;
+      sigLivreur = sig;
+      livreurs = l;
+      signature = '';
+      dessiner();
+    }).catch(function () { });
+  }
+  chargerLivreurs();
+  setInterval(function () { if (!document.hidden) chargerLivreurs(); }, 60000);
 
   charger();
   // La cuisine regarde l'écran de loin : on relit souvent.

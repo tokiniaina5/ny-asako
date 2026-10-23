@@ -4904,11 +4904,10 @@
       a.target = '_blank';
       a.rel = 'noopener';
       a.title = t[1];
-      a.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:0.25rem; text-decoration:none; color:var(--text);';
-      a.innerHTML = '<span style="display:flex; align-items:center; justify-content:center; width:2.6rem; height:2.6rem; ' +
-        'border-radius:12px; background:' + (l ? l[0] : '#5f6b73') + ';">' +
+      a.className = 'logo-reseau';
+      a.innerHTML = '<span class="logo-reseau-icone" style="background:' + (l ? l[0] : '#5f6b73') + ';">' +
         (l ? '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="#fff" d="' + l[1] + '"/></svg>' : '🎬') +
-        '</span><span style="font-size:0.64rem; font-weight:600;">' + t[1] + '</span>';
+        '</span><span class="logo-reseau-nom">' + t[1] + '</span>';
       a.addEventListener('click', function(){ miandryRohy = true; });
       zone.appendChild(a);
     });
@@ -5404,7 +5403,37 @@
       }, function(){ return false; });
   };
 
+  // La photo de l'inscription reste sur l'appareil : on en dépose une vignette
+  // dans profil_sary (supabase/sql/supabase-profil-sary.sql), pour que le
+  // patron la voie dans 👷 Mpiasa et Hôtellerie › Lakozia. Une seule fois par
+  // photo : la même vignette n'est pas renvoyée à chaque ouverture.
+  // Elle sert aussi aux listes de 💬 Message et 📞 Call (live.js), y compris
+  // pour l'admin.
+  let maPhotoEnvoyee = false;
+  function envoyerMaPhoto(){
+    if(maPhotoEnvoyee) return;
+    const u = currentUser;
+    if(!u || !u.email || !u.logo || !window.__sb) return;
+    maPhotoEnvoyee = true;
+    vignette(u.logo).then(function(sary){
+      if(!sary) return;
+      const email = String(u.email).trim().toLowerCase();
+      const cle = 'profil_sary_' + email;
+      let deja = null;
+      try{ deja = localStorage.getItem(cle); }catch(e){}
+      const empreinte = sary.length + ':' + sary.slice(-40);
+      if(deja === empreinte) return;
+      window.__sb.from('profil_sary').upsert({ email: email, finday: u.phone || null, sary: sary, updated_at: new Date().toISOString() })
+        .then(function(res){
+          if(res && res.error){ maPhotoEnvoyee = false; return; }
+          try{ localStorage.setItem(cle, empreinte); }catch(e){}
+        }, function(){ maPhotoEnvoyee = false; });
+    });
+  }
+  window.__envoyerMaPhoto = envoyerMaPhoto;
+
   function renderCommunityPanel(){
+    envoyerMaPhoto();
     const avatar = document.getElementById('composerAvatar');
     if(avatar){
       // Le rond du composeur montre qui va signer : le logo de la maison

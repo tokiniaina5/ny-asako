@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="7bb601d5">
+<meta name="ny-asako-version" content="f176535d">
 <title>Ny asako</title>
 <!-- Ce que Google montre sous le titre, et ce qu'un lien partagé affiche
      (Facebook, WhatsApp). Sans description, Google prenait le premier texte
@@ -194,13 +194,13 @@
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
 <link rel="stylesheet" href="gestion-stockage-css/base.css?v=0c4a8394">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=8705993a">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=f03871b4">
 <!-- Les émojis dessinés en 3D (emoji-3d.js). -->
 <script src="gestion-stockage-js/emoji-3d.js?v=66dad412" defer></script>
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/supabase-init.js?v=96126774"></script>
+<script src="gestion-stockage-js/supabase-init.js?v=632e41ae"></script>
 <!-- ============ LOGIN ============ -->
 <div id="loginScreen">
   <div class="login-card">
@@ -601,6 +601,14 @@
         <strong style="color:var(--text);">cuisine</strong> et le paiement Mobile Money. Elle
         s'installe à part, comme une application, sur le téléphone ou la tablette.
       </p>
+      <!-- Ce que la cuisine et l'hôtel ont gagné depuis (lakozia.html,
+           hotelerie.js, live.js) : une ligne par nouveauté. -->
+      <ul class="sub" style="font-size:0.88rem; text-align:left; margin:0.7rem auto 0; padding-left:1.2rem; max-width:30rem; line-height:1.55;">
+        <li>🔔 La cuisine <strong style="color:var(--text);">sonne à la table</strong>, et « ✅ Vita » la fait sonner aussi.</li>
+        <li>🛵 Dans chaque commande, les <strong style="color:var(--text);">livreurs</strong> : appel, SMS ou WhatsApp avec la commande déjà écrite.</li>
+        <li>🤖 Le <strong style="color:var(--text);">livreur robot</strong> : « Go to the table » le fait clignoter jusqu'à son retour (encore en construction).</li>
+        <li>👷 Les <strong style="color:var(--text);">mpiasa</strong> et livreurs avec leur photo, à appeler ou à qui écrire, et des <strong style="color:var(--text);">notifications</strong> même l'application fermée.</li>
+      </ul>
       <a href="/hotely" id="guideHotelInstaller" style="display:inline-block; margin-top:0.8rem; color:var(--cyan); font-weight:700; text-decoration:none;">📲 Installer Ny asako Hôtel →</a>
     </div>
 
@@ -1065,6 +1073,7 @@
         <div class="nav-item" data-section="contact">🔗 Ajouter les liens</div>
         <div class="nav-item" data-section="live">🔴 Live direct</div>
         <div class="nav-item" data-section="appels">📞 Call</div>
+        <div class="nav-item" data-section="feo">🔔 Feo</div>
         <div class="nav-item" data-section="wallet">💰 Portefeuille</div>
         <div class="nav-item" data-section="mpiasa">👷 Mpiasa</div>
         <div class="nav-item" data-section="livreur">🛵 Livreur</div>
@@ -1282,7 +1291,7 @@
                      lien copié là-bas est relu tout seul (parametres.js). -->
                 <div id="newsVideoRohy" style="display:none; flex-direction:column; gap:0.6rem; margin-top:0.6rem;">
                   <input type="url" id="newsVideoRohyInput" placeholder="Apetaho eto ny rohy video (YouTube, Facebook, TikTok…)" style="width:100%; box-sizing:border-box; padding:0.5rem 0.7rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:0.82rem;">
-                  <div id="newsVideoLogos" style="display:flex; flex-wrap:wrap; gap:0.8rem;"></div>
+                  <div id="newsVideoLogos"></div>
                   <p id="newsVideoRohyToro" style="font-size:0.7rem; color:var(--muted); margin:0;">Tsindrio ny logo, adikao ny rohin'ilay video any, dia miverena eto : ho tafiditra ho azy izy.</p>
                 </div>
                 <!-- Sous la rangée des boutons, là où l'on vient de cocher 🛒 : au-dessus,
@@ -2502,14 +2511,14 @@
           </div>
         </div>
 
-            <!-- 0) Admin ihany : izay miditra ankehitriny, na mpitsidika tsy nanao inscription aza (live.js). -->
+            <!-- 0) Kaonty rehetra : izay miditra ankehitriny, na mpitsidika tsy nanao inscription aza (live.js). -->
             <div class="panel" id="msgMitsidikaPanel" style="display:none; margin-top:0;">
               <h3>👀 Miditra ankehitriny</h3>
               <div id="msgMitsidika"></div>
               <p class="empty-hint" id="msgMitsidikaEmpty" style="display:none;">Tsy misy olona miditra ankehitriny.</p>
             </div>
 
-            <!-- 1) Admin ihany : ireo nanao inscription, handefasana hafatra (live.js). -->
+            <!-- 1) Kaonty rehetra : ireo nanao inscription, handefasana hafatra (live.js). -->
             <div class="panel" id="msgMpisoratraPanel" style="display:none;">
               <h3>👥 Ireo nanao inscription</h3>
               <div id="msgMpisoratra"></div>
@@ -2636,14 +2645,14 @@
           </div>
         </div>
 
-            <!-- 0) Admin ihany : izay miditra ankehitriny, na mpitsidika tsy nanao inscription aza (live.js). -->
+            <!-- 0) Kaonty rehetra : izay miditra ankehitriny, na mpitsidika tsy nanao inscription aza (live.js). -->
             <div class="panel" id="callMitsidikaPanel" style="display:none; margin-top:0;">
               <h3>👀 Miditra ankehitriny</h3>
               <div id="callMitsidika"></div>
               <p class="empty-hint" id="callMitsidikaEmpty" style="display:none;">Tsy misy olona miditra ankehitriny.</p>
             </div>
 
-            <!-- 1) Admin ihany : ireo nanao inscription, hantsoina (live.js). -->
+            <!-- 1) Kaonty rehetra : ireo nanao inscription, hantsoina (live.js). -->
             <div class="panel" id="callMpisoratraPanel" style="display:none;">
               <h3>👥 Ireo nanao inscription</h3>
               <div id="callMpisoratra"></div>
@@ -2657,6 +2666,21 @@
               <div class="actions-row" id="callCanaux" style="flex-direction:column; align-items:stretch; gap:0.5rem;"></div>
               <p class="empty-hint" id="callCanauxEmpty" style="display:none;">Mbola tsy misy rohy nampidirina.</p>
             </div>
+      </section>
+
+      <!-- ---- FEO ---- -->
+      <!-- Le son des hafatra et des antso : un fichier choisi ici, gardé sur
+           l'appareil (live.js, « Le son »). -->
+      <section class="section" id="section-feo">
+        <div class="section-head">
+          <div>
+            <h2>🔔 Feo</h2>
+            <p>Ampidiro ny feo tianao (mp3, m4a, ogg, wav…) ho an'ny hafatra sy ny antso. Eto amin'ity fitaovana ity no voatahiry izy.</p>
+          </div>
+        </div>
+        <div class="panel" id="feoPanel">
+          <div id="feoSafidy" style="display:flex; flex-direction:column; gap:0.6rem;"></div>
+        </div>
       </section>
 
       <!-- ---- PORTEFEUILLE ---- -->
@@ -3302,6 +3326,9 @@
              fenêtre du patron — pas dans la page du livreur. -->
         <div class="panel" id="personneTableauPanel" style="margin-top:1rem;">
           <div class="panneau-titre">Tableau de bord</div>
+          <!-- Les commandes des latabatra (Hôtellerie), que le mpiasa sert :
+               equipe.js les remplit. -->
+          <div id="personneCommandes"></div>
           <!-- Le stock que la personne tient depuis son lien, tel que son
                application l'a envoyé en dernier : equipe.js le remplit. -->
           <p id="personneStockMaj" style="font-size:0.8rem; color:var(--muted); line-height:1.6; margin:0 0 0.9rem;">—</p>
@@ -3631,35 +3658,35 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=126ecd51"></script>
+<script src="gestion-stockage-js/common.js?v=ed87e66e"></script>
 <script src="gestion-stockage-js/herinaratra.js?v=622d64e8"></script>
 <script src="gestion-stockage-js/stock.js?v=d33d19a7"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=92ad47d0"></script>
 <script src="gestion-stockage-js/factures.js?v=69af0cd7"></script>
 <script src="gestion-stockage-js/factures-modely.js?v=8fbf4a42"></script>
-<script src="gestion-stockage-js/inviter.js?v=540467e5"></script>
-<script src="gestion-stockage-js/contact.js?v=34103e76"></script>
+<script src="gestion-stockage-js/inviter.js?v=fffaed9c"></script>
+<script src="gestion-stockage-js/contact.js?v=0275b287"></script>
 <script src="gestion-stockage-js/zara-rehetra.js?v=9b9c2469"></script>
-<script src="gestion-stockage-js/live.js?v=d41f7899"></script>
+<script src="gestion-stockage-js/live.js?v=93fe619b"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/parametres.js?v=89e871e0"></script>
+<script src="gestion-stockage-js/parametres.js?v=9b5d6f01"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
-<script src="gestion-stockage-js/zara-miditra.js?v=15d6707c"></script>
+<script src="gestion-stockage-js/zara-miditra.js?v=4d5d0264"></script>
 <script src="gestion-stockage-js/identite.js?v=32177fac"></script>
 <script src="gestion-stockage-js/fond.js?v=66e9ffc6"></script>
 <script src="gestion-stockage-js/carte-libre.js?v=da42db8a"></script>
-<script src="gestion-stockage-js/equipe.js?v=307dc2cd"></script>
-<script src="gestion-stockage-js/vue-mpiasa.js?v=1e6cfbec"></script>
-<script src="gestion-stockage-js/vue-suivi.js?v=2a4b45f9"></script>
-<script src="gestion-stockage-js/hotelerie.js?v=d49dd88c"></script>
+<script src="gestion-stockage-js/equipe.js?v=20f545e9"></script>
+<script src="gestion-stockage-js/vue-mpiasa.js?v=cbc8d51d"></script>
+<script src="gestion-stockage-js/vue-suivi.js?v=978e31e5"></script>
+<script src="gestion-stockage-js/hotelerie.js?v=0b775eb4"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=bf90a8a5"></script>
 <script src="gestion-stockage-js/photocopie.js?v=be4f35a5"></script>
 <script src="gestion-stockage-js/pdf.js?v=b7c1f056"></script>
 <script src="gestion-stockage-js/commun-alalana.js?v=c3a8e119"></script>
 <!-- Les explications deviennent des fiches « 💡 Fanazavana » qu'un ✕ referme. -->
-<script src="gestion-stockage-js/fanazavana.js?v=8a03d242"></script>
+<script src="gestion-stockage-js/fanazavana.js?v=adfa06d4"></script>
 <script src="gestion-stockage-js/taratasy.js?v=7688b0e0"></script>
 <script src="gestion-stockage-js/fianakaviana.js?v=2d087da0"></script>
 <script src="gestion-stockage-js/validation-install.js?v=322302c3"></script>

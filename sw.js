@@ -9,7 +9,7 @@
 // Le nom porte l'empreinte du dernier envoi : outils/versionner.mjs le réécrit.
 // Chaque mise en ligne repart donc d'un cache neuf, et l'ancien est effacé —
 // sans quoi les fichiers de toutes les versions passées s'y empileraient.
-const CACHE = 'nyasako-d82c2fa4';
+const CACHE = 'nyasako-06e84e7c';
 
 // Le partage reçu des autres applications (manifest.webmanifest, « share_target »).
 // Le téléphone ouvre cette adresse en POST, avec le texte et les fichiers
@@ -243,12 +243,38 @@ self.addEventListener('fetch', function(e){
 // que d'en ouvrir une neuve, qui ne saurait rien de lui.
 self.addEventListener('notificationclick', function(e){
   e.notification.close();
+  // Venue du serveur (push, plus bas) : la page à rouvrir, celle de
+  // l'abonné (un lien mpiasa porte son jeton).
+  const url = (e.notification.data && e.notification.data.url) || '/';
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(fenetres){
       for(const f of fenetres){
         if(memeOrigine(f.url) && 'focus' in f) return f.focus();
       }
-      return self.clients.openWindow ? self.clients.openWindow('/') : null;
+      return self.clients.openWindow ? self.clients.openWindow(url) : null;
+    })
+  );
+});
+
+// Un hafatra ou un antso, poussé par le serveur (supabase/functions/push)
+// pendant que Ny asako est fermé. Une page ouverte et à l'écran l'a déjà
+// reçu par le direct et l'a montré : on ne le redit pas.
+self.addEventListener('push', function(e){
+  let d = {};
+  try{ d = e.data ? e.data.json() : {}; }catch(err){ d = { title: 'Ny asako', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(fenetres){
+      const visible = fenetres.some(function(f){ return memeOrigine(f.url) && f.visibilityState === 'visible'; });
+      if(visible) return;
+      return self.registration.showNotification(d.title || 'Ny asako', {
+        // App fermée, aucune page ne peut jouer de son : c'est celui du
+        // téléphone qui sonne (silent: false), avec la vibration.
+        body: d.body || '', tag: d.tag || 'nyasako', renotify: true, silent: false, lang: 'mg',
+        icon: '/icone-192.png', badge: '/icone-192.png',
+        requireInteraction: d.kind === 'antso',
+        vibrate: d.kind === 'antso' ? [600, 200, 600, 200, 600, 200, 600] : [300, 120, 300],
+        data: { url: d.url || '/' }
+      });
     })
   );
 });

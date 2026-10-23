@@ -16,7 +16,7 @@
 <script src="/mazava.js?v=2bcdcfad" defer></script>
 <!-- 🔄 La page se met à jour seule quand une version neuve est en ligne (pejy-version.js) ;
      l'empreinte est écrite par outils/versionner.mjs. -->
-<meta name="pejy-version" content="3a7ae941">
+<meta name="pejy-version" content="ffdd867a">
 <script src="/pejy-version.js?v=97acc3b0" defer></script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -148,6 +148,22 @@
   .misy-sary .ecran-hidy{ z-index:1; background:rgba(0,0,0,0.55); color:#fff; }
   .ecran-hafatra span{ font-size:clamp(1.5rem, 6vw, 3.2rem); line-height:1.2; font-weight:700; }
   .ecran-hidy{ position:absolute; top:0.7rem; right:0.7rem; width:3.2rem; height:3.2rem; margin:0; padding:0; border:0; border-radius:50%; background:rgba(47,191,113,0.25); color:#2fbf71; font-size:1.7rem; font-weight:700; line-height:3.2rem; cursor:pointer; }
+  /* 🤖 Le robot en route vers la table : un bandeau en bas, par-dessus tout,
+     qui clignote jusqu'à « ✅ Voaray ». */
+  #robotEcran{ position:fixed; left:12px; right:12px; bottom:max(12px, env(safe-area-inset-bottom)); z-index:1002; display:flex; justify-content:center; pointer-events:none; }
+  .robot-bandeau{ pointer-events:auto; display:flex; align-items:center; gap:0.8rem; width:min(560px, 100%); padding:0.8rem 1rem; border-radius:16px; border:3px solid #22e07a; background:var(--bg); box-shadow:0 8px 28px rgba(0,0,0,0.35); animation:robot-mipipika 0.9s steps(2, jump-none) infinite; }
+  @keyframes robot-mipipika{ 0%{ border-color:#22e07a; box-shadow:0 0 0 4px rgba(34,224,122,0.45), 0 8px 28px rgba(0,0,0,0.35); } 100%{ border-color:transparent; box-shadow:0 8px 28px rgba(0,0,0,0.35); } }
+  @media (prefers-reduced-motion: reduce){ .robot-bandeau{ animation:none; } }
+  .robot-ikona{ font-size:2.2rem; line-height:1; }
+  .robot-soratra{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:0.15rem; }
+  .robot-soratra strong{ font-size:1.05rem; }
+  .robot-soratra span{ color:var(--muted); font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .robot-voaray{ flex:0 0 auto; margin:0; padding:0.6rem 0.9rem; border:0; border-radius:10px; background:#1e9e5a; color:#fff; font-weight:700; font-size:0.95rem; cursor:pointer; }
+  /* Le 🔔 de la cuisine, sonné à la latabatra : par-dessus tout, en orange. */
+  #antsoEcran{ position:fixed; inset:0; z-index:1001; display:flex; background:var(--bg); padding:16px; }
+  .ecran-hafatra.antso{ background:rgba(224,160,32,0.18); color:#e0a020; }
+  .ecran-hafatra.antso .ecran-hidy{ background:rgba(224,160,32,0.28); color:#e0a020; }
+  .ecran-hafatra.antso .feo{ display:inline-block; animation:mihetsika 1s ease 5; transform-origin:50% 0; }
   .recu-attente{ color:#e0a020; font-weight:600; }
   /* Où en est la commande en cuisine : la marque que la lakozia a sonné. */
   .recu-lakozia{ display:inline-flex; align-items:center; gap:0.35rem; margin:0.45rem 0 0; padding:0.2rem 0.65rem; border-radius:999px; font-size:0.85rem; font-weight:700; }
@@ -181,7 +197,7 @@
 </style>
 <!-- Les émojis dessinés en 3D (emoji-3d.js). -->
 <!-- Les explications en visite guidée (fanazavana.js). -->
-<script src="/gestion-stockage-js/fanazavana.js?v=8a03d242" defer></script>
+<script src="/gestion-stockage-js/fanazavana.js?v=adfa06d4" defer></script>
 <script src="/gestion-stockage-js/emoji-3d.js?v=66dad412" defer></script>
 </head>
 <body>
@@ -814,7 +830,11 @@
     let l = [];
     try { l = JSON.parse(retenuLire(CLE_RECU)) || []; } catch (e) { }
     const hier = Date.now() - 24 * 3600 * 1000;
-    return (Array.isArray(l) ? l : []).filter(function (r) { return r && r.id && r.at > hier; });
+    // Une commande finie — servie, payée, et ses deux écrans (« Vita »,
+    // « Mankasitraka ») fermés — quitte la table : le client suivant, assis
+    // au même endroit, ne voit pas ce que le précédent a pris ni payé.
+    const vitaTanteraka = function (r) { return r.vita && r.vita_hidy && r.voaloa && r.fisaorana_hidy && r.robot !== 'mandeha'; };
+    return (Array.isArray(l) ? l : []).filter(function (r) { return r && r.id && r.at > hier && !vitaTanteraka(r); });
   }
   function recusEcrire(l) { retenuEcrire(CLE_RECU, JSON.stringify(l.slice(0, 30))); dessinerRecus(); }
   function recuAjouter(r) { recusEcrire([r].concat(recusLire())); }
@@ -827,6 +847,7 @@
     z.replaceChildren();
     // Ce qui doit occuper l'écran (vita, voaloa), le temps que le client le ferme.
     const ecran = [];
+    dessinerRobot(l);
     if (!l.length) { dessinerEcran(ecran); return; }
     z.appendChild(el('h2', '🧾 Ny reçu-nao'));
     l.forEach(function (r) {
@@ -941,7 +962,7 @@
   // L'hôtel coche « voaloa » : on le demande pour les reçus qui attendent.
   function recusSata() {
     const l = recusLire();
-    const ids = l.filter(function (r) { return !r.voaloa || !r.vita; }).map(function (r) { return r.id; });
+    const ids = l.filter(function (r) { return !r.voaloa || !r.vita || r.robot; }).map(function (r) { return r.id; });
     if (!ids.length) return;
     fetch(URL_SB + '/rest/v1/rpc/hotelerie_commande_sata', {
       method: 'POST',
@@ -954,10 +975,119 @@
         if (!r) return;
         if (s.voaloa && !r.voaloa) { r.voaloa = true; change = true; }
         if (!!s.lakozia !== !!r.lakozia) { r.lakozia = !!s.lakozia; change = true; }
-        if (!!s.vita !== !!r.vita) { r.vita = !!s.vita; change = true; }
+        if (!!s.vita !== !!r.vita) {
+          // « ✅ Done » en cuisine : la latabatra sonne en même temps que
+          // « 🍳 Vita ny sakafo » prend l'écran.
+          if (s.vita && (!latabatraChoisie || Number(r.latabatra) === latabatraChoisie)) antsoFeo();
+          r.vita = !!s.vita; change = true;
+        }
+        // Le 🔔 de la cuisine : une date neuve sonne ici. Un appel déjà vieux
+        // (reçu ouvert après coup) ne fait que se noter.
+        // 🤖 Le robot en route vers cette table (« Go to the table » en cuisine).
+        if ((s.robot || null) !== (r.robot || null)) { r.robot = s.robot || null; change = true; }
+        if (s.antso && s.antso !== r.antso) {
+          if (Date.now() - new Date(s.antso).getTime() < 3 * 60000) antsoAseho(r);
+          r.antso = s.antso; change = true;
+        }
       });
       if (change) recusEcrire(l);
     }).catch(function () { });
+  }
+
+  // ---------- 🤖 Le robot qui apporte le plat ----------
+  // La cuisine a touché « Go to the table » : un bandeau clignote, par-dessus
+  // tout, jusqu'à ce que le robot reparte — le client touche « ✅ Voaray »
+  // (hotelerie_robot_voaray), et la cuisine le voit revenir.
+  function dessinerRobot(l) {
+    const r = l.find(function (x) { return x.robot === 'mandeha'; });
+    let e = document.getElementById('robotEcran');
+    if (!r) { if (e) e.remove(); return; }
+    if (e && e.dataset.commande === String(r.id)) return;
+    if (!e) { e = el('div'); e.id = 'robotEcran'; document.body.appendChild(e); }
+    e.dataset.commande = String(r.id);
+    const b = el('div', null, 'robot-bandeau');
+    b.appendChild(el('span', '🤖', 'robot-ikona'));
+    const t = el('div', null, 'robot-soratra');
+    t.appendChild(el('strong', 'Ho avy ny robot mitondra ny sakafonao'));
+    t.appendChild(el('span', 'T' + r.latabatra + ' · ' + (r.plats || []).map(function (p) { return (Number(p.isa) || 0) + ' × ' + p.anarana; }).join(', ')));
+    b.appendChild(t);
+    const ok = el('button', '✅ Voaray', 'robot-voaray');
+    ok.type = 'button';
+    ok.addEventListener('click', function () {
+      ok.disabled = true;
+      fetch(URL_SB + '/rest/v1/rpc/hotelerie_robot_voaray', {
+        method: 'POST',
+        headers: { apikey: CLE_SB, Authorization: 'Bearer ' + CLE_SB, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commande: r.id })
+      }).then(function (res) {
+        if (!res.ok) throw new Error(String(res.status));
+        recusEcrire(recusLire().map(function (x) { return x.id === r.id ? Object.assign({}, x, { robot: 'miverina' }) : x; }));
+      }).catch(function () {
+        ok.disabled = false;
+        alert('Tsy lasa : jereo ny connexion, dia avereno.');
+      });
+    });
+    b.appendChild(ok);
+    e.replaceChildren(b);
+  }
+
+  // ---------- Le 🔔 de la cuisine ----------
+  // Un navigateur ne joue rien avant un geste : le premier toucher de la page
+  // (choisir un plat, commander) ouvre le son pour la suite.
+  let audioAntso = null;
+  function ouvrirSon() {
+    if (audioAntso) { if (audioAntso.state === 'suspended') audioAntso.resume(); return; }
+    try { audioAntso = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { }
+  }
+  document.addEventListener('pointerdown', ouvrirSon, true);
+  document.addEventListener('keydown', ouvrirSon, true);
+  function antsoFeo() {
+    if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400]);
+    const a = audioAntso;
+    if (!a) return;
+    if (a.state === 'suspended') a.resume();
+    // Le même « ding-ding-dong » que la cuisine, deux fois : à table, c'est assez.
+    const debut = a.currentTime + 0.05;
+    for (let tour = 0; tour < 2; tour++) {
+      [0, 0.4, 0.8].forEach(function (d, i) {
+        const t = debut + tour * 1.4 + d;
+        const o = a.createOscillator(), g = a.createGain();
+        o.frequency.value = i === 2 ? 1320 : 880;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + (i === 2 ? 0.55 : 0.35));
+        o.connect(g); g.connect(a.destination);
+        o.start(t); o.stop(t + (i === 2 ? 0.6 : 0.4));
+      });
+    }
+  }
+  // Seulement pour la latabatra de ce reçu : T2 n'a pas à sonner pour T1.
+  let antsoMinitra = null;
+  function antsoAseho(r) {
+    if (latabatraChoisie && Number(r.latabatra) !== latabatraChoisie) return;
+    antsoFeo();
+    let e = document.getElementById('antsoEcran');
+    if (!e) { e = el('div'); e.id = 'antsoEcran'; document.body.appendChild(e); }
+    const b = el('div', null, 'ecran-hafatra antso');
+    const titre = el('strong');
+    titre.appendChild(el('span', '🔔', 'feo'));
+    titre.appendChild(document.createTextNode(' T' + r.latabatra));
+    b.appendChild(titre);
+    b.appendChild(el('span', 'Miantso anao ny lakozia'));
+    const hidy = el('button', '✕', 'ecran-hidy');
+    hidy.type = 'button';
+    hidy.title = 'Hidio';
+    hidy.setAttribute('aria-label', 'Hidio');
+    hidy.addEventListener('click', antsoHidio);
+    b.appendChild(hidy);
+    e.replaceChildren(b);
+    clearTimeout(antsoMinitra);
+    antsoMinitra = setTimeout(antsoHidio, 20000);
+  }
+  function antsoHidio() {
+    clearTimeout(antsoMinitra);
+    const e = document.getElementById('antsoEcran');
+    if (e) e.remove();
   }
 
   function charger() {
@@ -1110,7 +1240,7 @@
     // « 🔔 Naneno tany an-dakozia » arrive vite.
     setInterval(function () {
       if (document.hidden) return;
-      if (recusLire().some(function (r) { return !r.vita; })) recusSata();
+      if (recusLire().some(function (r) { return !r.vita || r.robot === 'mandeha'; })) recusSata();
     }, 8000);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) charger(); });
   } else {
