@@ -4557,6 +4557,35 @@
 
     const suivis = [];
 
+    // Plusieurs fenêtres à la fois : celle qu'on touche, ou qu'on vient
+    // d'ouvrir, passe devant les autres (23/10/2026). Les étages restent entre
+    // celui des pages (95) et celui du menu (119) : ce qui doit couvrir toute
+    // l'application — boîtes de dialogue, écran verrouillé — reste au-dessus.
+    const ordre = [];
+    function estFenetre(s){ return s.page || s.commePage || !!PANNEAUX[s.el.id]; }
+    function mettreDevant(s){
+      if(!estFenetre(s)) return;
+      const i = ordre.indexOf(s);
+      if(i >= 0) ordre.splice(i, 1);
+      ordre.push(s);
+      let n = 0;
+      ordre.forEach(function(x){
+        if(!visible(x.el)) return;
+        const z = String(96 + 2 * n++);
+        // Rien ne change, rien n'est écrit : le guetteur des styles ne
+        // repartirait pas pour rien.
+        if(x.el.style.zIndex !== z) x.el.style.zIndex = z;
+        x.calque.style.zIndex = String(+z + 1);
+      });
+    }
+    // Avant tout le reste : le clic qui suit agit dans une fenêtre déjà devant.
+    document.addEventListener('pointerdown', function(e){
+      const s = suivis.find(function(x){
+        return estFenetre(x) && visible(x.el) && (x.el.contains(e.target) || x.calque.contains(e.target));
+      });
+      if(s && ordre[ordre.length - 1] !== s) mettreDevant(s);
+    }, true);
+
     // Une fenêtre est posée tantôt par le haut, tantôt par le bas, tantôt
     // centrée par une transformation. Pour la redimensionner il n'y a qu'un
     // ancrage possible : coin haut-gauche, plus une largeur et une hauteur.
@@ -4588,7 +4617,7 @@
       const place = lirePlaces()[el.id];
       if((!t && !place) || !visible(el)) return;
       const z = ecran();
-      const page = el.classList.contains('fenetre-page');
+      const page = el.classList.contains('fenetre-page') || el.id === 'fbComposer';
       const bande = page ? bandeUtile() : { haut: z.y, bas: z.y + z.h };
       const actuel = el.getBoundingClientRect();
       // Une taille choisie sur un grand écran ne tient pas sur un téléphone.
@@ -4722,7 +4751,22 @@
       // En automatique, fermer une page, c'est en avoir fini avec elle : son
       // icône quitte la rangée du même geste (la rangée, plus bas, en décide).
       if(el && typeof window.__pageFermee === 'function') window.__pageFermee(el.id);
-      revenirAuFil();
+      rangerLaPage(el);
+    }
+    // Plusieurs pages peuvent être ouvertes : on ne range que celle-ci. Le fil
+    // revient seulement s'il ne reste plus aucune page à l'écran.
+    function rangerLaPage(el){
+      if(el){
+        el.classList.remove('active');
+        const nav = document.querySelector('.nav-item[data-section="' + el.id.replace(/^section-/, '') + '"]');
+        if(nav) nav.classList.remove('active');
+      }
+      const reste = PAGES.some(function(id){
+        const p = document.getElementById(id);
+        return p && p !== el && visible(p);
+      });
+      if(!reste) revenirAuFil();
+      else if(typeof saveLastView === 'function') saveLastView();
     }
     function revenirAuFil(){
       const navStock = document.querySelector('.nav-item[data-section="stock"]');
@@ -4749,7 +4793,7 @@
         fermerFenetre(el);
         return;
       }
-      revenirAuFil();
+      rangerLaPage(el);
       marquerReduite(el, true);
     }
     // L'icône de la page clignote tant qu'elle est réduite (la rangée, plus
@@ -4847,8 +4891,12 @@
       // Une page ouverte recouvre l'Accueil exactement : ses poignées se
       // superposeraient aux siennes, aux mêmes coins, pour redimensionner une
       // fenêtre que personne ne voit. Elles s'effacent le temps de la visite.
+      // Seulement si cette page est devant lui : touché, l'Accueil repasse
+      // devant, et reprend ses poignées.
+      const accueil = suivis.find(function(x){ return x.el.id === 'dash-accueil'; });
       const pageDevant = suivis.some(function(x){
-        return x.page && x.el.id !== 'dash-accueil' && visible(x.el);
+        return x.page && x.el.id !== 'dash-accueil' && visible(x.el) &&
+          ordre.indexOf(x) > ordre.indexOf(accueil);
       });
       // Une fenêtre ouverte, et le bouton flottant du menu s'efface à demi
       // pour ne pas la masquer (base.css) ; il reste là, et on l'ouvre pareil.
@@ -4875,14 +4923,17 @@
         } else if(!s.vu){
           // Posée, alors seulement retenue comme ouverte : sinon un passage
           // trop précoce la marquerait faite et personne n'y reviendrait.
-          if(!s.page || poserFenetre(s.el)){
+          if(!(s.page || s.commePage) || poserFenetre(s.el)){
             appliquerTaille(s.el);
             // Agrandie quand on l'a quittée, elle revient agrandie.
             if(s.agrandie) remplirBande(s);
             s.vu = true;
+            // Ouverte à l'instant : elle passe devant celles déjà là.
+            mettreDevant(s);
           }
         }
-        const cache = !vu || (s.el.id === 'dash-accueil' && pageDevant);
+        // En rangée, chacune garde ses boutons : elles sont côte à côte.
+        const cache = !vu || (s.el.id === 'dash-accueil' && pageDevant && !laharana);
         s.calque.hidden = cache;
         if(cache) return;
         const r = s.el.getBoundingClientRect();
@@ -4892,9 +4943,12 @@
         s.calque.style.height = r.height + 'px';
         // Juste au-dessus de sa fenêtre : les panneaux ne sont pas tous au même
         // étage, et une poignée sous sa fenêtre ne se saisit pas.
-        const z = parseInt(getComputedStyle(s.el).zIndex, 10);
+        const z = parseInt(s.el.style.zIndex || getComputedStyle(s.el).zIndex, 10);
         s.calque.style.zIndex = (isFinite(z) ? z : 120) + 1;
       });
+      // Une fenêtre fermée à sa croix pendant la rangée : les autres se
+      // resserrent.
+      if(laharana && laharana.liste.some(function(x){ return !visible(x.el); })) poserLaharana();
     }
 
     // Déplacer : la fenêtre suit le doigt, sans changer de taille, et sans
@@ -4921,20 +4975,28 @@
           marquerAgrandie(s, false);
         }
         const z = ecran();
-        const bande = s.page ? bandeUtile() : { haut: z.y, bas: z.y + z.h };
+        const bande = (s.page || s.commePage) ? bandeUtile() : { haut: z.y, bas: z.y + z.h };
         let l = g.l + (e.clientX - g.x);
         let t = g.t + (e.clientY - g.y);
+        const brut = l;
         l = Math.max(z.x + MARGE, Math.min(l, z.x + z.w - g.w - MARGE));
         t = Math.max(bande.haut + MARGE, Math.min(t, bande.bas - g.h - MARGE));
         s.el.style.left = Math.round(l) + 'px';
         s.el.style.top = Math.round(t) + 'px';
+        // Poussée plus loin que le bord, elle commence à sortir : lâchée
+        // assez loin, elle se ferme (voir armerBalayage).
+        g.depasse = brut - l;
+        glisser(s, g.depasse);
         synchroniser();
       });
       function fin(e){
         if(!g) return;
+        const depasse = g.depasse || 0;
         g = null;
         ruban.classList.remove('tire');
         try{ ruban.releasePointerCapture(e.pointerId); }catch(err){}
+        if(Math.abs(depasse) > SEUIL_JETER){ jeter(s, depasse); return; }
+        glisser(s, 0);
         // Agrandie, sa place n'est pas la sienne : on ne la retient pas.
         if(s.agrandie) return;
         const r = s.el.getBoundingClientRect();
@@ -4944,6 +5006,95 @@
       }
       ruban.addEventListener('pointerup', fin);
       ruban.addEventListener('pointercancel', fin);
+    }
+
+    // Glisser vers la gauche ou la droite, et la fenêtre s'en va : on les
+    // range une à une d'un geste (23/10/2026). Au doigt, n'importe où dans la
+    // fenêtre ; à la souris, en la tirant par son ruban au-delà du bord.
+    const SEUIL_JETER = 110;
+    // Ses poignées la suivent d'elles-mêmes : synchroniser les pose sur le
+    // cadre qu'on voit, décalage compris.
+    function glisser(s, dx){
+      if(!dx){
+        s.el.style.translate = '';
+        s.el.style.opacity = '';
+        return;
+      }
+      s.el.style.translate = Math.round(dx) + 'px 0';
+      s.el.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 500));
+    }
+    function jeter(s, dx){
+      const sens = dx < 0 ? -1 : 1;
+      const r = s.el.getBoundingClientRect();
+      const fin = sens * (window.innerWidth + r.width);
+      s.el.style.transition = 'translate 0.18s ease-in, opacity 0.18s ease-in';
+      s.calque.hidden = true;
+      requestAnimationFrame(function(){
+        s.el.style.translate = Math.round(fin) + 'px 0';
+        s.el.style.opacity = '0';
+      });
+      setTimeout(function(){
+        s.el.style.transition = '';
+        glisser(s, 0);
+        fermerFenetre(s.el);
+        synchroniser();
+      }, 200);
+    }
+    function armerBalayage(s){
+      let g = null;
+      // Là où glisser de côté a déjà un sens, on le lui laisse : un champ,
+      // une rangée qui défile en largeur (les stories), une réglette.
+      function aSonPropreGeste(cible){
+        for(let n = cible; n && n !== s.el; n = n.parentElement){
+          if(n.matches && n.matches('input, textarea, select, [contenteditable="true"], video, canvas')) return true;
+          if(n.scrollWidth > n.clientWidth + 2){
+            const ox = getComputedStyle(n).overflowX;
+            if(ox === 'auto' || ox === 'scroll') return true;
+          }
+        }
+        return false;
+      }
+      // Le navigateur garde le défilement vertical et le zoom ; le
+      // mouvement de côté nous revient.
+      s.el.style.touchAction = 'pan-y pinch-zoom';
+      s.el.addEventListener('pointerdown', function(e){
+        if(e.pointerType === 'mouse' || !e.isPrimary) return;
+        // En rangée, glisser fait défiler la rangée (plus bas).
+        if(laharana) return;
+        if(aSonPropreGeste(e.target)) return;
+        g = { x: e.clientX, y: e.clientY, id: e.pointerId, pris: false, dx: 0 };
+      });
+      s.el.addEventListener('pointermove', function(e){
+        if(!g || e.pointerId !== g.id) return;
+        const dx = e.clientX - g.x, dy = e.clientY - g.y;
+        if(!g.pris){
+          // Vers le haut ou le bas d'abord : c'est qu'on lit.
+          if(Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)){ g = null; return; }
+          if(Math.abs(dx) < 14) return;
+          g.pris = true;
+          try{ s.el.setPointerCapture(e.pointerId); }catch(err){}
+        }
+        g.dx = dx;
+        glisser(s, dx);
+        synchroniser();
+      });
+      function fin(e){
+        if(!g || e.pointerId !== g.id) return;
+        const pris = g.pris, dx = g.dx;
+        g = null;
+        if(!pris) return;
+        s.balaye = Date.now();
+        try{ s.el.releasePointerCapture(e.pointerId); }catch(err){}
+        const r = s.el.getBoundingClientRect();
+        if(Math.abs(dx) > Math.min(SEUIL_JETER, r.width * 0.3) && e.type === 'pointerup') jeter(s, dx);
+        else { glisser(s, 0); synchroniser(); }
+      }
+      s.el.addEventListener('pointerup', fin);
+      s.el.addEventListener('pointercancel', fin);
+      // Le clic qui termine un balayage n'ouvre rien sous le doigt.
+      s.el.addEventListener('click', function(e){
+        if(s.balaye && Date.now() - s.balaye < 400){ e.preventDefault(); e.stopPropagation(); }
+      }, true);
     }
 
     function armer(s, coin, poignee){
@@ -5020,7 +5171,9 @@
       calque.className = 'poignees';
       calque.dataset.pour = id;
       calque.hidden = true;
-      const s = { el: el, calque: calque, vu: false, page: page };
+      // La boîte « Écrire » se pose comme une page (23/10/2026) : même taille,
+      // même place, entre le nom et la rangée du bas — sans en être une.
+      const s = { el: el, calque: calque, vu: false, page: page, commePage: id === 'fbComposer' };
       // La boîte d'écriture n'est pas une page, mais elle se tient comme
       // une fenêtre : on la déplace, on la réduit, on l'agrandit.
       if(page || id === 'fbComposer' || PANNEAUX[id]){
@@ -5034,6 +5187,7 @@
         ruban.setAttribute('aria-hidden', 'true');
         calque.appendChild(ruban);
         armerDeplacement(s, ruban);
+        armerBalayage(s);
 
         // Réduire, agrandir, fermer : les trois boutons d'une fenêtre de
         // bureau, à leur place habituelle.
@@ -5092,6 +5246,144 @@
     new MutationObserver(function(){ replacerLesPages(); })
       .observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
+    // 🗂️ Alamino : les fenêtres ouvertes se mettent côte à côte, en une
+    // rangée qu'on fait glisser à gauche et à droite, comme les applications
+    // récentes d'un téléphone (23/10/2026). Toucher l'une la rouvre en grand,
+    // à sa taille d'avant ; toucher à côté les remet toutes où elles étaient.
+    // Rien n'est retenu : la rangée n'est qu'un coup d'œil.
+    function ouvertes(){
+      const vues = suivis.filter(function(x){ return estFenetre(x) && visible(x.el); });
+      // Dans l'ordre où elles sont empilées ; celles jamais touchées d'abord.
+      return vues.sort(function(a, b){ return ordre.indexOf(a) - ordre.indexOf(b); });
+    }
+    let laharana = null;
+    const ECART = 16;
+    function carte(){
+      const z = ecran();
+      const bande = bandeUtile();
+      return {
+        w: Math.round(Math.max(MIN_L, Math.min(380, z.w * 0.72))),
+        h: Math.round(Math.max(MIN_H, bande.bas - bande.haut - 2 * MARGE)),
+        haut: bande.haut + MARGE, z: z
+      };
+    }
+    function borneDecalage(){
+      const c = carte();
+      const total = laharana.liste.length * c.w + (laharana.liste.length - 1) * ECART;
+      const place = c.z.w - 2 * MARGE;
+      // Moins larges que l'écran : centrées, sans glisser.
+      if(total <= place) return { min: (place - total) / 2, max: (place - total) / 2 };
+      return { min: place - total, max: 0 };
+    }
+    function poserLaharana(){
+      if(!laharana) return;
+      laharana.liste = laharana.liste.filter(function(s){ return visible(s.el); });
+      if(!laharana.liste.length){ quitterLaharana(null); return; }
+      const c = carte();
+      const b = borneDecalage();
+      laharana.decalage = Math.max(b.min, Math.min(b.max, laharana.decalage));
+      laharana.liste.forEach(function(s, i){
+        figer(s.el, {
+          left: Math.round(c.z.x + MARGE + laharana.decalage + i * (c.w + ECART)),
+          top: Math.round(c.haut), width: c.w, height: c.h
+        });
+      });
+      synchroniser();
+    }
+    function alaminoFenetres(){
+      if(laharana){ poserLaharana(); return; }
+      const liste = ouvertes();
+      if(!liste.length) return;
+      laharana = { liste: liste, decalage: 0, avant: new Map() };
+      liste.forEach(function(s){
+        if(s.agrandie) marquerAgrandie(s, false);
+        glisser(s, 0);
+        const r = s.el.getBoundingClientRect();
+        laharana.avant.set(s, { left: r.left, top: r.top, width: r.width, height: r.height });
+      });
+      // La plus récente au bout de la rangée, et la rangée glissée jusqu'à elle.
+      laharana.decalage = borneDecalage().min;
+      const fond = document.createElement('div');
+      fond.className = 'laharana-fond';
+      document.body.appendChild(fond);
+      laharana.fond = fond;
+      document.body.classList.add('fenetres-laharana');
+      poserLaharana();
+    }
+    function quitterLaharana(choisie){
+      if(!laharana) return;
+      const l = laharana;
+      laharana = null;
+      document.body.classList.remove('fenetres-laharana');
+      if(l.fond) l.fond.remove();
+      l.avant.forEach(function(r, s){
+        if(!visible(s.el)) return;
+        figer(s.el, { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) });
+      });
+      if(choisie && visible(choisie.el)) mettreDevant(choisie);
+      replacerLesPages();
+    }
+    // Glisser la rangée, du doigt ou à la souris, n'importe où sur elle ; un
+    // appui sans glisser choisit la fenêtre touchée.
+    let geste = null;
+    document.addEventListener('pointerdown', function(e){
+      if(!laharana || !e.isPrimary) return;
+      // Les boutons ─ □ ✕ des fenêtres gardent leur rôle.
+      if(e.target.closest && e.target.closest('.fenetre-boutons')) return;
+      const s = laharana.liste.find(function(x){ return x.el.contains(e.target); }) || null;
+      const surFond = e.target === laharana.fond;
+      if(!s && !surFond) return;
+      geste = { x: e.clientX, depart: laharana.decalage, s: s, bouge: false };
+      e.preventDefault();
+    }, true);
+    document.addEventListener('pointermove', function(e){
+      if(!geste || !laharana) return;
+      const dx = e.clientX - geste.x;
+      if(!geste.bouge && Math.abs(dx) < 8) return;
+      geste.bouge = true;
+      laharana.decalage = geste.depart + dx;
+      poserLaharana();
+    }, true);
+    document.addEventListener('pointerup', function(){
+      if(!geste) return;
+      const g = geste;
+      geste = null;
+      if(!laharana || g.bouge) return;
+      quitterLaharana(g.s);
+    }, true);
+    document.addEventListener('pointercancel', function(){ geste = null; }, true);
+    // Le clic qui suit n'ouvre rien dans la fenêtre touchée.
+    document.addEventListener('click', function(e){
+      if(!laharana) return;
+      if(e.target.closest && e.target.closest('.fenetre-boutons')) return;
+      if(laharana.fond === e.target || laharana.liste.some(function(x){ return x.el.contains(e.target); })){
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+    // La molette fait défiler la rangée, et Échap la referme.
+    document.addEventListener('wheel', function(e){
+      if(!laharana) return;
+      e.preventDefault();
+      laharana.decalage -= (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY);
+      poserLaharana();
+    }, { passive: false, capture: true });
+    document.addEventListener('keydown', function(e){
+      if(laharana && e.key === 'Escape') quitterLaharana(null);
+    });
+    // ✖ Hidio daholo : chacune se ferme comme à sa croix. Les pages d'abord,
+    // l'Accueil en dernier : fermer la dernière page rouvrirait le fil.
+    function hidioDaholo(){
+      quitterLaharana(null);
+      ouvertes().filter(function(s){ return s.el.id !== 'dash-accueil'; })
+        .forEach(function(s){ glisser(s, 0); fermerFenetre(s.el); });
+      const accueil = document.getElementById('dash-accueil');
+      if(visible(accueil)) fermerFenetre(accueil);
+      synchroniser();
+    }
+    window.__alaminoFenetres = alaminoFenetres;
+    window.__hidioDaholo = hidioDaholo;
+
     // Ce qui place les fenêtres leur impose une hauteur maximale ; la taille
     // choisie doit reprendre la main juste après.
     const placerAvant = placerPresDuMenu;
@@ -5104,10 +5396,12 @@
     // L'écran change de taille : une fenêtre à qui personne n'a donné de
     // taille reprend celle d'ouverture, les autres se rentrent dans le cadre.
     function replacerLesPages(){
+      // En rangée, c'est elle qui place les fenêtres.
+      if(laharana){ poserLaharana(); return; }
       const tailles = lire();
       const places = lirePlaces();
       suivis.forEach(function(s){
-        if(!s.page || !visible(s.el)) return;
+        if(!(s.page || s.commePage) || !visible(s.el)) return;
         if(s.agrandie) remplirBande(s);
         else if(tailles[s.el.id] || places[s.el.id]) appliquerTaille(s.el); else poserFenetre(s.el);
       });
@@ -5170,6 +5464,14 @@
       bouton.addEventListener('click', function(e){
         e.stopPropagation();
         if(fbComposer.style.display !== 'none'){ fermerComposer(); return; }
+        // Comme les autres pages du menu : le menu s'efface quand elle s'ouvre,
+        // sinon il restait posé sur elle.
+        const menu = document.getElementById('navList');
+        if(menu && menu.classList.contains('open')){
+          menu.classList.remove('open');
+          const n = document.getElementById('menuToggle');
+          if(n) n.setAttribute('aria-expanded', 'false');
+        }
         fbComposer.style.display = '';
         marquerLesBoutons(true);
         placerComposer();
@@ -5187,13 +5489,8 @@
       if(fbComposer.style.display !== 'none') placerComposer();
     });
 
-    // Un clic à côté referme, comme pour les autres panneaux.
-    document.addEventListener('click', function(e){
-      if(fbComposer.style.display === 'none') return;
-      if(fbComposer.contains(e.target)) return;
-      if(boutonsComposer.some(function(b){ return b.contains(e.target); })) return;
-      fermerComposer();
-    });
+    // Un clic à côté ne la referme plus : c'est une fenêtre parmi d'autres,
+    // qui passe derrière celle qu'on touche (23/10/2026).
 
     // L'envoi réussi le dit lui-même (parametres.js) ; en cas d'échec ou de
     // fiche incomplète, rien ne vient, et la boîte reste ouverte.
@@ -6165,6 +6462,19 @@
       });
     }
 
+    // Ranger ou fermer les fenêtres ouvertes ; le panneau se referme ensuite,
+    // pour qu'on voie le résultat.
+    [['fenetresAlamino', '__alaminoFenetres'], ['fenetresHidio', '__hidioDaholo']].forEach(function(paire){
+      const b = document.getElementById(paire[0]);
+      if(!b) return;
+      b.addEventListener('click', function(e){
+        e.stopPropagation();
+        if(panneau) panneau.style.display = 'none';
+        if(boutonReglages) boutonReglages.setAttribute('aria-expanded', 'false');
+        if(typeof window[paire[1]] === 'function') window[paire[1]]();
+      });
+    });
+
     if(boutonReglages && panneau){
       document.body.appendChild(panneau);
 
@@ -6692,9 +7002,9 @@
           if(menuToggle) menuToggle.setAttribute('aria-expanded','false');
         }
         placerNotif();
-        // Les panneaux du menu et la loupe se referment : une seule à la fois.
-        [['marketPanel', 'marketToggle'], ['livraisonPanel', 'livraisonToggle'],
-         ['recherchePanel', 'barRecherche']].forEach(function(paire){
+        // La loupe se referme. Les autres panneaux restent : ce sont des
+        // fenêtres, plusieurs s'ouvrent ensemble (23/10/2026).
+        [['recherchePanel', 'barRecherche']].forEach(function(paire){
           var mp = document.getElementById(paire[0]);
           if(!mp) return;
           mp.style.display = 'none';
@@ -6711,14 +7021,8 @@
     if(typeof deposerLeStockPartage === 'function') deposerLeStockPartage();
       }
     });
-    document.addEventListener('click', function(e){
-      // .contains et non !== : le bouton porte maintenant une icône, un
-      // libellé et une pastille, et c'est l'un d'eux que le clic désigne.
-      if(notifPanel.style.display === 'block' && !notifPanel.contains(e.target) && !notifToggle.contains(e.target)){
-        notifPanel.style.display = 'none';
-        notifToggle.setAttribute('aria-expanded', 'false');
-      }
-    });
+    // Un clic à côté ne la referme plus : c'est une fenêtre, qui passe
+    // derrière celle qu'on touche (23/10/2026). Son × ou son entrée la ferment.
   }
   // Achats internationaux (🌍) et Livraison international (🚚) : deux panneaux
   // déroulants du menu, même comportement que la cloche de notifications. Ils
@@ -6752,18 +7056,8 @@
           if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
         }
         placerPresDuMenu(panel);
-        // une seule liste ouverte à la fois : la cloche, et l'autre panneau.
-        if(notifPanel){
-          notifPanel.style.display = 'none';
-          if(notifToggle) notifToggle.setAttribute('aria-expanded', 'false');
-        }
-        PANNEAUX_DU_MENU.forEach(function(q){
-          if(q.panneau === p.panneau) return;
-          var autre = document.getElementById(q.panneau);
-          var sonBouton = document.getElementById(q.bouton);
-          if(autre) autre.style.display = 'none';
-          if(sonBouton) sonBouton.setAttribute('aria-expanded', 'false');
-        });
+        // La cloche et l'autre panneau restent ouverts : plusieurs fenêtres
+        // à la fois (23/10/2026). Seule la loupe se referme.
         var loupe = document.getElementById('recherchePanel');
         if(loupe) loupe.style.display = 'none';
         var boutonLoupe = document.getElementById('barRecherche');
@@ -6771,14 +7065,7 @@
         if(typeof window[p.remplir] === 'function') window[p.remplir]();
       }
     });
-    document.addEventListener('click', function(e){
-      // .contains et non !== : le bouton porte maintenant un libelle, et
-      // c'est lui que le clic designe.
-      if(panel.style.display === 'block' && !panel.contains(e.target) && !toggle.contains(e.target)){
-        panel.style.display = 'none';
-        toggle.setAttribute('aria-expanded', 'false');
-      }
-    });
+    // Pas de fermeture au clic à côté : une fenêtre parmi d'autres (23/10/2026).
   });
 
   // ---- La loupe de la rangée du bas ----
@@ -7338,7 +7625,9 @@
   document.querySelectorAll('.nav-item').forEach(function(nav){
     nav.addEventListener('click', function(){
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      // Les pages en fenêtre restent ouvertes : on en tient plusieurs à la
+      // fois, et celle qu'on ouvre passe devant (23/10/2026).
+      document.querySelectorAll('.section').forEach(s => { if(!s.classList.contains('fenetre-page')) s.classList.remove('active'); });
       nav.classList.add('active');
       document.getElementById('section-' + nav.dataset.section).classList.add('active');
       if(nav.dataset.section === 'factures') renderInvoiceItems();
@@ -7606,7 +7895,13 @@
     const view = document.getElementById('dash-' + nom);
     if(!view) return false;
     document.querySelectorAll('.dash-tab').forEach(function(t){ t.classList.remove('active'); });
-    document.querySelectorAll('.dash-view').forEach(function(v){ v.classList.remove('active'); });
+    // Une page en fenêtre laisse les autres fenêtres ouvertes ; une vue du
+    // fil remplace tout, comme avant.
+    const enFenetre = view.classList.contains('fenetre-page');
+    document.querySelectorAll('.dash-view').forEach(function(v){
+      if(enFenetre && v.classList.contains('fenetre-page')) return;
+      v.classList.remove('active');
+    });
     view.classList.add('active');
     // Un même onglet peut paraître deux fois — dehors et dans les Articles :
     // les deux s'allument.

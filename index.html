@@ -1176,6 +1176,12 @@
           </button>
         </div>
         <p class="panneau-note" id="barReglagesNote"></p>
+        <!-- Les fenêtres ouvertes : les ranger en cascade, ou les fermer toutes
+             d'un coup (common.js, gestionnaire des fenêtres). -->
+        <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
+          <button type="button" class="btn btn-sm" id="fenetresAlamino" style="flex:1;" title="Aligner les fenêtres"><span aria-hidden="true">🗂️ </span>Alamino</button>
+          <button type="button" class="btn btn-sm" id="fenetresHidio" style="flex:1;" title="Fermer toutes les fenêtres"><span aria-hidden="true">✖ </span>Hidio daholo</button>
+        </div>
         <!-- Sortie de secours : une rangée vidée ne se remplissait plus jamais
              d'elle-même, et il n'y avait aucun chemin pour y revenir. -->
         <button type="button" class="btn btn-sm" id="barToutRemettre" style="width:100%; margin-top:0.8rem;">↩︎ Averina ny sary rehetra</button>
@@ -1266,6 +1272,7 @@
           <div class="community-grid">
             <div class="fb-main">
               <div class="panel fb-composer" id="fbComposer" style="margin-top:0; display:none;">
+                <div class="section-head tete-accueil"><div><h2>Écrire</h2></div></div>
                 <div class="fb-composer-row">
                   <div class="fb-avatar" id="composerAvatar">?</div>
                   <div style="flex:1; display:flex; flex-direction:column; gap:0.6rem;">
@@ -3673,7 +3680,7 @@
 <script src="gestion-stockage-js/zara-rehetra.js?v=9b9c2469"></script>
 <script src="gestion-stockage-js/live.js?v=65e437a7"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/teny.js?v=9ac40274"></script>
+<script src="gestion-stockage-js/teny.js?v=85419c71"></script>
 <script src="gestion-stockage-js/parametres.js?v=cda4348c"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
