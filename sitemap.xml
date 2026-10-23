@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Les pages à montrer à Google. « /hotely » et « /confirmation » servent la
+     même page que la racine : elles n'ont pas leur place ici. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://ny-asako.netlify.app/</loc>
+  </url>
+  <url>
+    <loc>https://ny-asako.netlify.app/fokontany/</loc>
+  </url>
+</urlset>

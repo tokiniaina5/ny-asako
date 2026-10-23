@@ -1,0 +1,6 @@
+# Google et les autres moteurs peuvent tout lire : ce qui ne doit pas sortir
+# (supabase/, outils/, le mode d'emploi) est déjà refermé par _redirects.
+User-agent: *
+Allow: /
+
+Sitemap: https://ny-asako.netlify.app/sitemap.xml
