@@ -3,9 +3,9 @@
      même page que la racine : elles n'ont pas leur place ici. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://ny-asako.netlify.app/</loc>
+    <loc>https://nyasako.com/</loc>
   </url>
   <url>
-    <loc>https://ny-asako.netlify.app/fokontany/</loc>
+    <loc>https://nyasako.com/fokontany/</loc>
   </url>
 </urlset>

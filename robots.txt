@@ -3,4 +3,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ny-asako.netlify.app/sitemap.xml
+Sitemap: https://nyasako.com/sitemap.xml
