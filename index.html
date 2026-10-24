@@ -216,9 +216,6 @@
         Continuer avec Google
       </button>
       <p id="googleLoginStatus" style="font-size:0.75rem; color:var(--amber); margin:0.5rem 0 0; line-height:1.5; min-height:0;"></p>
-      <!-- « Bon retour » : les liens de l'admin sous le bouton Google, chaque
-           logo ouvre son site (contact.js, afficherRohyFidirana). -->
-      <div id="loginRohy" hidden style="display:none; margin:0.9rem 0 0;"></div>
       <div style="display:flex; align-items:center; gap:0.6rem; margin:0.9rem 0; font-size:0.72rem; color:var(--muted);">
         <span style="flex:1; border-top:1px solid var(--line);"></span>ou avec email<span style="flex:1; border-top:1px solid var(--line);"></span>
       </div>
@@ -741,6 +738,9 @@
       <button type="button" class="btn btn-sm" id="guideLoginBtn" style="flex:1;">🔑 Se connecter</button>
       <button type="button" class="btn btn-sm" id="guideSignupBtn" style="flex:1;">✍️ Créer un compte</button>
     </div>
+    <!-- Les réseaux, sous les raccourcis : chaque logo ouvre son site, ou le
+         lien de l'admin s'il y en a un (contact.js, afficherRohyFidirana). -->
+    <div id="loginRohy" style="display:none; margin-top:1.1rem;"></div>
   </div>
 </div>
 
