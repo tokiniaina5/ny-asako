@@ -1178,9 +1178,15 @@
         <p class="panneau-note" id="barReglagesNote"></p>
         <!-- Les fenêtres ouvertes : les ranger en cascade, ou les fermer toutes
              d'un coup (common.js, gestionnaire des fenêtres). -->
-        <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
-          <button type="button" class="btn btn-sm" id="fenetresAlamino" style="flex:1;" title="Aligner les fenêtres"><span aria-hidden="true">🗂️ </span>Alamino</button>
-          <button type="button" class="btn btn-sm" id="fenetresHidio" style="flex:1;" title="Fermer toutes les fenêtres"><span aria-hidden="true">✖ </span>Hidio daholo</button>
+        <div class="reglages-choix" style="margin-top:0.8rem;">
+          <button type="button" class="reglage-action" id="fenetresAlamino" title="Aligner les fenêtres">
+            <span class="reglage-icone" aria-hidden="true">🗂️</span>
+            <span class="reglage-nom">Alamino</span>
+          </button>
+          <button type="button" class="reglage-action" id="fenetresHidio" title="Fermer toutes les fenêtres">
+            <span class="reglage-icone" aria-hidden="true">❌</span>
+            <span class="reglage-nom">Hidio daholo</span>
+          </button>
         </div>
         <!-- « Alamino » ouvre ce choix : la façon de ranger les fenêtres. -->
         <div id="fenetresModely" class="fenetres-modely" style="display:none;">
