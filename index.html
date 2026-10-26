@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="920b8399">
+<meta name="ny-asako-version" content="70802606">
 <title>Ny asako</title>
 <!-- Ce que Google montre sous le titre, et ce qu'un lien partagé affiche
      (Facebook, WhatsApp). Sans description, Google prenait le premier texte
@@ -1319,7 +1319,7 @@
                tous (rohy_parrainage, parrainage_admin ; parrain-botika.js). Caché
                tant qu'il n'y en a pas. -->
           <div class="panel" id="botikaParrain" style="display:none; margin-top:0.8rem;">
-            <h3 style="margin-top:0;">💸 Binance &amp; Payoneer</h3>
+            <h3 style="margin-top:0;">💸 Binance, Payoneer &amp; hafa</h3>
             <p style="font-size:0.78rem; color:var(--muted); line-height:1.5; margin:0 0 0.6rem;">
               Misorata anarana amin'ireto rohy ireto : Binance ho an'ny crypto (P2P amin'ny MVola / Orange Money),
               Payoneer handraisana vola avy any ivelany.
@@ -2463,7 +2463,7 @@
              Chacun garde ici SON lien de parrainage (table rohy_parrainage) :
              c'est la plateforme qui paie, pas l'admin (inviter.js). -->
         <div class="panel" id="parrainPanel">
-          <h3>💸 Parrainage Binance &amp; Payoneer</h3>
+          <h3>💸 Parrainage Binance, Payoneer &amp; hafa</h3>
           <p style="font-size:0.8rem; color:var(--muted); line-height:1.6; margin-bottom:0.8rem;">
             Ny Binance na ny Payoneer no mandoa anao, fa tsy ny admin. Apetraho eto ny rohinao,
             dia zarao amin'ny olona tena hampiasa azy.
@@ -2518,6 +2518,34 @@
               <input id="parrainPayoneer" class="rohy-saha" type="text" maxlength="300" placeholder="https://share.payoneer.com/…">
               <button type="button" class="btn btn-sm" data-parrain-copy="payoneer">📋 Adikao</button>
               <button type="button" class="btn btn-sm" data-parrain-share="payoneer">📤 Zarao</button>
+            </div>
+          </div>
+
+          <!-- Les autres plateformes : chacun choisit les siennes (colonne
+               « hafa » de rohy_parrainage, inviter.js). -->
+          <div class="parrain-carte" style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line);">
+            <div style="font-weight:700; margin-bottom:0.3rem;">➕ Sehatra hafa</div>
+            <p style="font-size:0.78rem; color:var(--muted); line-height:1.5; margin:0 0 0.6rem;">
+              Manana rohy parrainage amin'ny sehatra hafa ianao? Safidio ilay sehatra, dia apetraho ny rohinao.
+            </p>
+            <div id="parrainHafaLisitra"></div>
+            <div class="rohy-andalana" id="parrainHafaAmpio" style="margin-top:0.8rem;">
+              <select id="parrainHafaSafidy" class="rohy-saha" style="flex:1 1 180px; font-family:inherit;">
+                <option value="">— Safidio ny sehatra —</option>
+                <option>Bybit</option>
+                <option>OKX</option>
+                <option>KuCoin</option>
+                <option>Bitget</option>
+                <option>RedotPay</option>
+                <option>Wise</option>
+                <option>Skrill</option>
+                <option>Airtm</option>
+                <option>Exness</option>
+                <option>Deriv</option>
+                <option value="__hafa">Hafa (soraty ny anarany)…</option>
+              </select>
+              <input id="parrainHafaAnarana" class="rohy-saha" type="text" maxlength="40" placeholder="Anaran'ny sehatra" style="display:none; flex:1 1 160px; font-family:inherit;">
+              <button type="button" class="btn btn-sm" id="parrainHafaAmpioBtn">➕ Ampio</button>
             </div>
           </div>
 
