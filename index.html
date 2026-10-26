@@ -3129,7 +3129,10 @@
             </div>
             <div class="field" style="margin-top:1rem;">
               <label for="payoutDestination" id="payoutDestinationLabelUsdt">Votre numéro et le nom du titulaire</label>
-              <input id="payoutDestination" type="text" placeholder="034 00 000 00 — RABE Koto">
+              <div style="display:flex; gap:0.5rem; align-items:stretch;">
+                <input id="payoutDestination" type="text" placeholder="034 00 000 00 — RABE Koto" style="flex:1; min-width:0;">
+                <button type="button" class="btn btn-sm" id="payoutCollerBtn" style="width:auto; display:none; white-space:nowrap;">📋 Coller</button>
+              </div>
             </div>
             <p id="payoutUsdtNote" style="display:none; font-size:0.76rem; color:var(--amber, #e9a23b); line-height:1.5; margin:-0.4rem 0 0.6rem;">
               ⚠️ Hamarino tsara ny adiresy sy ny réseau : raha diso izy, very tanteraka ny vola.
