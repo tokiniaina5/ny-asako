@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="45bdf5fa">
+<meta name="ny-asako-version" content="484dd0e7">
 <title>Ny asako</title>
 <!-- Ce que Google montre sous le titre, et ce qu'un lien partagé affiche
      (Facebook, WhatsApp). Sans description, Google prenait le premier texte
@@ -1314,6 +1314,18 @@
             <button type="button" class="story-fleche story-fleche-d" id="storyFlecheD" aria-label="Story manaraka" hidden>›</button>
           </div>
           <input type="file" id="storyFichier" accept="image/*,video/*" multiple hidden>
+
+          <!-- Binance et Payoneer : les liens de parrainage de l'admin, à
+               tous (rohy_parrainage, parrainage_admin ; parrain-botika.js). Caché
+               tant qu'il n'y en a pas. -->
+          <div class="panel" id="botikaParrain" style="display:none; margin-top:0.8rem;">
+            <h3 style="margin-top:0;">💸 Binance &amp; Payoneer</h3>
+            <p style="font-size:0.78rem; color:var(--muted); line-height:1.5; margin:0 0 0.6rem;">
+              Misorata anarana amin'ireto rohy ireto : Binance ho an'ny crypto (P2P amin'ny MVola / Orange Money),
+              Payoneer handraisana vola avy any ivelany.
+            </p>
+            <div id="botikaParrainBoutons" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
+          </div>
 
           <div class="community-grid">
             <div class="fb-main">
@@ -3834,7 +3846,8 @@
 <script src="gestion-stockage-js/comptes.js?v=92ad47d0"></script>
 <script src="gestion-stockage-js/factures.js?v=69af0cd7"></script>
 <script src="gestion-stockage-js/factures-modely.js?v=8fbf4a42"></script>
-<script src="gestion-stockage-js/inviter.js?v=c00e4267"></script>
+<script src="gestion-stockage-js/inviter.js?v=d66db470"></script>
+<script src="gestion-stockage-js/parrain-botika.js?v=aabf7286"></script>
 <script src="gestion-stockage-js/contact.js?v=2cc9de65"></script>
 <script src="gestion-stockage-js/zara-rehetra.js?v=9b9c2469"></script>
 <script src="gestion-stockage-js/live.js?v=2d14b1e9"></script>
