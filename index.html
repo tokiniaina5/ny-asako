@@ -2980,6 +2980,37 @@
             <button type="button" class="btn btn-sm" id="walletSignOutBtn" style="margin-top:1rem;">Se déconnecter du portefeuille</button>
           </div>
 
+          <!-- ---- PORTEFEUILLES IVELANY : TronLink, Binance Web3… ----
+               Le client y range ses adresses (connexion par l'extension, ou à
+               la main) ; un clic les met dans « Retirer » en USDT. Gardées dans
+               le compte (user_metadata.wallets_ivelany) — common.js. -->
+          <div class="panel" id="walletIvelanyPanel">
+            <h3>🔗 Portefeuilles ivelany</h3>
+            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin:0 0 0.8rem;">
+              Ampifandraiso eto ny wallet-nao any ivelany. Rehefa voatahiry izy, dia indray tsindry ihany
+              no andefasana ny retrait USDT any aminy — tsy mila mandika adiresy intsony.
+            </p>
+            <div class="wext-grille" id="wextGrille"></div>
+
+            <!-- Fampidirana amin'ny tanana : ny adiresy no mamaritra ny réseau. -->
+            <div id="wextForm" style="display:none; margin-top:0.9rem; padding-top:0.8rem; border-top:1px solid var(--line);">
+              <div class="rohy-etiketa" id="wextFormTitre">Adiresy</div>
+              <div class="rohy-andalana">
+                <input id="wextAdresse" class="rohy-saha" type="text" autocomplete="off" spellcheck="false" placeholder="T… (TRC20) na 0x… (BEP20)">
+                <button type="button" class="btn btn-sm" id="wextColler" style="width:auto;">📋 Coller</button>
+              </div>
+              <input id="wextNom" class="rohy-saha" type="text" maxlength="40" placeholder="Anarana (tsy voatery) — ex : Wallet-ko lehibe" style="margin-top:0.5rem; width:100%; font-family:inherit;">
+              <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                <button type="button" class="btn btn-primary btn-sm" id="wextSave" style="width:auto;">💾 Tehirizina</button>
+                <button type="button" class="btn btn-sm" id="wextCancel" style="width:auto;">Ajanony</button>
+              </div>
+            </div>
+            <p id="wextStatus" style="font-size:0.78rem; color:var(--cyan); margin:0.6rem 0 0; line-height:1.5;"></p>
+
+            <div class="rohy-etiketa" style="margin-top:0.9rem;">📒 Ny wallet-ko voatahiry</div>
+            <div id="wextLisitra" style="font-size:0.82rem;"></div>
+          </div>
+
           <!-- ---- AVADIKA HO VOLA TENA IZY ----
                La commission de parrainage de l'appli devient de l'argent qui
                se retire, après accord de l'admin. Tout se décide dans la

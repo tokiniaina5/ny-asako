@@ -1685,6 +1685,244 @@
     });
   }
 
+  // ---- Portefeuilles ivelany : TronLink, Binance Web3, MetaMask… ----
+  // Le client range ses adresses : par l'extension du navigateur quand elle
+  // est là (ou dans le navigateur DApp de l'appli mobile), sinon à la main.
+  // L'adresse dit le réseau (T… → TRC20, 0x… → BEP20). Gardées dans le compte
+  // (user_metadata.wallets_ivelany), avec une copie locale pour l'affichage.
+  const WEXT_TRON = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
+  const WEXT_EVM = /^0x[0-9a-fA-F]{40}$/;
+  function wextEvm(){
+    if(window.binancew3w && window.binancew3w.ethereum) return window.binancew3w.ethereum;
+    if(window.okxwallet && window.okxwallet.request) return window.okxwallet;
+    return window.ethereum || null;
+  }
+  const WEXT_TYPES = [
+    { id: 'tronlink', nom: 'TronLink', icone: '🔺', reseau: 'TRC20', fidirana: 'tron',
+      fanazavana: 'USDT TRC20 (adiresy T…)' },
+    { id: 'binance-web3', nom: 'Binance Wallet (Web3)', icone: '🟡', reseau: 'BEP20', fidirana: 'evm',
+      fanazavana: 'BNB Smart Chain (adiresy 0x…)' },
+    { id: 'binance', nom: 'Binance (kaonty)', icone: '🔶', reseau: '', fidirana: '',
+      fanazavana: 'Adiresy « Dépôt USDT » ao amin\'ny Binance' },
+    { id: 'trust', nom: 'Trust Wallet', icone: '🛡️', reseau: '', fidirana: 'evm',
+      fanazavana: 'TRC20 na BEP20' },
+    { id: 'metamask', nom: 'MetaMask', icone: '🦊', reseau: 'BEP20', fidirana: 'evm',
+      fanazavana: 'BNB Smart Chain (adiresy 0x…)' },
+    { id: 'okx', nom: 'OKX Wallet', icone: '⚫', reseau: '', fidirana: 'evm',
+      fanazavana: 'TRC20 na BEP20' },
+    { id: 'hafa', nom: 'Wallet hafa', icone: '➕', reseau: '', fidirana: '',
+      fanazavana: 'Izay wallet USDT rehetra' }
+  ];
+  function wextType(id){
+    return WEXT_TYPES.find(function(t){ return t.id === id; }) || WEXT_TYPES[WEXT_TYPES.length - 1];
+  }
+  function wextReseau(adr){
+    if(WEXT_TRON.test(adr)) return 'TRC20';
+    if(WEXT_EVM.test(adr)) return 'BEP20';
+    return '';
+  }
+  function wextHita(t){
+    if(t.fidirana === 'tron') return !!(window.tronLink || (window.tronWeb && window.tronWeb.defaultAddress));
+    if(t.fidirana !== 'evm') return false;
+    const p = wextEvm();
+    if(!p) return false;
+    if(t.id === 'binance-web3') return !!(window.binancew3w || p.isBinance);
+    if(t.id === 'metamask') return !!p.isMetaMask && !p.isTrust && !p.isBinance;
+    if(t.id === 'trust') return !!(window.trustwallet || p.isTrust || p.isTrustWallet);
+    if(t.id === 'okx') return !!window.okxwallet;
+    return false;
+  }
+
+  let wextLisitra = [];
+  let wextAmboarina = null;   // type en cours de saisie à la main
+  function wextCle(){
+    const email = walletSession && walletSession.user && walletSession.user.email;
+    return 'nyasako-wext:' + (email || '').toLowerCase();
+  }
+  function wextVoatahiry(){
+    try { localStorage.setItem(wextCle(), JSON.stringify(wextLisitra)); } catch(e){}
+    const auth = sbAuth();
+    if(auth) auth.updateUser({ data: { wallets_ivelany: wextLisitra } }).then(function(){}, function(){});
+  }
+  function wextAkatra(){
+    try { wextLisitra = JSON.parse(localStorage.getItem(wextCle()) || '[]') || []; } catch(e){ wextLisitra = []; }
+    wextAseho();
+    // Le compte fait foi : un autre appareil a pu en ajouter.
+    const auth = sbAuth();
+    if(auth && auth.getUser){
+      auth.getUser().then(function(res){
+        const meta = (res && res.data && res.data.user && res.data.user.user_metadata) || {};
+        if(Array.isArray(meta.wallets_ivelany)){
+          wextLisitra = meta.wallets_ivelany;
+          try { localStorage.setItem(wextCle(), JSON.stringify(wextLisitra)); } catch(e){}
+          wextAseho();
+        }
+      }, function(){});
+    }
+  }
+  function wextStatus(texte){
+    const el = document.getElementById('wextStatus');
+    if(el) el.textContent = texte || '';
+  }
+  function wextAmpio(typeId, adr, nom){
+    adr = (adr || '').trim();
+    const reseau = wextReseau(adr);
+    if(!reseau){ wextStatus('Diso ny adiresy : tokony manomboka amin\'ny T… (TRC20) na 0x… (BEP20).'); return false; }
+    if(wextLisitra.some(function(w){ return w.adr.toLowerCase() === adr.toLowerCase(); })){
+      wextStatus('Efa voatahiry io adiresy io.');
+      return false;
+    }
+    const t = wextType(typeId);
+    wextLisitra.push({ type: t.id, nom: (nom || '').trim() || t.nom, adr: adr, reseau: reseau, daty: new Date().toISOString() });
+    wextVoatahiry();
+    wextAseho();
+    wextStatus('✅ Voatahiry : ' + t.nom + ' (' + reseau + ').');
+    return true;
+  }
+
+  async function wextAmpifandraisina(t){
+    wextStatus('Mifandray amin\'ny ' + t.nom + '…');
+    try{
+      if(t.fidirana === 'tron'){
+        if(window.tronLink && window.tronLink.request){
+          const r = await window.tronLink.request({ method: 'tron_requestAccounts' });
+          if(r && r.code && r.code !== 200) throw new Error(r.message || 'Nolavina.');
+        }
+        const tw = (window.tronLink && window.tronLink.tronWeb) || window.tronWeb;
+        const adr = tw && tw.defaultAddress && tw.defaultAddress.base58;
+        if(!adr) throw new Error('Sokafy sy vohay aloha ny TronLink, dia andramo indray.');
+        wextAmpio(t.id, adr, '');
+        return;
+      }
+      const p = wextEvm();
+      if(!p) throw new Error('Tsy hita ny wallet.');
+      const kaonty = await p.request({ method: 'eth_requestAccounts' });
+      if(!kaonty || !kaonty[0]) throw new Error('Tsy nisy kaonty nomena.');
+      wextAmpio(t.id, kaonty[0], '');
+    }catch(e){
+      wextStatus('⚠️ ' + ((e && e.message) || 'Tsy tafiditra.') + ' Azonao ampidirina amin\'ny tanana ihany koa ny adiresy.');
+    }
+  }
+
+  function wextSokafyForm(t){
+    wextAmboarina = t;
+    document.getElementById('wextForm').style.display = '';
+    document.getElementById('wextFormTitre').textContent = t.icone + ' Adiresy USDT ' + t.nom +
+      (t.reseau ? ' (' + t.reseau + ')' : '');
+    const input = document.getElementById('wextAdresse');
+    input.value = '';
+    input.placeholder = t.reseau === 'TRC20' ? 'T…' : (t.reseau === 'BEP20' ? '0x…' : 'T… (TRC20) na 0x… (BEP20)');
+    document.getElementById('wextNom').value = '';
+    input.focus();
+    wextStatus(t.id === 'binance'
+      ? 'Binance : Wallet → Deposit → USDT → safidio TRC20 na BSC (BEP20) → adikao ny adiresy.'
+      : '');
+  }
+
+  // Vers « Retirer » : USDT, l'adresse posée, le réseau suit.
+  function wextAmpiasaina(w){
+    const op = document.getElementById('payoutOperateur');
+    const input = document.getElementById('payoutDestination');
+    if(!op || !input) return;
+    op.value = 'USDT';
+    op.dispatchEvent(new Event('change'));
+    input.value = w.adr;
+    reseauSelonAdresse();
+    const panneau = document.getElementById('walletPayoutPanel');
+    if(panneau) panneau.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const vola = document.getElementById('payoutAmount');
+    if(vola) setTimeout(function(){ vola.focus(); }, 400);
+    const st = document.getElementById('payoutStatus');
+    if(st) st.textContent = '🔗 ' + w.nom + ' (' + w.reseau + ') no handray. Ampidiro ny vola.';
+  }
+
+  function wextAseho(){
+    const grille = document.getElementById('wextGrille');
+    if(grille){
+      grille.innerHTML = '';
+      WEXT_TYPES.forEach(function(t){
+        const hita = wextHita(t);
+        const k = document.createElement('div');
+        k.className = 'wext-karatra';
+        k.innerHTML = '<b>' + t.icone + ' ' + escapeHtml(t.nom) + '</b><small>' + escapeHtml(t.fanazavana) +
+          (hita ? '<br><span class="wext-hita">● Hita amin\'ity navigateur ity</span>' : '') + '</small>';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm' + (hita ? ' btn-primary' : '');
+        btn.textContent = hita ? '🔌 Ampifandraisina' : '✍️ Ampidiro ny adiresy';
+        btn.addEventListener('click', function(){ hita ? wextAmpifandraisina(t) : wextSokafyForm(t); });
+        k.appendChild(btn);
+        grille.appendChild(k);
+      });
+    }
+    const lisitra = document.getElementById('wextLisitra');
+    if(!lisitra) return;
+    lisitra.innerHTML = '';
+    if(!wextLisitra.length){
+      lisitra.innerHTML = '<p style="color:var(--muted); margin:0.3rem 0 0;">Mbola tsy misy. Safidio etsy ambony ny wallet-nao.</p>';
+      return;
+    }
+    wextLisitra.forEach(function(w, i){
+      const t = wextType(w.type);
+      const row = document.createElement('div');
+      row.className = 'wext-andalana';
+      row.innerHTML = '<div style="flex:0 0 auto;">' + t.icone + '</div>' +
+        '<div style="flex:1 1 200px; min-width:0;"><b>' + escapeHtml(w.nom) + '</b> · <span style="color:var(--cyan);">' +
+        escapeHtml(w.reseau) + '</span><div class="wext-adr">' + escapeHtml(w.adr) + '</div></div>';
+      const asa = document.createElement('div');
+      asa.style.cssText = 'display:flex; gap:0.4rem; flex-wrap:wrap;';
+      [['💸 Alefa eto', function(){ wextAmpiasaina(w); }],
+       ['📋', function(){
+          navigator.clipboard && navigator.clipboard.writeText(w.adr).then(function(){ wextStatus('Voadika ny adiresy.'); }, function(){});
+        }],
+       ['🗑️', function(){
+          if(!confirm('Esorina ve ny ' + w.nom + ' ?')) return;
+          wextLisitra.splice(i, 1);
+          wextVoatahiry();
+          wextAseho();
+          wextStatus('Voaesotra.');
+        }]
+      ].forEach(function(b){
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm';
+        btn.style.width = 'auto';
+        btn.textContent = b[0];
+        btn.addEventListener('click', b[1]);
+        asa.appendChild(btn);
+      });
+      row.appendChild(asa);
+      lisitra.appendChild(row);
+    });
+  }
+
+  const wextSaveBtn = document.getElementById('wextSave');
+  if(wextSaveBtn){
+    wextSaveBtn.addEventListener('click', function(){
+      const t = wextAmboarina || wextType('hafa');
+      const adr = document.getElementById('wextAdresse').value.trim();
+      const reseau = wextReseau(adr);
+      if(t.reseau && reseau && t.reseau !== reseau){
+        wextStatus('⚠️ ' + t.nom + ' dia ' + t.reseau + ' : ' + (t.reseau === 'TRC20' ? 'T…' : '0x…') + ' no andrasana.');
+        return;
+      }
+      if(wextAmpio(t.id, adr, document.getElementById('wextNom').value)){
+        document.getElementById('wextForm').style.display = 'none';
+        wextAmboarina = null;
+      }
+    });
+    document.getElementById('wextCancel').addEventListener('click', function(){
+      document.getElementById('wextForm').style.display = 'none';
+      wextAmboarina = null;
+      wextStatus('');
+    });
+    document.getElementById('wextColler').addEventListener('click', async function(){
+      const input = document.getElementById('wextAdresse');
+      try { input.value = ((await navigator.clipboard.readText()) || '').trim(); }
+      catch(e){ input.focus(); wextStatus('Tsindrio ela ilay toerana dia safidio « Coller ».'); }
+    });
+  }
+
     const payoutRequestBtn = document.getElementById('payoutRequestBtn');
   if(payoutRequestBtn){
     payoutRequestBtn.addEventListener('click', function(){
@@ -2387,6 +2625,9 @@
     // Le solde en ariary vient du serveur : c'est lui qui fait foi. En
     // attendant sa réponse, l'estimation locale évite un écran vide.
     refreshWalletFromServer();
+    // Les extensions (TronLink…) s'injectent parfois après le chargement.
+    wextAkatra();
+    setTimeout(wextAseho, 1500);
 
 
     const subCreditPanel = document.getElementById('walletSubCreditPanel');
