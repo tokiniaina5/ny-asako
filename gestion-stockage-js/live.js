@@ -1238,7 +1238,9 @@
     { teny: ['misaotra', 'merci', 'thanks', 'mersi'],
       valiny: 'Tsy misy fisaorana ! Raha mbola misy fanontaniana, soraty fotsiny eto. 😊' },
     // Ny ankapobeny farany : tsy mandresy afa-tsy raha tsy misy hafa hita.
-    { teny: ['menu', 'aiza', 'pejy', 'page', 'fanampiana', 'aide', 'help', 'inona no azo atao', 'fitaovana', 'fonctionnalite', 'ahoana'],
+    // Tsy ao intsony ny « aiza », « ahoana », « pejy » : ny fanontaniana tsy
+    // momba ny appli (« ahoana no fanaovana mofo ? ») dia mankany amin'ny AI.
+    { teny: ['menu', 'fanampiana', 'aide', 'help', 'inona no azo atao', 'inona no ataon ny appli', 'fitaovana', 'fonctionnalite', 'fonctionnalites'],
       valiny: botFanampiana }
   ];
   // Ny lisitry ny pejy rehetra : ho an'ny fanontaniana ankapobeny na tsy fantatra.
