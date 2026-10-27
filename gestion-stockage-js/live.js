@@ -1140,7 +1140,8 @@
         'dia afaka manao kaomandy avy amin\'ny finday ny mpanjifanao, na tsy manana kaonty aza.' },
     { teny: ['hotel', 'hôtel', 'hotellerie', 'restaurant', 'trano fisakafoanana', 'menu sakafo', 'sakafo', 'qr', 'lakozia', 'cuisine', 'table', 'latabatra'],
       valiny: '🏨 Ny asako Hôtel : menu misy sary, QR isaky ny latabatra, kaomandy tonga any an-dakozia, ' +
-        'ary fandoavana amin\'ny Mobile Money. Apetraka manokana toy ny application ao amin\'ny finday na tablette izy.' },
+        'ary fandoavana amin\'ny Mobile Money. Apetraka manokana toy ny application ao amin\'ny finday na tablette izy.\n\n' +
+        'Raha liana amin\'izany ianao, dia afaka manao installation maimaimpoana (gratuit) ho anao izahay tompoko. 🎁' },
     { teny: ['live', 'direct', 'mivantana', 'streaming'],
       valiny: '🔴 Live direct ' + BOT_MENU + ' : asehoy amin\'ny video mivantana ny entanao amin\'izay rehetra mijery ankehitriny.' },
     { teny: ['call', 'antso', 'appel', 'miantso', 'hiantso', 'antsoy', 'appeler', 'video call', 'appel video'],
@@ -1333,6 +1334,50 @@
     });
     return tsara;
   }
+  // Emoji eo amin'ny faran'ny valiny rehetra : raha efa misy (😊, 🎁…),
+  // tsy ampiana intsony.
+  function botEmoji(valiny){
+    const s = String(valiny || '').replace(/\s+$/, '');
+    if(/(?:\p{Extended_Pictographic}|\p{Regional_Indicator})[️\p{Emoji_Modifier}]*$/u.test(s)) return s;
+    return s + ' 😊';
+  }
+  // Hafatra emoji fotsiny (😂, 👍, ❤️…) : valiana emoji koa, miaraka amin'ny
+  // fanontaniana momba ilay emoji nalefany. Ny vondrona tsy fantatra dia
+  // anontaniana hoe inona no tiany holazaina.
+  const BOT_EMOJI = [
+    { e: '😂🤣😆😹😅😝😜', fan: 'Hahaha ! Inona no mampihomehy anao toy izao ?' },
+    { e: '❤💕💖💗💓💞💘😍🥰😘😻💝', fan: 'Misaotra betsaka ! Inona no tena tianao indrindra ao amin\'ny Ny asako ?' },
+    { e: '😊🙂😀😃😄😁☺🤗😇', fan: 'Faly aho mahita anao faly ! Inona no nahafaly anao androany ?' },
+    { e: '👍👌✅💪🤝👏', fan: 'Tsara izany ! Mbola misy zavatra tianao ho fantatra ve ?' },
+    { e: '🙏', fan: 'Misaotra anao koa ! Inona no azoko anampiana anao ?' },
+    { e: '😢😭😞😔☹🙁😟😥💔', fan: 'Inona no nahatonga anao malahelo ? Lazao ahy fa angamba afaka manampy aho.' },
+    { e: '😡😠🤬😤👎', fan: 'Miala tsiny raha misy tsy nety ! Inona no nanelingelina anao ?' },
+    { e: '🤔😕🤨😐😶❓❔', fan: 'Misy zavatra tsy mazava ve ? Inona no fanontanianao ?' },
+    { e: '😮😲😱🤯😳', fan: 'Inona no nahagaga anao ?' },
+    { e: '👋', fan: 'Salama ! Inona no azoko anampiana anao androany ?' },
+    { e: '🔥💯🚀⭐🌟✨🎉🥳', fan: 'Mahafinaritra ! Inona no tena nampientanentana anao ?' },
+    { e: '😴🥱', fan: 'Reraka ve ianao ? Inona no azoko atao hanamora ny asanao ?' },
+    { e: '💰💵💸🤑', fan: 'Vola ve no resahina ? Te hahafantatra momba ny 💰 Portefeuille na ny vidiny ve ianao ?' },
+    { e: '🛒🛍📦', fan: 'Hividy na hivarotra ve ianao ? Inona no entana tadiavinao ?' }
+  ];
+  function botValyEmoji(soratra){
+    const s = String(soratra || '').replace(/[\s️‍]|\p{Emoji_Modifier}/gu, '');
+    if(!s || !/^(?:\p{Extended_Pictographic}|\p{Regional_Indicator})+$/u.test(s)) return null;
+    // Ny emoji tsirairay manontolo (🇲🇬, 👍🏽, ❤️) : Intl.Segmenter raha misy,
+    // fa raha tsy izany dia tapaka ny saina sy ny loko.
+    const madio = String(soratra).replace(/\s+/g, '');
+    let lisitra;
+    try{
+      lisitra = Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(madio), function(x){ return x.segment; });
+    }catch(e){ lisitra = Array.from(s); }
+    const voalohany = lisitra[0];
+    const fototra = Array.from(voalohany.replace(/[️‍]|\p{Emoji_Modifier}/gu, ''))[0];
+    // Averina ilay emoji nalefany (telo farafahabetsany), ary ny fanontaniana.
+    const averina = lisitra.slice(0, 3).join('');
+    const v = BOT_EMOJI.find(function(x){ return x.e.indexOf(fototra) >= 0; });
+    if(!v) return averina + '\n' + 'Inona no tianao holazaina amin\'ity ' + voalohany + ' ity ?';
+    return averina + '\n' + v.fan + ' ' + voalohany;
+  }
   const botEfaNilaza = {};
   function botMamaly(email, soratra){
     // Amin'ny admin ihany, ary tsy rehefa ny admin no manoratra.
@@ -1340,16 +1385,37 @@
     const me = myIdentity();
     if(me.isAdmin || isOwnerEmail(me.email)) return;
     const f = botMitady(soratra);
-    let valiny = f ? (typeof f.valiny === 'function' ? f.valiny(soratra) : f.valiny) : null;
-    if(!valiny){
+    const valiny = botValyEmoji(soratra) ||
+      (f ? (typeof f.valiny === 'function' ? f.valiny(soratra) : f.valiny) : null);
+    if(valiny){ botApetraho(email, valiny, 700); return; }
+    // Tsy fantatra eto : ny AI (fonction « assistant ») no manapa-kevitra
+    // raha valiana ilay fanontaniana. Raha momba ny appli izy, na tsy tokony
+    // valiana, na tsy tafiditra ny AI, dia ny admin no hamaly toy ny taloha.
+    botAnontanioAI(soratra).then(function(v){
+      if(v && v.valiana && v.valiny){ botApetraho(email, v.valiny, 0); return; }
+      if(v && v.antony === 'tsy'){
+        botApetraho(email, 'Miala tsiny tompoko, tsy afaka mamaly an\'io fanontaniana io aho. ' +
+          'Fa raha misy zavatra hafa tianao ho fantatra, na momba ny Ny asako, anontanio fotsiny aho.', 0);
+        return;
+      }
       if(botEfaNilaza[email]) return;
       botEfaNilaza[email] = true;
-      valiny = 'Voaray ny hafatrao, ary ho valian\'ny admin raha vao afaka izy.\n\n' + botFanampiana();
-    }
+      botApetraho(email, 'Voaray ny hafatrao, ary ho valian\'ny admin raha vao afaka izy.\n\n' + botFanampiana(), 0);
+    });
+  }
+  function botApetraho(email, valiny, elanelana){
     setTimeout(function(){
-      (resaka[email] = resaka[email] || []).push({ id: idHafatra(), avy: 'bot', soratra: valiny, at: Date.now() });
+      (resaka[email] = resaka[email] || []).push({ id: idHafatra(), avy: 'bot', soratra: botEmoji(valiny), at: Date.now() });
       if(resakaMisokatra && resakaMisokatra.email === email) asehoyResaka();
-    }, 700);
+    }, elanelana);
+  }
+  // { valiana, valiny, antony } avy amin'ny fonction, na null raha tsy
+  // tafiditra (tsy misy réseau, tsy misy Supabase).
+  function botAnontanioAI(soratra){
+    if(!window.__sb || !window.__sb.functions || !window.__sb.functions.invoke) return Promise.resolve(null);
+    return window.__sb.functions.invoke('assistant', { body: { fanontaniana: soratra } })
+      .then(function(res){ return (res && !res.error && res.data) ? res.data : null; })
+      .catch(function(){ return null; });
   }
 
   // Ny resaka amin'ny admin, miaraka amin'ny fiarahaban'ny bot raha mbola
@@ -1362,7 +1428,7 @@
     sokafyResaka(OWNER_EMAIL, 'Ny asako');
     const lisitra = resaka[OWNER_EMAIL] = resaka[OWNER_EMAIL] || [];
     if(!lisitra.length){
-      lisitra.push({ id: idHafatra(), avy: 'bot', soratra: BOT_FAQ[0].valiny, at: Date.now() });
+      lisitra.push({ id: idHafatra(), avy: 'bot', soratra: botEmoji(BOT_FAQ[0].valiny), at: Date.now() });
       asehoyResaka();
     }
   }
