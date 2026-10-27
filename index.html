@@ -3867,6 +3867,26 @@
           <button type="button" class="btn btn-sm" id="refreshSignupsBtn" style="width:auto; margin-top:0.8rem;">↻ Actualiser</button>
         </div>
 
+        <!-- Ceux qui ont effacé leur compte (Paramètres > Supprimer mon compte) :
+             la fonction fafao-kaonty les note dans kaonty_voafafa. -->
+        <div class="panel" id="kaontyVoafafaPanel" style="display:none;">
+          <h3>🗑️ Comptes supprimés (admin — vous uniquement)</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
+            Chaque personne qui supprime elle-même son compte apparaît ici, avec ses coordonnées
+            et la date de son inscription. Ses données, elles, sont déjà effacées.
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Supprimé le</th><th>Nom</th><th>Email</th><th>Téléphone</th><th>Inscrit le</th></tr>
+              </thead>
+              <tbody id="kaontyVoafafaBody"></tbody>
+            </table>
+          </div>
+          <p class="empty-hint" id="kaontyVoafafaEmpty" style="display:none;">Aucun compte supprimé pour le moment.</p>
+          <button type="button" class="btn btn-sm" id="refreshKaontyVoafafaBtn" style="width:auto; margin-top:0.8rem;">↻ Actualiser</button>
+        </div>
+
         <div class="panel" id="unlockRequestsPanel" style="display:none;">
           <h3>🔓 Demandes de déblocage (admin — vous uniquement)</h3>
           <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
