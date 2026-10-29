@@ -303,8 +303,7 @@
       <div id="forgotBox" style="display:none; margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.9rem;">
         <p style="font-size:0.76rem; color:var(--muted); line-height:1.5; margin-bottom:0.9rem;">
           Votre accès est fermé (abonnement à régler ou compte suspendu). Le déblocage se règle
-          <strong style="color:var(--text);">avec le solde de votre portefeuille</strong> ou
-          <strong style="color:var(--text);">par carte Visa</strong> — votre accès se rouvre tout de suite.
+          <strong style="color:var(--text);">par Mobile Money, directement à l'admin</strong> : il rouvre votre accès dès réception.
         </p>
         <div class="field">
           <label for="forgotName">Nom</label>
@@ -324,19 +323,11 @@
             <strong id="unlockWalletCost" style="font-family:var(--font-mono); font-size:1.1rem; color:var(--cyan);">0</strong>
           </div>
 
-          <!-- Ou par carte Visa : le numéro se tape chez Papi (carte BRED),
-               jamais sur cette page. Le mot de passe sert à se reconnecter,
-               car le lien de paiement demande une session. -->
-          <div style="display:flex; align-items:center; gap:0.6rem; margin:0.9rem 0 0.7rem; font-size:0.72rem; color:var(--muted);">
-            <span style="flex:1; border-top:1px solid var(--line);"></span>ou<span style="flex:1; border-top:1px solid var(--line);"></span>
-          </div>
-          <div class="field" style="margin-bottom:0.6rem;">
-            <label for="forgotPassword">Mot de passe (pour payer par carte)</label>
-            <input id="forgotPassword" type="password" minlength="6" placeholder="Votre mot de passe" autocomplete="current-password">
-          </div>
-          <button type="button" class="btn btn-sm" id="payUnlockCardBtn" style="width:100%;">💳 Payer par carte Visa et débloquer</button>
-          <p style="font-size:0.7rem; color:var(--muted); margin-top:0.5rem; line-height:1.5;">
-            Vous saisissez votre carte sur la page sécurisée de Papi, pas ici. Frais de paiement : 5 %.
+          <!-- Le déblocage se paie directement au numéro de l'admin. -->
+          <p style="font-size:0.76rem; color:var(--muted); margin-top:0.7rem; line-height:1.6;">
+            Envoyez cette somme via MVola, Orange Money ou Airtel Money au
+            <strong style="color:var(--text);" data-owner="phone"></strong>, au nom de
+            <strong style="color:var(--text);" data-owner="name"></strong>, avec votre nom en motif.
           </p>
         </div>
 
@@ -833,37 +824,26 @@
       <button type="button" class="btn btn-primary btn-sm" id="paywallWalletBtn" style="width:100%;">💰 Payer avec mon portefeuille</button>
     </div>
 
-    <!-- 2. Paiement direct : le numéro Mobile Money du client, puis son code
-         secret sur son téléphone ; l'argent part vers le compte de l'admin. -->
-    <div style="border:1px solid var(--cyan); border-radius:10px; padding:0.9rem 1rem; margin-bottom:1rem; background:var(--panel-2);">
-      <strong style="font-size:0.9rem;">📲 2. Paiement direct par numéro</strong>
-      <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0.5rem 0 0.7rem;">
-        Ampidiro ny numéro MVola, Orange Money na Airtel Money-nao, avy eo ny code secret-nao.
-        Mandeha avy hatrany any amin'ny <strong data-owner="phone"></strong>
-        (<span data-owner="name"></span>) ny vola, ary misokatra ny abonnement.
-      </p>
-      <div class="field" style="margin-bottom:0.6rem;">
-        <label for="paywallPhone">Numéro Mobile Money</label>
-        <input id="paywallPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="034 00 000 00">
-      </div>
-      <p id="paywallOperateur" style="font-size:0.75rem; color:var(--muted); margin:-0.3rem 0 0.6rem;"></p>
-      <button type="button" class="btn btn-primary btn-sm" id="paywallDirectBtn" style="width:100%;">📲 Payer par numéro</button>
-    </div>
     <p id="paywallWalletStatus" style="font-size:0.8rem; color:var(--cyan); margin:-0.4rem 0 0.9rem; line-height:1.5;"></p>
 
-    <!-- L'ancien chemin reste pour qui a déjà reçu un code de l'admin. -->
-    <details style="margin-bottom:0.8rem;">
-      <summary style="font-size:0.8rem; color:var(--muted); cursor:pointer;">Efa nahazo code avy amin'ny admin ?</summary>
-      <div style="margin-top:0.7rem;">
-        <button type="button" class="btn" id="sendCodeBtn" style="width:100%; margin-bottom:0.8rem;">Signaler mon paiement par mail</button>
-        <div class="field">
-          <label for="paywallCodeInput">Code de déverrouillage donné par le vendeur</label>
-          <input id="paywallCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="------">
-        </div>
-        <p id="codeStatus" style="font-size:0.75rem; color:var(--muted); margin:-0.4rem 0 0.8rem;"></p>
-        <button type="button" class="btn btn-primary" id="confirmPaymentBtn" style="width:100%;" disabled>Valider le code et débloquer</button>
+    <!-- 2. Paiement direct : le client envoie lui-même au numéro de l'admin,
+         le signale, et l'admin lui donne le code qui débloque. -->
+    <div style="border:1px solid var(--cyan); border-radius:10px; padding:0.9rem 1rem; margin-bottom:1rem; background:var(--panel-2);">
+      <strong style="font-size:0.9rem;">📲 2. Paiement direct au numéro de l'admin</strong>
+      <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0.5rem 0 0.8rem;">
+        Alefaso amin'ny MVola, Orange Money na Airtel Money any amin'ny
+        <strong style="color:var(--text);" data-owner="phone"></strong>
+        (<span data-owner="name"></span>) ny vidin'ny formule nofidiana.
+        Avy eo tsindrio « Signaler mon paiement » : mahazo code ianao avy amin'ny admin, ampidiro eto ambany.
+      </p>
+      <button type="button" class="btn" id="sendCodeBtn" style="width:100%; margin-bottom:0.8rem;">Signaler mon paiement par mail</button>
+      <div class="field">
+        <label for="paywallCodeInput">Code de déverrouillage donné par l'admin</label>
+        <input id="paywallCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="------">
       </div>
-    </details>
+      <p id="codeStatus" style="font-size:0.75rem; color:var(--muted); margin:-0.4rem 0 0.8rem;"></p>
+      <button type="button" class="btn btn-primary" id="confirmPaymentBtn" style="width:100%;" disabled>Valider le code et débloquer</button>
+    </div>
     <button type="button" class="btn" id="paywallLogoutBtn" style="width:100%; margin-top:0.6rem;">Se déconnecter</button>
   </div>
 </div>
@@ -2923,7 +2903,7 @@
         <div class="section-head">
           <div>
             <h2>Portefeuille électronique</h2>
-            <p>Votre solde en ariary : déposez par Papi, retirez vers votre Mobile Money.</p>
+            <p>Votre solde en ariary : payez l'abonnement avec, retirez vers votre Mobile Money.</p>
           </div>
         </div>
 
@@ -3095,41 +3075,6 @@
             </div>
           </div>
 
-          <!-- ---- DÉPOSER : l'argent qui ENTRE ----
-               Par Papi, vérifié par le serveur : rien n'est crédité avant que
-               Papi ne confirme le paiement. -->
-          <div class="panel" id="walletDepotPanel">
-            <h3>📥 Déposer de l'argent</h3>
-            <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1rem;">
-              Payez avec MVola, Orange Money, Airtel Money ou une carte bancaire, par Papi. La somme
-              s'ajoute à votre solde dès que Papi confirme le paiement, et peut être retirée ensuite.
-              Frais de dépôt : <strong id="depotFraisPct" style="color:var(--text);">5 %</strong>.
-            </p>
-            <div class="form-grid">
-              <div class="field" style="margin-bottom:0;">
-                <label for="papiAmount">Montant (Ar)</label>
-                <input id="papiAmount" type="number" min="300" step="1000" value="15000">
-              </div>
-              <div class="field" style="margin-bottom:0;">
-                <label for="papiProvider">Payer avec</label>
-                <select id="papiProvider">
-                  <option value="">Choisir sur la page Papi</option>
-                  <option value="MVOLA">MVola</option>
-                  <option value="ORANGE_MONEY">Orange Money</option>
-                  <option value="AIRTEL_MONEY">Airtel Money</option>
-                  <option value="BRED">Carte bancaire</option>
-                </select>
-              </div>
-              <div class="field" style="margin-bottom:0;">
-                <label for="papiPhone">Téléphone (facultatif)</label>
-                <input id="papiPhone" type="tel" placeholder="034 00 000 00">
-              </div>
-            </div>
-            <p id="papiFrais" style="font-size:0.78rem; color:var(--muted); margin-top:0.6rem; line-height:1.5;"></p>
-            <button type="button" class="btn btn-primary btn-sm" id="papiPayBtn" style="width:auto; margin-top:0.6rem;">Payer avec Papi</button>
-            <p id="papiStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem; line-height:1.5;"></p>
-          </div>
-
           <!-- ---- DÉPÔT USDT : envoyé à l'adresse de l'admin, vérifié ----
                La personne déclare la somme reçue et le TxID ; l'admin accepte
                après que la chaîne l'a confirmé (fonction wallet, « depot_usdt »,
@@ -3203,7 +3148,7 @@
           </div>
 
           <!-- ---- RETIRER : l'argent qui SORT, en Mobile Money ----
-               Papi n'envoie pas d'argent (il n'encaisse que) : le propriétaire
+               Rien ne part tout seul : le propriétaire
                envoie lui-même, puis marque la demande comme envoyée. -->
           <div class="panel" id="walletPayoutPanel">
             <h3>💸 Retirer : Mobile Money na USDT</h3>
@@ -3359,9 +3304,10 @@
 
           <!-- ---- DÉPENSER LE SOLDE ---- -->
           <div class="panel" id="walletBuyPanel">
-            <h3>💳 Payer l'abonnement par Papi</h3>
+            <h3>💳 Payer l'abonnement avec le portefeuille</h3>
             <p style="font-size:0.82rem; color:var(--muted); line-height:1.6; margin-bottom:1.2rem;">
-              Réglé avec l'argent versé par Papi ; s'il manque, Papi s'ouvre pour la différence.
+              Réglé avec votre solde (vola tena izy). S'il ne suffit pas, payez directement au
+              <strong style="color:var(--text);" data-owner="phone"></strong> depuis l'écran Abonnement.
             </p>
 
             <h3 style="font-size:0.95rem;">Abonnement</h3>
@@ -3452,8 +3398,8 @@
         <div class="panel">
           <h3>💰 Vola miditra (déclaré)</h3>
           <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
-            Paiements annoncés par les clients (déblocages réglés par Papi). Le solde réel de votre
-            compte Papi se consulte chez Papi (app.papi.mg) : l'application ne peut pas le lire.
+            Paiements annoncés par les clients. Le solde réel se consulte sur votre propre
+            Mobile Money : l'application ne peut pas le lire.
           </p>
           <div class="table-scroll">
             <table id="adminMoneyTable">
@@ -3580,7 +3526,7 @@
           <h3>🔓 Demandes de déblocage</h3>
           <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">
             Chaque client ayant oublié son mot de passe règle <strong style="color:var(--text);">20 000 Ar</strong>
-            par Papi (MVola, Orange Money, Airtel Money ou carte) puis envoie sa demande ici. Vérifiez la réception du paiement puis cliquez sur
+            par MVola, Orange Money ou Airtel Money sur votre numéro, puis envoie sa demande ici. Vérifiez la réception du paiement puis cliquez sur
             <strong style="color:var(--text);">Confirmer le paiement</strong> : l'accès se rouvre tout seul
             sur l'appareil du client. Aucun code ne circule, rien à transmettre.
           </p>
@@ -4135,7 +4081,6 @@
 <script src="gestion-stockage-js/theme.js?v=096262fd"></script>
 <script src="gestion-stockage-js/mot-de-passe.js?v=fa311136"></script>
 <script src="gestion-stockage-js/securite.js?v=e38535e6"></script>
-<script src="gestion-stockage-js/papi-paiement.js?v=eaeda8c0"></script>
 
 
 

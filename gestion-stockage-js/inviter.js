@@ -633,8 +633,8 @@
     });
   }
 
-  // 5 000 Ar une fois, par le portefeuille ; s'il manque de l'argent Papi,
-  // common.js ouvre Papi et achète au retour (papi-paiement.js).
+  // 5 000 Ar une fois, par le portefeuille ; s'il ne suffit pas, common.js
+  // dit de payer directement au numéro de l'admin.
   const parrainAloa = document.getElementById('parrainAloa');
   if(parrainAloa){
     parrainAloa.addEventListener('click', function(){

@@ -955,7 +955,7 @@
     const retirableEl = document.getElementById('walletRetirable');
     if(retirableEl){
       const r = walletState.retirableAr;
-      // Roa samy hafa, asehoy misaraka : vola tena izy (dépôts Papi +
+      // Roa samy hafa, asehoy misaraka : vola tena izy (dépôts +
       // ventes), ary ny vola nampidirin'ny appli ho azy.
       const vola = Math.max(0, walletState.papiAr || 0);
       const appli = Math.max(0, (walletState.balanceAr || 0) - vola);
@@ -966,7 +966,7 @@
       };
       retirableEl.innerHTML = (r === undefined || r === null) ? '' :
         '<div style="margin-top:0.4rem;">' +
-        ligne('💰 Vola tena izy', vola, 'Dépôt Papi sy varotra') +
+        ligne('💰 Vola tena izy', vola, 'Dépôt sy varotra') +
         (appli ? ligne('🏷️ Avy amin\'ny appli', appli, 'Tsy azo ampiasaina raha tsy avadika ho vola tena izy aloha (🔁 Avadika)') : '') +
         '</div>';
     }
@@ -997,13 +997,10 @@
     const c = (walletState && walletState.canaux) || {};
     if(el){
       el.innerHTML =
-        (c.depotPapi ? '✅' : '⛔') + ' Dépôt Mobile Money<br>' +
         '👤 Retraits envoyés par le propriétaire';
     }
     const pct = document.getElementById('depotFraisPct');
     if(pct && walletState && walletState.depositFeePct !== undefined) pct.textContent = walletState.depositFeePct + ' %';
-    const papiBtn = document.getElementById('papiPayBtn');
-    if(papiBtn) papiBtn.disabled = !c.depotPapi;
   }
 
   // La vola tena izy (argent vraiment payé), dans la devise du pays où
@@ -1848,7 +1845,7 @@
   };
   const DEPOT_CANAUX = {
     mvola: 'MVola', orange: 'Orange Money', airtel: 'Airtel Money',
-    paypal: 'Ancien dépôt (moyen retiré)', papi: 'Mobile Money (Papi)', essai: 'Essai', visiteur: 'Personne nouvelle sur le site',
+    paypal: 'Ancien dépôt (moyen retiré)', papi: 'Mobile Money', essai: 'Essai', visiteur: 'Personne nouvelle sur le site',
     usdt: 'USDT (crypto)'
   };
 
@@ -2669,22 +2666,14 @@
     });
   });
 
-  // ---- L'abonnement se paie en vrai argent, par Papi ----
-  // Si l'argent déjà versé par Papi suffit, l'abonnement part de là ; sinon on ouvre Papi
-  // pour la somme qui manque, et l'abonnement se règle tout seul au retour
-  // (papi-paiement.js). Les prix ne sont ici que pour l'affichage : c'est le
-  // serveur qui les tient.
+  // ---- L'abonnement se paie avec le portefeuille ----
+  // Le solde (vola tena izy) règle l'abonnement s'il suffit ; sinon, le
+  // client paie directement au numéro de l'admin et reçoit un code. Les prix
+  // ne sont ici que pour l'affichage : c'est le serveur qui les tient.
   const PRIX_ABONNEMENT = { sub_month: 15000, sub_year: 150000, sub_days: 20000, parrainage: 5000 };
-  const FRAIS_DEPOT_PCT = 5;
-  // Ce qu'il faut payer chez Papi pour que, frais ôtés, « net » arrive au solde.
-  function brutPourNet(net){
-    let b = Math.max(300, Math.ceil(net * 100 / (100 - FRAIS_DEPOT_PCT)));
-    while(b - Math.ceil(b * FRAIS_DEPOT_PCT / 100) < net) b++;
-    return b;
-  }
   function manquePour(item){
-    const papi = (walletState && walletState.papiAr) || 0;
-    return Math.max(0, (PRIX_ABONNEMENT[item] || 0) - papi);
+    const vola = (walletState && walletState.papiAr) || 0;
+    return Math.max(0, (PRIX_ABONNEMENT[item] || 0) - vola);
   }
   function majBoutonAbonnement(){
     const btn = document.getElementById('paywallWalletBtn');
@@ -2696,57 +2685,12 @@
     btn.textContent = manque > 0
       ? '💰 Solde insuffisant (manque ' + formatWalletAr(manque) + ')'
       : '💰 Payer ' + formatWalletAr(PRIX_ABONNEMENT[item]) + ' avec mon portefeuille';
-    const direct = document.getElementById('paywallDirectBtn');
-    if(direct) direct.textContent = '📲 Payer ' + formatWalletAr(brutPourNet(PRIX_ABONNEMENT[item])) + ' par numéro';
-  }
-
-  // Le préfixe dit l'opérateur : 034/038 MVola, 032/037 Orange, 033 Airtel.
-  function operateurDuNumero(tel){
-    let n = String(tel || '').replace(/[^\d]/g, '');
-    if(n.indexOf('261') === 0) n = '0' + n.slice(3);
-    if(!/^03\d{8}$/.test(n)) return null;
-    const p = n.slice(0, 3);
-    if(p === '034' || p === '038') return { code: 'MVOLA', nom: 'MVola', numero: n };
-    if(p === '032' || p === '037') return { code: 'ORANGE_MONEY', nom: 'Orange Money', numero: n };
-    if(p === '033') return { code: 'AIRTEL_MONEY', nom: 'Airtel Money', numero: n };
-    return null;
-  }
-  const paywallPhone = document.getElementById('paywallPhone');
-  if(paywallPhone){
-    paywallPhone.addEventListener('input', function(){
-      const op = operateurDuNumero(paywallPhone.value);
-      const el = document.getElementById('paywallOperateur');
-      if(el) el.textContent = op ? '✅ ' + op.nom : (paywallPhone.value.trim() ? 'Numéro à 10 chiffres : 034…, 032…, 033…' : '');
-    });
-  }
-  const paywallDirectBtn = document.getElementById('paywallDirectBtn');
-  if(paywallDirectBtn){
-    paywallDirectBtn.addEventListener('click', function(){
-      const statusEl = document.getElementById('paywallWalletStatus');
-      const op = operateurDuNumero(paywallPhone && paywallPhone.value);
-      if(!op){
-        if(statusEl) statusEl.textContent = 'Ampidiro ny numéro MVola, Orange Money na Airtel Money-nao (10 chiffres).';
-        return;
-      }
-      if(typeof window.papiPayerAbonnement !== 'function'){
-        if(statusEl) statusEl.textContent = 'Paiement indisponible : rechargez la page.';
-        return;
-      }
-      const item = selectedPlan === 'annuel' ? 'sub_year' : 'sub_month';
-      paywallDirectBtn.disabled = true;
-      window.papiPayerAbonnement(item, brutPourNet(PRIX_ABONNEMENT[item]), statusEl,
-        function(){ paywallDirectBtn.disabled = false; }, op.code, op.numero);
-    });
   }
   function payerAbonnement(item, statusEl, btn, apres){
     const manque = manquePour(item);
     if(manque > 0){
-      if(typeof window.papiPayerAbonnement !== 'function'){
-        if(statusEl) statusEl.textContent = 'Papi indisponible : rechargez la page.';
-        return;
-      }
-      if(btn) btn.disabled = true;
-      window.papiPayerAbonnement(item, brutPourNet(manque), statusEl, function(){ if(btn) btn.disabled = false; });
+      if(statusEl) statusEl.textContent = 'Solde insuffisant (manque ' + formatWalletAr(manque) +
+        ') : envoyez le montant directement au ' + OWNER_PHONE + ' (MVola, Orange Money, Airtel Money).';
       return;
     }
     buySiteItem(item, statusEl, btn).then(apres || function(){}, function(){});
@@ -2760,7 +2704,7 @@
       const statusEl = document.getElementById('paywallWalletStatus');
       const item = selectedPlan === 'annuel' ? 'sub_year' : 'sub_month';
       if(manquePour(item) > 0){
-        if(statusEl) statusEl.textContent = 'Solde insuffisant : utilisez le paiement direct par numéro.';
+        if(statusEl) statusEl.textContent = 'Solde insuffisant : payez directement au ' + OWNER_PHONE + ' (2. ci-dessous).';
         return;
       }
       buySiteItem(item, statusEl, paywallWalletBtn).then(function(){ openApp(); }, function(){});
@@ -3711,7 +3655,7 @@
     if(method === 'card') return 'Carte Visa / Mastercard';
     if(method === 'bank') return 'Virement bancaire';
     if(method === 'mobile') return 'Mobile Money';
-    return 'Papi';
+    return 'Mobile Money';
   }
 
   // Le hash (jamais le code en clair) est ce qui transite et ce qui est stocké.
@@ -3745,7 +3689,7 @@
     if(!window.__sb) return;
     window.__sb.from('unlock_requests').insert({
       name: name, email: normEmail(email), phone: '',
-      message: method === 'card' ? 'Payé par carte Visa (Papi)' : 'Payé avec le solde du portefeuille',
+      message: method === 'card' ? 'Payé par carte Visa' : 'Payé avec le solde du portefeuille',
       amount: UNLOCK_COST_CREDITS, paypal_reference: '', payment_method: method || 'wallet',
       status: 'confirmed', auto_confirmed: true,
       confirmed_at: new Date().toISOString()
@@ -3767,72 +3711,6 @@
       renderUnlockWallet();
     });
   }
-
-  // ---- Le même déblocage, payé par carte Visa ----
-  // Le numéro de carte ne passe jamais par ici : il se tape sur la page de
-  // paiement de Papi (carte BRED / Visa). Il faut une session Supabase pour
-  // créer le lien, et le compte bloqué en a été sorti : on se reconnecte donc
-  // avec le mot de passe. Au retour, papi-paiement.js vérifie le paiement,
-  // achète l'article « unlock » au serveur, puis appelle apresDeblocageCarte.
-  const UNLOCK_CARD_KEY = 'stockmanager_deblocage_carte';
-  const payByCardBtn = document.getElementById('payUnlockCardBtn');
-  if(payByCardBtn){
-    payByCardBtn.addEventListener('click', async function(){
-      const statusEl = document.getElementById('forgotStatus');
-      const name = document.getElementById('forgotName').value.trim();
-      const email = document.getElementById('forgotEmail').value.trim();
-      const password = document.getElementById('forgotPassword').value;
-      if(!name || !email){
-        statusEl.textContent = 'Votre nom et votre email sont obligatoires.';
-        return;
-      }
-      if(!findProfileByEmail(email)){
-        statusEl.textContent = 'Aucun compte n\'est enregistré sur cet appareil pour cet email. ' +
-          'Utilisez « Première connexion / autre compte ».';
-        return;
-      }
-      if(typeof window.papiPayerAbonnement !== 'function'){
-        statusEl.textContent = 'Papi indisponible : rechargez la page.';
-        return;
-      }
-      const auth = sbAuth();
-      if(!auth){ statusEl.textContent = 'Paiement par carte indisponible hors ligne.'; return; }
-      payByCardBtn.disabled = true;
-      try {
-        const s = await auth.getSession();
-        const connecte = s && s.data && s.data.session &&
-          normEmail(s.data.session.user && s.data.session.user.email) === normEmail(email);
-        if(!connecte){
-          if(password.length < 6){
-            statusEl.textContent = 'Tapez votre mot de passe pour payer par carte.';
-            payByCardBtn.disabled = false;
-            return;
-          }
-          statusEl.textContent = 'Connexion…';
-          const r = await auth.signInWithPassword({ email: email, password: password });
-          if(r.error) throw new Error('Mot de passe incorrect.');
-        }
-      } catch(err){
-        statusEl.textContent = err.message;
-        payByCardBtn.disabled = false;
-        return;
-      }
-      try { localStorage.setItem(UNLOCK_CARD_KEY, JSON.stringify({ name: name, email: email })); } catch(e){}
-      window.papiPayerAbonnement('unlock', brutPourNet(UNLOCK_COST_CREDITS * AR_PER_CREDIT), statusEl,
-        function(){ payByCardBtn.disabled = false; }, 'BRED');
-    });
-  }
-  window.apresDeblocageCarte = function(){
-    let who = null;
-    try { who = JSON.parse(localStorage.getItem(UNLOCK_CARD_KEY) || 'null'); localStorage.removeItem(UNLOCK_CARD_KEY); } catch(e){}
-    const profile = who && findProfileByEmail(who.email);
-    if(!profile) return;
-    recordWalletUnlock(who.name || profile.name || '', who.email, 'card');
-    const paye = (UNLOCK_COST_CREDITS * AR_PER_CREDIT).toLocaleString('fr-FR') + ' Ar';
-    pushNotification('parrainage', 'Déblocage payé par carte Visa (' + paye + ') — accès rétabli.');
-    loginFromProfile(profile);
-  };
-
 
   // ---------------- CONNEXION / INSCRIPTION PAR GOOGLE ----------------
   // Le nom et l'email viennent du compte Google : rien à taper. On part chez

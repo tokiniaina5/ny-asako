@@ -1351,15 +1351,15 @@
       valiny: 'Fisoratana anarana : ny anaranao, ny email sy ny finday, ny logo (indray mandeha ihany), ' +
         'ary mot de passe soratana indroa. Azonao ampiasaina amin\'ny finday na ordinateur rehetra izy avy eo.' },
     { teny: ['mot de passe', 'motdepasse', 'password', 'tenimiafina', 'hadino', 'oublie', 'oublié', 'bloque', 'bloqué', 'voahidy', 'debloquer', 'débloquer', 'code'],
-      valiny: 'Hadino ny mot de passe na voahidy ny kaonty ? Aloavy 20 000 Ar amin\'ny Papi (MVola, Orange Money, ' +
-        'Airtel Money na karatra), dia alefaso ny fangatahana. Rehefa hamarinin\'ny admin ny fandoavana, ' +
+      valiny: 'Hadino ny mot de passe na voahidy ny kaonty ? Alefaso amin\'ny MVola, Orange Money na Airtel Money ' +
+        'any amin\'ny 034 37 058 34 ny 20 000 Ar, dia alefaso ny fangatahana. Rehefa hamarinin\'ny admin ny fandoavana, ' +
         'misokatra ho azy indray ny kaontinao.' },
     // Alohan'ny Portefeuille : « azo alaina ve ny vola appli ? » no valiana eto.
     // Ny vola appli tsy lany na inona na inona raha tsy avadika (fonction
     // wallet, « spend » : argentPapiFor ihany).
     { teny: ['avadika', 'avadiko', 'hanova vola', 'vola appli', 'vola ao anaty appli', 'avy amin ny appli', 'vola tena izy', 'azo alaina', 'conversion', 'convertir'],
       valiny: '🔁 Roa ny vola ao amin\'ny 💰 Portefeuille ' + BOT_MENU + ' :\n\n' +
-        '• 💰 Vola tena izy : avy amin\'ny dépôt Papi sy ny varotra. Io ihany no andoavana abonnement, déblocage, entana, ' +
+        '• 💰 Vola tena izy : avy amin\'ny dépôt USDT sy ny varotra. Io ihany no andoavana abonnement, déblocage, entana, ' +
         'no alaina amin\'ny Mobile Money na USDT, ary no afindra amin\'olona hafa.\n' +
         '• 🏷️ Avy amin\'ny appli (affiliation, parrainage…) : tsy azo ampiasaina mihitsy raha tsy avadika ho vola tena izy aloha.\n\n' +
         'Fomba fanovana : 💰 Portefeuille → « 🔁 Avadika ho vola tena izy » → soraty ny habetsahana → tsindrio « 🔁 Avadika ». ' +
@@ -1446,14 +1446,12 @@
         '5. Rehefa manamarina izy, tonga ao amin\'ny Binance-nao ny USDT.\n\n' +
         'Hamadika USDT ho Ariary : P2P → Sell, ary ilay mpividy no mandefa Mobile Money ho anao. Aza manindry « Release » raha tsy efa tonga tokoa ao amin\'ny findainao ny vola.\n\n' +
         '⚠️ Ao anatin\'ny app Binance ihany no miresaka sy mandoa ; raha misy olana, sokafy ny « Appeal ». Mety miova ny fepetra sy ny vidiny ao amin\'ny Binance.' },
-    { teny: ['depot', 'dépôt', 'deposer', 'déposer', 'mametraka vola', 'hametraka vola', 'manampy vola', 'recharger', 'recharge', 'payer avec papi'],
-      valiny: '📥 Mametraka vola : 💰 Portefeuille ' + BOT_MENU + '. Fomba roa :\n\n' +
-        '1. Mobile Money (« 📥 Déposer de l\'argent ») : soraty ny montant, fidio MVola, Orange Money, Airtel Money na carte bancaire, ' +
-        'tsindrio « Payer avec Papi » ary aloavy eo amin\'ny pejy Papi. Tafiditra avy hatrany rehefa manamarina i Papi.\n\n' +
-        '2. USDT avy amin\'ny Binance, OKX, Trust Wallet… (« 💵 Mametraka USDT ») : fidio ny réseau (TRC20 na BEP20), adikao ny adiresy, ' +
+    { teny: ['depot', 'dépôt', 'deposer', 'déposer', 'mametraka vola', 'hametraka vola', 'manampy vola', 'recharger', 'recharge'],
+      valiny: '📥 Mametraka vola : 💰 Portefeuille ' + BOT_MENU + '.\n\n' +
+        'USDT avy amin\'ny Binance, OKX, Trust Wallet… (« 💵 Mametraka USDT ») : fidio ny réseau (TRC20 na BEP20), adikao ny adiresy, ' +
         'alefaso avy amin\'ny Binance (Retrait → USDT, réseau mitovy), avy eo soraty ny USDT tonga sy ny TxID ary tsindrio « 📨 Alefaso ». ' +
         'Ny admin no manaiky rehefa hita amin\'ny réseau ilay vola. ⚠️ Raha diso réseau, very ny vola.\n\n' +
-        'Samy tafiditra ho 💰 vola tena izy izy roa. Hita ao amin\'ny « 🧾 Historique » ny dépôt mbola miandry : aza mandoa indroa.' },
+        'Tafiditra ho 💰 vola tena izy izany. Ny abonnement kosa azo aloa mivantana amin\'ny Mobile Money any amin\'ny 034 37 058 34 (écran Abonnement). Hita ao amin\'ny « 🧾 Historique » ny dépôt mbola miandry : aza mandoa indroa.' },
     { teny: ['retrait', 'retirer', 'misintona', 'hisintona', 'maka vola', 'haka vola', 'halaina', 'alaina ny vola', 'payout'],
       valiny: '💸 Misintona vola : 💰 Portefeuille ' + BOT_MENU + ' → « 💸 Retirer ».\n\n' +
         '1. Soraty ny vola horaisina (Ar).\n' +
@@ -1472,7 +1470,7 @@
     { teny: ['portefeuille', 'portfeuille', 'wallet', 'vola', 'solde', 'mvola', 'orange money', 'airtel'],
       valiny: '💰 Portefeuille ' + BOT_MENU + ' : ny vola Ariary anao.\n\n' +
         '• Solde : mizara roa, 💰 vola tena izy (azo ampiasaina sy alaina) ary 🏷️ avy amin\'ny appli (tsy azo ampiasaina raha tsy avadika).\n' +
-        '• 📥 Déposer : mametraka vola amin\'ny MVola, Orange Money, Airtel Money na karatra (Papi).\n' +
+        '• 📥 Déposer : mametraka USDT.\n' +
         '• 💸 Retirer : misintona any amin\'ny Mobile Money na USDT.\n' +
         '• 🔁 Hamindra vola : mandefa amin\'olona hafa amin\'ny ID KEY-ny.\n' +
         '• 🔁 Avadika : manova ny vola appli ho vola tena izy.\n' +

@@ -728,7 +728,7 @@
   ];
   const NOM_FOMBA = { vola: '💵 Vola an-tanana', mvola: '📱 MVola', orange: '📱 Orange Money', airtel: '📱 Airtel Money', visa: '💳 Visa' };
   // La carte : pas de numéro, mais le lien de paiement que l'hôtel a chez son
-  // prestataire (Papi, Stripe, PayPal, sa banque…). Le client l'ouvre et paie ;
+  // prestataire (Stripe, PayPal, sa banque…). Le client l'ouvre et paie ;
   // l'argent va droit à l'hôtel, qui coche « voaloa » comme pour le reste.
   const LIEN_VALIDE = /^https:\/\/[^\s"'<>]{4,300}$/i;
   function volaLire() {
@@ -756,7 +756,7 @@
           '<input id="vola_tompony" type="text" maxlength="60" placeholder="Ex: Rakoto Jean" value="' + html(ecrit('tompony')) + '"></div>' +
       '</div>' +
       '<div class="field" style="margin:0.6rem 0 0;"><label for="vola_visa">💳 Visa — rohy fandoavana carte</label>' +
-        '<input id="vola_visa" type="url" inputmode="url" maxlength="300" placeholder="https://… (Papi, Stripe, PayPal, banky…)" value="' + html(ecrit('visa')) + '"></div>' +
+        '<input id="vola_visa" type="url" inputmode="url" maxlength="300" placeholder="https://… (Stripe, PayPal, banky…)" value="' + html(ecrit('visa')) + '"></div>' +
       '<p style="font-size:0.72rem; color:var(--muted); margin:0.3rem 0 0;">Ny rohy omen\'ny mpanome fandoavana carte anao. Ny mpanjifa manindry « 💳 Visa » dia io no misokatra.</p>' +
       '<div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.6rem;">' +
         '<button type="button" class="btn btn-sm btn-primary" id="volaTehirizo" style="width:auto;">💾 Tehirizo</button>' +
