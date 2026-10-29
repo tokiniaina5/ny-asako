@@ -1367,6 +1367,29 @@
         '• Farafahakeliny 50 000 Ar isaky ny fangatahana.\n' +
         '• Farafahabetsany 200 000 Ar isam-bolana.\n' +
         '• Frais 15 % (ohatra : 50 000 Ar → 42 500 Ar vola tena izy).' },
+    // Payoneer → Mobile Money : tsy misy mivantana eto Madagasikara ; banky na
+    // USDT (P2P) no lalana. Ny « payonner », « payoner » : diso mahazatra.
+    { teny: ['mobile money ao amin ny payoneer', 'mobile money ao aminy payoneer', 'mobile money payoneer', 'payoneer mobile money',
+        'mobile money ao amin ny payonner', 'mobile money ao aminy payonner', 'mobile money payonner', 'payonner mobile money',
+        'mobile money ao amin ny payoner', 'mobile money ao aminy payoner', 'mobile money payoner', 'payoner mobile money',
+        'payoneer mvola', 'payoneer orange money', 'payoneer airtel money', 'payonner mvola', 'payoner mvola',
+        'retrait payoneer', 'misintona payoneer', 'misintona vola payoneer', 'manala vola payoneer', 'withdraw payoneer', 'payoneer withdraw',
+        'payoneer banky', 'payoneer bank', 'payoneer madagascar', 'payoneer madagasikara'],
+      valiny: '💳 Payoneer → Mobile Money : tsy afaka mandefa mivantana any amin\'ny MVola, Orange Money na Airtel Money ny Payoneer eto Madagasikara ' +
+        '(jereo ihany anefa ao amin\'ny Withdraw raha misy safidy « Mobile wallet », mety hiova izany).\n\n' +
+        '1. Payoneer → banky → Mobile Money (ny azo antoka indrindra) :\n' +
+        '• Withdraw → To bank account, ampidiro ny kaonty bankinao eto (BNI, BOA, BFV, MCB, Accès Banque…), amin\'ny anaranao ihany.\n' +
+        '• Tonga amin\'ny Ariary afaka 1 ka hatramin\'ny 3 andro eo ho eo.\n' +
+        '• Avy eo, afindrao any amin\'ny Mobile Money (« Banque → MVola / Orange Money » ao amin\'ny appli-n\'ny banky).\n\n' +
+        '2. Payoneer → USDT → Mobile Money (P2P) :\n' +
+        '• Raha manaiky Payoneer ny plateforme-nao, ampidiro ao ny vola, ovay ho USDT.\n' +
+        '• Amidio amin\'ny P2P (Binance P2P, OKX P2P…) ho Ariary amin\'ny MVola na Orange Money.\n\n' +
+        '3. Olona na orinasa eto an-toerana mividy ny volanao Payoneer ka mandoa amin\'ny Mobile Money : haingana, fa be loza noho ny hosoka. ' +
+        'Olona fantatra tsara sy azo itokisana ihany.\n\n' +
+        '⚠️ P2P : aza manindry « Release » raha tsy hitanao tao amin\'ny MVola-nao tokoa ny vola (mety sandoka ny SMS na ny capture), ' +
+        'ary aza mandoa na miresaka ivelan\'ny plateforme.\n\n' +
+        'Jereo ny frais sy ny taux de change alohan\'ny hanamafisana, ary ataovy mitovy amin\'ny anaranao Payoneer ny anaran\'ny kaonty banky. ' +
+        'Ny antsipirian\'ny P2P : anontanio aho hoe « ahoana ny P2P ».' },
     // Wallet any ivelany sy Mobile Money / carte : USDT ihany no raisiny, fa
     // azo vidiana amin'ny P2P (plateforme) na « Buy » (carte). Alohan'ny dépôt USDT sy ny P2P.
     { teny: ['wallet ivelany', 'portefeuille ivelany', 'portfeuille ivelany', 'wallet any ivelany', 'portefeuille any ivelany', 'portfeuille any ivelany',
