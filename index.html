@@ -820,38 +820,50 @@
       </div>
     </div>
 
-    <!-- Payer en vrai argent, par Papi : l'argent déjà versé s'il suffit, sinon
-         Papi s'ouvre pour la somme qui manque. -->
-    <div style="border:1px solid var(--cyan); border-radius:10px; padding:0.9rem 1rem; margin-bottom:1rem; background:var(--panel-2);">
+    <!-- 1. Le portefeuille Ny asako : l'argent réel déjà sur le compte paie
+         l'abonnement sur-le-champ, sans rien demander à personne. -->
+    <div style="border:1px solid var(--cyan); border-radius:10px; padding:0.9rem 1rem; margin-bottom:0.8rem; background:var(--panel-2);">
       <div style="display:flex; justify-content:space-between; align-items:baseline; gap:0.8rem;">
-        <strong style="font-size:0.9rem;">📲 Payer par Papi</strong>
+        <strong style="font-size:0.9rem;">💰 1. Portefeuille Ny asako</strong>
         <span id="paywallWalletBalance" style="font-family:var(--font-mono); font-size:0.9rem; color:var(--cyan);">—</span>
       </div>
       <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0.5rem 0 0.8rem;">
-        MVola, Orange Money, Airtel Money ou carte. L'argent déjà versé par Papi sert d'abord ;
-        l'abonnement démarre dès que Papi confirme.
+        Vola tena izy ao amin'ny portefeuille-nao. L'abonnement démarre tout de suite.
       </p>
-      <button type="button" class="btn btn-primary btn-sm" id="paywallWalletBtn" style="width:100%;">📲 Payer par Papi</button>
-      <p id="paywallWalletStatus" style="font-size:0.78rem; color:var(--cyan); margin-top:0.6rem; line-height:1.5;"></p>
+      <button type="button" class="btn btn-primary btn-sm" id="paywallWalletBtn" style="width:100%;">💰 Payer avec mon portefeuille</button>
     </div>
 
-    <div class="paywall-pay">
-      <strong>Ou payer directement :</strong><br>
-      Envoyez le montant de la formule choisie via MVola, Orange Money ou Airtel Money au
-      <strong data-owner="phone"></strong>, au nom de <strong data-owner="name"></strong>.
-      Ensuite, cliquez sur « Signaler mon paiement » : un mail sera envoyé au vendeur avec votre nom et vos
-      coordonnées. Il vous communiquera un code de déverrouillage à saisir ci-dessous.
+    <!-- 2. Paiement direct : le numéro Mobile Money du client, puis son code
+         secret sur son téléphone ; l'argent part vers le compte de l'admin. -->
+    <div style="border:1px solid var(--cyan); border-radius:10px; padding:0.9rem 1rem; margin-bottom:1rem; background:var(--panel-2);">
+      <strong style="font-size:0.9rem;">📲 2. Paiement direct par numéro</strong>
+      <p style="font-size:0.78rem; color:var(--muted); line-height:1.6; margin:0.5rem 0 0.7rem;">
+        Ampidiro ny numéro MVola, Orange Money na Airtel Money-nao, avy eo ny code secret-nao.
+        Mandeha avy hatrany any amin'ny <strong data-owner="phone"></strong>
+        (<span data-owner="name"></span>) ny vola, ary misokatra ny abonnement.
+      </p>
+      <div class="field" style="margin-bottom:0.6rem;">
+        <label for="paywallPhone">Numéro Mobile Money</label>
+        <input id="paywallPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="034 00 000 00">
+      </div>
+      <p id="paywallOperateur" style="font-size:0.75rem; color:var(--muted); margin:-0.3rem 0 0.6rem;"></p>
+      <button type="button" class="btn btn-primary btn-sm" id="paywallDirectBtn" style="width:100%;">📲 Payer par numéro</button>
     </div>
+    <p id="paywallWalletStatus" style="font-size:0.8rem; color:var(--cyan); margin:-0.4rem 0 0.9rem; line-height:1.5;"></p>
 
-    <button type="button" class="btn" id="sendCodeBtn" style="width:100%; margin-bottom:0.8rem;">Signaler mon paiement par mail</button>
-
-    <div class="field">
-      <label for="paywallCodeInput">Code de déverrouillage donné par le vendeur</label>
-      <input id="paywallCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="------">
-    </div>
-    <p id="codeStatus" style="font-size:0.75rem; color:var(--muted); margin:-0.4rem 0 0.8rem;"></p>
-
-    <button type="button" class="btn btn-primary" id="confirmPaymentBtn" style="width:100%;" disabled>Valider le code et débloquer</button>
+    <!-- L'ancien chemin reste pour qui a déjà reçu un code de l'admin. -->
+    <details style="margin-bottom:0.8rem;">
+      <summary style="font-size:0.8rem; color:var(--muted); cursor:pointer;">Efa nahazo code avy amin'ny admin ?</summary>
+      <div style="margin-top:0.7rem;">
+        <button type="button" class="btn" id="sendCodeBtn" style="width:100%; margin-bottom:0.8rem;">Signaler mon paiement par mail</button>
+        <div class="field">
+          <label for="paywallCodeInput">Code de déverrouillage donné par le vendeur</label>
+          <input id="paywallCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="------">
+        </div>
+        <p id="codeStatus" style="font-size:0.75rem; color:var(--muted); margin:-0.4rem 0 0.8rem;"></p>
+        <button type="button" class="btn btn-primary" id="confirmPaymentBtn" style="width:100%;" disabled>Valider le code et débloquer</button>
+      </div>
+    </details>
     <button type="button" class="btn" id="paywallLogoutBtn" style="width:100%; margin-top:0.6rem;">Se déconnecter</button>
   </div>
 </div>

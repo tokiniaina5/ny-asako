@@ -21,14 +21,17 @@
   // et l'on retient quel abonnement acheter au retour. Rien n'est accordé
   // ici : au retour, le serveur vérifie le paiement, puis l'achat passe par
   // la fonction « wallet » qui ne puise que dans l'argent Papi.
-  // provider : '' (Papi propose tout) ou 'BRED' pour la carte Visa.
-  window.papiPayerAbonnement = function (item, brut, statusEl, siEchec, provider) {
-    if (statusEl) statusEl.textContent = 'Création du lien de paiement Papi…';
+  // provider : '' (Papi propose tout), 'BRED' pour la carte Visa, ou
+  // l'opérateur du numéro saisi (paiement direct, phone rempli d'avance).
+  window.papiPayerAbonnement = function (item, brut, statusEl, siEchec, provider, phone) {
+    if (statusEl) statusEl.textContent = phone
+      ? 'Préparation du paiement… Tapez ensuite votre code secret Mobile Money.'
+      : 'Création du lien de paiement Papi…';
     appeler({
       action: 'create',
       amountAr: brut,
       provider: provider || '',
-      phone: '',
+      phone: phone || '',
       returnUrl: location.href.split('?')[0].split('#')[0]
     }).then(function (r) {
       try {

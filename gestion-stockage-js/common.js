@@ -2608,7 +2608,7 @@
     soldeEl.textContent = '…';
     lireEtatWallet(false).then(function(state){
       walletState = state;
-      soldeEl.textContent = 'Vola Papi : ' + formatWalletAr(state.papiAr || 0);
+      soldeEl.textContent = 'Solde : ' + formatWalletAr(state.papiAr || 0);
       majBoutonAbonnement();
     }, function(err){
       soldeEl.textContent = '—';
@@ -2691,9 +2691,52 @@
     if(!btn) return;
     const item = selectedPlan === 'annuel' ? 'sub_year' : 'sub_month';
     const manque = manquePour(item);
+    // Le portefeuille ne paie que s'il suffit ; sinon, c'est le paiement direct.
+    btn.disabled = manque > 0;
     btn.textContent = manque > 0
-      ? '📲 Payer ' + formatWalletAr(brutPourNet(manque)) + ' par Papi'
-      : '💰 Payer avec mon argent Papi';
+      ? '💰 Solde insuffisant (manque ' + formatWalletAr(manque) + ')'
+      : '💰 Payer ' + formatWalletAr(PRIX_ABONNEMENT[item]) + ' avec mon portefeuille';
+    const direct = document.getElementById('paywallDirectBtn');
+    if(direct) direct.textContent = '📲 Payer ' + formatWalletAr(brutPourNet(PRIX_ABONNEMENT[item])) + ' par numéro';
+  }
+
+  // Le préfixe dit l'opérateur : 034/038 MVola, 032/037 Orange, 033 Airtel.
+  function operateurDuNumero(tel){
+    let n = String(tel || '').replace(/[^\d]/g, '');
+    if(n.indexOf('261') === 0) n = '0' + n.slice(3);
+    if(!/^03\d{8}$/.test(n)) return null;
+    const p = n.slice(0, 3);
+    if(p === '034' || p === '038') return { code: 'MVOLA', nom: 'MVola', numero: n };
+    if(p === '032' || p === '037') return { code: 'ORANGE_MONEY', nom: 'Orange Money', numero: n };
+    if(p === '033') return { code: 'AIRTEL_MONEY', nom: 'Airtel Money', numero: n };
+    return null;
+  }
+  const paywallPhone = document.getElementById('paywallPhone');
+  if(paywallPhone){
+    paywallPhone.addEventListener('input', function(){
+      const op = operateurDuNumero(paywallPhone.value);
+      const el = document.getElementById('paywallOperateur');
+      if(el) el.textContent = op ? '✅ ' + op.nom : (paywallPhone.value.trim() ? 'Numéro à 10 chiffres : 034…, 032…, 033…' : '');
+    });
+  }
+  const paywallDirectBtn = document.getElementById('paywallDirectBtn');
+  if(paywallDirectBtn){
+    paywallDirectBtn.addEventListener('click', function(){
+      const statusEl = document.getElementById('paywallWalletStatus');
+      const op = operateurDuNumero(paywallPhone && paywallPhone.value);
+      if(!op){
+        if(statusEl) statusEl.textContent = 'Ampidiro ny numéro MVola, Orange Money na Airtel Money-nao (10 chiffres).';
+        return;
+      }
+      if(typeof window.papiPayerAbonnement !== 'function'){
+        if(statusEl) statusEl.textContent = 'Paiement indisponible : rechargez la page.';
+        return;
+      }
+      const item = selectedPlan === 'annuel' ? 'sub_year' : 'sub_month';
+      paywallDirectBtn.disabled = true;
+      window.papiPayerAbonnement(item, brutPourNet(PRIX_ABONNEMENT[item]), statusEl,
+        function(){ paywallDirectBtn.disabled = false; }, op.code, op.numero);
+    });
   }
   function payerAbonnement(item, statusEl, btn, apres){
     const manque = manquePour(item);
@@ -2716,7 +2759,11 @@
     paywallWalletBtn.addEventListener('click', function(){
       const statusEl = document.getElementById('paywallWalletStatus');
       const item = selectedPlan === 'annuel' ? 'sub_year' : 'sub_month';
-      payerAbonnement(item, statusEl, paywallWalletBtn, function(){ openApp(); });
+      if(manquePour(item) > 0){
+        if(statusEl) statusEl.textContent = 'Solde insuffisant : utilisez le paiement direct par numéro.';
+        return;
+      }
+      buySiteItem(item, statusEl, paywallWalletBtn).then(function(){ openApp(); }, function(){});
     });
   }
 
