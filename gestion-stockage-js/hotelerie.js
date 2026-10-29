@@ -354,14 +354,20 @@
   // Redessiner toutes les 15 s volerait la saisie (le champ de la note, la
   // commande en cours) : on ne redessine que si quelque chose a changé.
   let signature = '';
+  // Le nombre de tables ne bouge presque jamais : on le relit une fois sur
+  // quatre (≈ 2 min), pas à chaque passage.
+  let tourCommandes = 0;
   function chargerCommandes(force) {
     let change = !!force;
+    const avecTables = force || tourCommandes++ % 4 === 0;
     return idDuCompte().then(function (uid) {
       if (!uid) { change = true; etatCommandes = 'Midira ao amin\'ny kaontinao mba hahitana ny commande.'; return; }
       return Promise.all([
         sb().from('hotelerie_commande').select('id,latabatra,plats,fanamarihana,vita,created_at,fandoavana,fandoavana_ref,voaloa')
           .eq('hotel_id', uid).order('created_at', { ascending: false }).limit(300),
-        sb().from('hotelerie_menu').select('latabatra').eq('user_id', uid).maybeSingle()
+        avecTables
+          ? sb().from('hotelerie_menu').select('latabatra').eq('user_id', uid).maybeSingle()
+          : Promise.resolve({ data: { latabatra: nbLatabatra } })
       ]).then(function (r) {
         if (r[0].error) { change = true; etatCommandes = '⚠️ ' + r[0].error.message; return; }
         commandes = r[0].data || [];
@@ -1834,10 +1840,10 @@
     // on la remet au logo du moment de temps en temps.
     setInterval(majLogoMenu, 3000);
     chargerCommandes();
-    // Les commandes toutes les 20 s ; le menu, qui change rarement d'un autre
+    // Les commandes toutes les 30 s ; le menu, qui change rarement d'un autre
     // appareil, toutes les 2 min (et au retour sur l'onglet, plus bas).
     // Ensemble à 15 s, c'était ~11 000 lectures par jour pour un seul écran.
-    setInterval(function () { if (!document.hidden && compte) chargerCommandes(); }, 20000);
+    setInterval(function () { if (!document.hidden && compte) chargerCommandes(); }, 30000);
     setInterval(function () { if (!document.hidden && compte) synchroniser(); }, 120000);
     document.addEventListener('visibilitychange', function () { if (!document.hidden && compte) synchroniser(); });
     // La session arrive parfois après le chargement : on retente à l'entrée.

@@ -892,15 +892,46 @@
         }
         throw new Error(res.error.message || 'erreur serveur');
       }
+      // Une opération (achat, retrait, conversion…) change le solde : l'état
+      // gardé de côté n'est plus le bon.
+      if(payload && payload.action !== 'state'){
+        try { sessionStorage.removeItem(WALLET_ETAT_KEY); } catch(e){}
+      }
       return (res && res.data) || {};
     });
   }
 
-  function refreshWalletFromServer(){
+  // L'état du portefeuille coûte une douzaine de lectures côté serveur. Chaque
+  // page en demandait deux à son ouverture (vérification + affichage) : on
+  // partage l'appel en cours, et on reprend l'état lu il y a moins de 2 min
+  // d'une page à l'autre. Après une opération, « frais » force la lecture.
+  const WALLET_ETAT_KEY = 'nyasako_wallet_etat';
+  const WALLET_ETAT_TTL = 2 * 60 * 1000;
+  let walletEtatEnCours = null;
+  function lireEtatWallet(frais){
+    const sub = ensureInstallDate();
+    const qui = sub.id + '|' + ((currentUser && currentUser.email) || '');
+    if(!frais){
+      if(walletEtatEnCours) return walletEtatEnCours;
+      try {
+        const c = JSON.parse(sessionStorage.getItem(WALLET_ETAT_KEY));
+        if(c && c.qui === qui && Date.now() - c.t < WALLET_ETAT_TTL) return Promise.resolve(c.state);
+      } catch(e){}
+    }
+    const p = callWallet({ action: 'state', installId: sub.id }).then(function(state){
+      try { sessionStorage.setItem(WALLET_ETAT_KEY, JSON.stringify({ qui: qui, t: Date.now(), state: state })); } catch(e){}
+      return state;
+    });
+    walletEtatEnCours = p;
+    p.then(function(){ if(walletEtatEnCours === p) walletEtatEnCours = null; },
+      function(){ if(walletEtatEnCours === p) walletEtatEnCours = null; });
+    return p;
+  }
+
+  function refreshWalletFromServer(depuisCache){
     const balanceEl = document.getElementById('walletBalance');
     if(!balanceEl) return;
-    const sub = ensureInstallDate();
-    callWallet({ action: 'state', installId: sub.id }).then(function(state){
+    lireEtatWallet(!depuisCache).then(function(state){
       walletState = state;
       renderWalletBalance();
       renderPayoutList();
@@ -2389,8 +2420,7 @@
     const soldeEl = document.getElementById('paywallWalletBalance');
     if(!soldeEl) return;
     soldeEl.textContent = '…';
-    const sub = ensureInstallDate();
-    callWallet({ action: 'state', installId: sub.id }).then(function(state){
+    lireEtatWallet(false).then(function(state){
       walletState = state;
       soldeEl.textContent = 'Vola Papi : ' + formatWalletAr(state.papiAr || 0);
       majBoutonAbonnement();
@@ -2578,9 +2608,8 @@
   //     nouveaux venus ont versé.
   function verifierLePortefeuille(){
     if(!(currentUser && currentUser.email)) return;
-    const sub = ensureInstallDate();
     const lireLEtat = function(){
-      callWallet({ action: 'state', installId: sub.id }).then(function(state){
+      lireEtatWallet(false).then(function(state){
         walletState = state;
         notifySettledPayouts(state.payouts);
         if(state.isOwner){
@@ -2649,7 +2678,7 @@
     document.getElementById('walletVerifiedEmail').textContent = walletSession.user.email || '—';
     // Le solde en ariary vient du serveur : c'est lui qui fait foi. En
     // attendant sa réponse, l'estimation locale évite un écran vide.
-    refreshWalletFromServer();
+    refreshWalletFromServer(true);
     // Les extensions (TronLink…) s'injectent parfois après le chargement.
     wextAkatra();
     setTimeout(wextAseho, 1500);
