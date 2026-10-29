@@ -244,7 +244,7 @@ function ar(n: number): string {
 // une somme de l'appli (rétablie le 26/10/2026), qui se dépense ici ou se
 // change par « Avadika », avec l'accord de l'admin. Les chiffres vivent ici,
 // jamais dans la page.
-const AFF_INSCRIPTION_AR = Math.max(0, Number(Deno.env.get("AFF_INSCRIPTION_AR") ?? "500"));
+const AFF_INSCRIPTION_AR = Math.max(0, Number(Deno.env.get("AFF_INSCRIPTION_AR") ?? "10000"));
 const AFF_FIXE_AR = Math.max(0, Number(Deno.env.get("AFF_FIXE_AR") ?? "200"));
 const AFF_PCT = Math.max(0, Number(Deno.env.get("AFF_PCT") ?? "10"));
 // Sur ces AFF_PCT %, AFF_ADMIN_PCT % vont à l'admin (26/10/2026) : sur 10 %,
@@ -419,8 +419,8 @@ async function transfertsFor(admin: Admin, email: string): Promise<{ recu: numbe
 // attente, la somme est retenue ; acceptée, le net (moins les frais) devient
 // de l'argent qui se retire ; refusée, elle revient. C'est l'accord de
 // l'admin qui tient la porte : cet argent-là, personne ne l'a versé.
-const CONV_MIN_AR = Math.max(0, Number(Deno.env.get("CONV_MIN_AR") ?? "5000"));
-const CONV_MAX_MOIS_AR = Math.max(0, Number(Deno.env.get("CONV_MAX_MOIS_AR") ?? "50000"));
+const CONV_MIN_AR = Math.max(0, Number(Deno.env.get("CONV_MIN_AR") ?? "50000"));
+const CONV_MAX_MOIS_AR = Math.max(0, Number(Deno.env.get("CONV_MAX_MOIS_AR") ?? "200000"));
 const CONV_FRAIS_PCT = Math.min(100, Math.max(0, Number(Deno.env.get("CONV_FRAIS_PCT") ?? "15")));
 
 type Conversion = { id: string; montant_ar: number; frais_ar: number; net_ar: number; status: string; note: string | null; created_at: string; settled_at: string | null };
@@ -533,7 +533,7 @@ async function cleFor(admin: Admin, email: string): Promise<string | null> {
 // premières sommes changées.
 const RETRAITS_ANCIENS = new Set(["paypal", "card", "cash", "wallet", "wise", "payoneer", "skrill"]);
 
-const PROVIDERS_REELS = ["papi", "mvola", "orange", "airtel", "paypal", "affiliation", "affiliation_admin"];
+const PROVIDERS_REELS = ["papi", "mvola", "orange", "airtel", "paypal", "affiliation", "affiliation_admin", "avadika_frais"];
 
 async function retirableFor(admin: Admin, email: string, balance: number): Promise<number> {
   const { data: depots } = await admin.from("wallet_deposits")
@@ -763,9 +763,19 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await admin.from("wallet_conversions")
       .update({ status: ekena ? "ekena" : "lavina", note, settled_at: new Date().toISOString() })
       .eq("id", id).eq("status", "en_attente")
-      .select("id,email,montant_ar,net_ar,status").maybeSingle();
+      .select("id,email,montant_ar,frais_ar,net_ar,status").maybeSingle();
     if (error) return json({ error: error.message }, 500);
     if (!data) return json({ error: "Efa voavaha io fangatahana io." }, 409);
+    // Acceptée : les frais reviennent à l'admin, en vola tena izy (29/10/2026).
+    // L'index unique (provider, provider_ref) empêche de les verser deux fois.
+    const frais = Number(data.frais_ar) || 0;
+    if (ekena && frais > 0 && ownerEmail && norm(data.email) !== ownerEmail) {
+      await admin.from("wallet_deposits").insert({
+        email: ownerEmail, amount_ar: frais, provider: "avadika_frais", provider_ref: data.id,
+        status: "confirme", confirmed_at: new Date().toISOString(),
+        note: `Frais avadika (${CONV_FRAIS_PCT} %) : ${masquer(data.email)}, ${ar(data.montant_ar)}`,
+      });
+    }
     await prevenir(admin, norm(data.email), ekena
       ? `✅ Ekena : ${ar(data.net_ar)} tafiditra ho vola tena izy ao amin'ny portefeuille-nao, azo alaina amin'ny Mobile Money.`
       : `↩️ Lavina ny fanovana ${ar(data.montant_ar)} : niverina ao amin'ny vola appli-nao.` + (note ? ` (${note})` : ""));

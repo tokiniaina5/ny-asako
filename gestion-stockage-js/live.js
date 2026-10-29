@@ -1354,6 +1354,14 @@
       valiny: 'Hadino ny mot de passe na voahidy ny kaonty ? Aloavy 20 000 Ar amin\'ny Papi (MVola, Orange Money, ' +
         'Airtel Money na karatra), dia alefaso ny fangatahana. Rehefa hamarinin\'ny admin ny fandoavana, ' +
         'misokatra ho azy indray ny kaontinao.' },
+    // Alohan'ny Portefeuille : « azo alaina ve ny vola appli ? » no valiana eto.
+    { teny: ['avadika', 'avadiko', 'hanova vola', 'vola appli', 'vola ao anaty appli', 'vola tena izy', 'azo alaina', 'conversion', 'convertir'],
+      valiny: '🔁 Avadika : ny vola ao anaty appli (ohatra ny 10 000 Ar an\'ny affiliation) dia tsy alaina mivantana, ' +
+        'fa avadika ho vola tena izy aloha amin\'ny « Avadika » ao amin\'ny 💰 Portefeuille ' + BOT_MENU + '.\n\n' +
+        '• Farafahakeliny 50 000 Ar isaky ny fangatahana.\n' +
+        '• Farafahabetsany 200 000 Ar isam-bolana.\n' +
+        '• Frais 15 % (ohatra : 50 000 Ar → 42 500 Ar azo alaina).\n' +
+        '• Ny admin no manaiky : raha ekena dia azo alaina amin\'ny Mobile Money ; raha lavina dia miverina ho vola appli ilay vola.' },
     { teny: ['portefeuille', 'portfeuille', 'wallet', 'vola', 'depot', 'dépôt', 'retrait', 'misintona', 'mvola', 'orange money', 'airtel', 'id key', 'transfert'],
       valiny: '💰 Portefeuille ' + BOT_MENU + ' : vola Ariary ao anaty appli. Mametraka vola amin\'ny MVola, Orange Money na Airtel Money ianao, ' +
         'misintona any amin\'ny Mobile Money-nao, ary mandefa vola amin\'ny kaonty hafa amin\'ny ID KEY-ny.' },
@@ -1394,13 +1402,28 @@
     { teny: ['livreur', 'livraison', 'mpitondra', 'mpitondra entana', 'delivery', 'course'],
       valiny: '🛵 Livreur ' + BOT_MENU + ' : ampidiro ny mpitondra entana, omeo azy ny fandefasana, ' +
         'ary arahinao amin\'ny sarintany hoe aiza izy (📍 Toerana & Maps).' },
+    // « parrainage » irery : ireo karazany roa. Miaraka amin'ny anaran'ny
+    // sehatra (« parrainage binance ») : ny rohy, eto ambany.
+    { teny: ['parrainage', 'referral', 'filleul', 'parrainer', 'parrainé'],
+      valiny: '🤝 Karazany roa ny parrainage ao amin\'ny Ny asako :\n\n' +
+        '1. 🤝 Affiliation Ny asako (maimaimpoana) : zarao ny rohinao avy amin\'ny « ✉️ Inviter des amis » ' + BOT_MENU + '.\n' +
+        '• 10 000 Ar isaky ny olona misoratra anarana amin\'ny rohinao (vola ao anaty appli, azo avadika).\n' +
+        '• 200 Ar + 8 % isaky ny mividy entana ao amin\'ny fil ilay olona nentinao (vola tena izy, azo alaina ; ny mpivarotra no mandoa).\n\n' +
+        '2. 📨 Binance, Payoneer sy sehatra hafa (Bybit, OKX, Wise, Skrill…) : ampidiro ao amin\'ny « ✉️ Inviter des amis » ny rohy parrainage-nao manokana, ' +
+        '5 000 Ar indray mandeha. Ilay sehatra no mandoa anao rehefa misy misoratra amin\'ny rohinao, fa tsy ny Ny asako.' },
     { teny: ['binance', 'payoneer', 'crypto', 'usdt', 'parrainage', 'referral', 'plateforme', 'sehatra',
         'bybit', 'okx', 'kucoin', 'bitget', 'redotpay', 'wise', 'skrill', 'airtm', 'exness', 'deriv',
         'bet261', 'aviator', '1xbet', 'melbet', 'trading', 'paris', 'filokana'],
       valiny: botSehatra },
-    { teny: ['affiliation', 'inviter', 'invitation', 'manasa', 'namana', 'ami', 'parrain', 'commission'],
-      valiny: '🤝 Affiliation : zarao ny rohinao avy amin\'ny « ✉️ Inviter des amis » ' + BOT_MENU + '. Mahazo 500 Ar ianao isaky ny olona ' +
-        'misoratra anarana amin\'ny rohinao (vola ao anaty appli, azo avadika).' },
+    // Ny sanda dia avy amin'ny fonction wallet (AFF_*, CONV_*) : raha miova
+    // any, ovay eto koa.
+    { teny: ['affiliation', 'inviter', 'invitation', 'manasa', 'namana', 'ami', 'commission', 'rohiko', 'lien d affiliation'],
+      valiny: '🤝 Affiliation : zarao ny rohinao (nyasako.com/?aff=…) avy amin\'ny « ✉️ Inviter des amis » ' + BOT_MENU + '.\n\n' +
+        '• Misy olona misoratra anarana amin\'ny rohinao : +10 000 Ar ho anao (vola ao anaty appli, azo lanina na avadika ho vola tena izy).\n' +
+        '• Isaky ny mividy entana ao amin\'ny fil ilay olona nentinao : 200 Ar + 8 % ny vidiny ho anao, rehefa voarainy ny entana. ' +
+        'Vola tena izy azo alaina izany, ary ny mpivarotra no mandoa azy.\n\n' +
+        'Fepetra : kaonty vaovao (7 andro farafahabetsany) ilay olona, ny rohy voalohany nampiasainy no manan-kery mandrakizay, ' +
+        'ary tsy azonao ampiasaina ny rohinao manokana.' },
     { teny: ['installer', 'installe', 'telecharger', 'télécharger', 'application', 'appli', 'apk', 'play store'],
       valiny: '📲 Mba hametrahana ny Ny asako ho application : sokafy ao amin\'ny navigateur (Chrome) ny nyasako.com, ' +
         'dia tsindrio « Installer » rehefa mipoitra izy (na menu ⋮ → « Ajouter à l\'écran d\'accueil »). ' +
@@ -1765,9 +1788,9 @@
         if(!k) return;
         if(t.indexOf(' ' + k + ' ') >= 0 || (k.length >= 6 && t.indexOf(k) >= 0)) n += k.split(' ').length;
       });
-      // Mitovy isa amin'ny fiarahabana (« olá, quanto custa ? ») : ilay
-      // fanontaniana no valiana.
-      if(n > isa || (n && n === isa && tsara === BOT_FAQ[0])){ isa = n; tsara = f; }
+      // Fiarahabana miaraka amin'ny fanontaniana (« olá, quanto custa ? »,
+      // « manao ahoana ny affiliation ? ») : ilay fanontaniana no valiana.
+      if(n && (n > isa || tsara === BOT_FAQ[0])){ isa = n; tsara = f; }
     });
     return tsara || botMitadyAkaiky(t, isaTeny);
   }
