@@ -967,7 +967,7 @@
       retirableEl.innerHTML = (r === undefined || r === null) ? '' :
         '<div style="margin-top:0.4rem;">' +
         ligne('💰 Vola tena izy', vola, 'Dépôt Papi sy varotra') +
-        (appli ? ligne('🏷️ Avy amin\'ny appli', appli, 'Ato anatiny ihany (abonnement, déblocage…)') : '') +
+        (appli ? ligne('🏷️ Avy amin\'ny appli', appli, 'Tsy azo ampiasaina raha tsy avadika ho vola tena izy aloha (🔁 Avadika)') : '') +
         '</div>';
     }
     const cleEl = document.getElementById('walletIdKey');
