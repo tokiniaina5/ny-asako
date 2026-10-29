@@ -1369,8 +1369,34 @@
         '• Frais 15 % (ohatra : 50 000 Ar → 42 500 Ar vola tena izy).' },
     // Ny frais dia avy amin'ny secrets (DEPOSIT_FEE_PCT, PAYOUT_FEE_PCT,
     // TRANSFER_FEE_PCT) : tsy soratana eto, asehon'ny pejy alohan'ny hanamafisana.
-    { teny: ['depot', 'dépôt', 'deposer', 'déposer', 'mametraka vola', 'hametraka vola', 'manampy vola', 'recharger', 'recharge', 'payer avec papi',
-        'depot usdt', 'mametraka usdt', 'depot binance', 'txid'],
+    // Dépôt USDT : fonction wallet, « depot_usdt » (USDT_DEPOT_MIN, 3 miandry
+    // farafahabetsany). Alohan'ny dépôt ankapobeny sy ny Binance.
+    { teny: ['depot usdt', 'dépôt usdt', 'mametraka usdt', 'hametraka usdt', 'depot binance', 'dépôt binance', 'avy amin ny binance',
+        'txid', 'tx id', 'trc20', 'bep20', 'receive amount', 'internal transfer', 'mametraka crypto'],
+      valiny: '💵 Mametraka USDT avy amin\'ny Binance : 💰 Portefeuille ' + BOT_MENU + ' → « 💵 Mametraka USDT ».\n\n' +
+        '1. Fidio ny réseau (TRC20 na BEP20), ary tsindrio « 📋 Adikao » mba handika ny adiresy.\n' +
+        '2. Ao amin\'ny Binance : Retrait (Withdraw) → USDT → apetaho ilay adiresy → fidio ilay réseau MITOVY → alefaso.\n' +
+        '3. Rehefa lasa ilay vola, adikao ny TxID : Binance → Historique → Retrait → tsindrio ilay retrait → TxID.\n' +
+        '4. Ao amin\'ny Ny asako : soraty ny USDT TONGA (« Receive amount », efa nesorina ny frais Binance), apetaho ny TxID (📋 Coller), ary tsindrio « 📨 Alefaso ny fangatahana ».\n\n' +
+        '• Ny admin no manamarina rehefa hita amin\'ny réseau ilay vola, dia tafiditra ho 💰 vola tena izy (azo ampiasaina sy alaina).\n' +
+        '• Ny taux USDT amin\'ny fotoana handefasanao no mihatra ; hita eo ambanin\'ny montant ny vola Ariary ho azonao.\n' +
+        '• Hita ao amin\'ny « 🧾 Historique » ny fangatahana miandry : aza averina indroa ny TxID iray.\n' +
+        '• Raha « Internal transfer » no hita fa tsy TxID, apetaho ihany ilay laharana : ny admin no hijery ao amin\'ny Binance.\n\n' +
+        '⚠️ USDT ihany, amin\'ilay réseau voafidy ihany. Raha diso réseau na diso vola, very tanteraka ilay vola. ' +
+        'Raha mbola tsy manana USDT ianao, anontanio aho hoe « ahoana ny P2P ».' },
+    // Ny P2P an'ny Binance : tsy ao amin'ny Ny asako, fa fanontaniana matetika.
+    { teny: ['p2p', 'mividy usdt', 'hividy usdt', 'acheter usdt', 'amidy usdt', 'hivarotra usdt', 'mivarotra usdt', 'vendre usdt',
+        'binance mobile money', 'binance mvola', 'usdt mvola', 'usdt ho ariary', 'ariary ho usdt'],
+      valiny: '🔄 Binance P2P : ny Binance tsy mandray Mobile Money mivantana, fa ny P2P (olona amin\'olona) no ampiasaina.\n\n' +
+        'Hividy USDT amin\'ny MVola / Orange Money / Airtel Money :\n' +
+        '1. Ataovy aloha ny vérification (KYC) ao amin\'ny Binance (CIN na passeport).\n' +
+        '2. Trade → P2P → Buy → USDT, vola MGA, ary fidio ny Mobile Money-nao ao amin\'ny « Payment method ».\n' +
+        '3. Fidio mpivarotra manana commande maro sy fahombiazana 98 % no mihoatra.\n' +
+        '4. Alefaso amin\'ny Mobile Money ny vola voasoratra ao amin\'ny commande, any amin\'ny laharana omeny, dia tsindrio « Transferred, notify seller ».\n' +
+        '5. Rehefa manamarina izy, tonga ao amin\'ny Binance-nao ny USDT.\n\n' +
+        'Hamadika USDT ho Ariary : P2P → Sell, ary ilay mpividy no mandefa Mobile Money ho anao. Aza manindry « Release » raha tsy efa tonga tokoa ao amin\'ny findainao ny vola.\n\n' +
+        '⚠️ Ao anatin\'ny app Binance ihany no miresaka sy mandoa ; raha misy olana, sokafy ny « Appeal ». Mety miova ny fepetra sy ny vidiny ao amin\'ny Binance.' },
+    { teny: ['depot', 'dépôt', 'deposer', 'déposer', 'mametraka vola', 'hametraka vola', 'manampy vola', 'recharger', 'recharge', 'payer avec papi'],
       valiny: '📥 Mametraka vola : 💰 Portefeuille ' + BOT_MENU + '. Fomba roa :\n\n' +
         '1. Mobile Money (« 📥 Déposer de l\'argent ») : soraty ny montant, fidio MVola, Orange Money, Airtel Money na carte bancaire, ' +
         'tsindrio « Payer avec Papi » ary aloavy eo amin\'ny pejy Papi. Tafiditra avy hatrany rehefa manamarina i Papi.\n\n' +
