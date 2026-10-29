@@ -1341,7 +1341,7 @@
       valiny: 'Salama tompoko, izaho no Assistant Ny asako. Inona no hatao anao azafady ?' },
     { teny: ['vidiny', 'ohatrinona', 'hoatrinona', 'prix', 'tarif', 'abonnement', 'abonement', 'mensuel', 'annuel', 'karama', 'combien'],
       valiny: 'Maimaimpoana mandritra ny 15 andro ny Ny asako. Aorian\'izay : 15 000 Ar isam-bolana, ' +
-        'na 150 000 Ar isan-taona (2 volana maimaimpoana). Aloa avy amin\'ny 💰 Portefeuille (MVola, Orange Money, Airtel Money). ' +
+        'na 150 000 Ar isan-taona (2 volana maimaimpoana). Aloa avy amin\'ny 💰 Portefeuille, amin\'ny vola tena izy (MVola, Orange Money, Airtel Money). ' +
         'Ny andro sisa sy ny fanavaozana : 💳 Abonnement ' + BOT_MENU + '.' },
     { teny: ['essai', 'gratuit', 'maimaimpoana', 'maimaim-poana', 'andrana', 'free', '15 andro', '15 jours'],
       valiny: 'Essai maimaimpoana 15 andro : ny 7 andro voalohany dia miditra tsy misy kaonty ianao. ' +
@@ -1355,16 +1355,52 @@
         'Airtel Money na karatra), dia alefaso ny fangatahana. Rehefa hamarinin\'ny admin ny fandoavana, ' +
         'misokatra ho azy indray ny kaontinao.' },
     // Alohan'ny Portefeuille : « azo alaina ve ny vola appli ? » no valiana eto.
-    { teny: ['avadika', 'avadiko', 'hanova vola', 'vola appli', 'vola ao anaty appli', 'vola tena izy', 'azo alaina', 'conversion', 'convertir'],
-      valiny: '🔁 Avadika : ny vola ao anaty appli (ohatra ny 10 000 Ar an\'ny affiliation) dia tsy alaina mivantana, ' +
-        'fa avadika ho vola tena izy aloha amin\'ny « Avadika » ao amin\'ny 💰 Portefeuille ' + BOT_MENU + '.\n\n' +
+    // Ny vola appli tsy lany na inona na inona raha tsy avadika (fonction
+    // wallet, « spend » : argentPapiFor ihany).
+    { teny: ['avadika', 'avadiko', 'hanova vola', 'vola appli', 'vola ao anaty appli', 'avy amin ny appli', 'vola tena izy', 'azo alaina', 'conversion', 'convertir'],
+      valiny: '🔁 Roa ny vola ao amin\'ny 💰 Portefeuille ' + BOT_MENU + ' :\n\n' +
+        '• 💰 Vola tena izy : avy amin\'ny dépôt Papi sy ny varotra. Io ihany no andoavana abonnement, déblocage, entana, ' +
+        'no alaina amin\'ny Mobile Money na USDT, ary no afindra amin\'olona hafa.\n' +
+        '• 🏷️ Avy amin\'ny appli (affiliation, parrainage…) : tsy azo ampiasaina mihitsy raha tsy avadika ho vola tena izy aloha.\n\n' +
+        'Fomba fanovana : 💰 Portefeuille → « 🔁 Avadika ho vola tena izy » → soraty ny habetsahana → tsindrio « 🔁 Avadika ». ' +
+        'Ny admin no manaiky : raha ekena dia tafiditra ho vola tena izy ; raha lavina dia miverina ho vola appli.\n\n' +
         '• Farafahakeliny 50 000 Ar isaky ny fangatahana.\n' +
         '• Farafahabetsany 200 000 Ar isam-bolana.\n' +
-        '• Frais 15 % (ohatra : 50 000 Ar → 42 500 Ar azo alaina).\n' +
-        '• Ny admin no manaiky : raha ekena dia azo alaina amin\'ny Mobile Money ; raha lavina dia miverina ho vola appli ilay vola.' },
-    { teny: ['portefeuille', 'portfeuille', 'wallet', 'vola', 'depot', 'dépôt', 'retrait', 'misintona', 'mvola', 'orange money', 'airtel', 'id key', 'transfert'],
-      valiny: '💰 Portefeuille ' + BOT_MENU + ' : vola Ariary ao anaty appli. Mametraka vola amin\'ny MVola, Orange Money na Airtel Money ianao, ' +
-        'misintona any amin\'ny Mobile Money-nao, ary mandefa vola amin\'ny kaonty hafa amin\'ny ID KEY-ny.' },
+        '• Frais 15 % (ohatra : 50 000 Ar → 42 500 Ar vola tena izy).' },
+    // Ny frais dia avy amin'ny secrets (DEPOSIT_FEE_PCT, PAYOUT_FEE_PCT,
+    // TRANSFER_FEE_PCT) : tsy soratana eto, asehon'ny pejy alohan'ny hanamafisana.
+    { teny: ['depot', 'dépôt', 'deposer', 'déposer', 'mametraka vola', 'hametraka vola', 'manampy vola', 'recharger', 'recharge', 'payer avec papi'],
+      valiny: '📥 Mametraka vola : 💰 Portefeuille ' + BOT_MENU + ' → « 📥 Déposer de l\'argent ».\n\n' +
+        '1. Soraty ny montant (Ar).\n' +
+        '2. Fidio MVola, Orange Money, Airtel Money na carte bancaire.\n' +
+        '3. Tsindrio « Payer avec Papi » ary aloavy eo amin\'ny pejy Papi.\n\n' +
+        'Rehefa manamarina i Papi, tafiditra ho 💰 vola tena izy ilay vola. Hita ao amin\'ny « 🧾 Historique » ny dépôt mbola miandry : aza mandoa indroa.' },
+    { teny: ['retrait', 'retirer', 'misintona', 'hisintona', 'maka vola', 'haka vola', 'halaina', 'alaina ny vola', 'payout'],
+      valiny: '💸 Misintona vola : 💰 Portefeuille ' + BOT_MENU + ' → « 💸 Retirer ».\n\n' +
+        '1. Soraty ny vola horaisina (Ar).\n' +
+        '2. « Vers » : MVola, Orange Money, Airtel Money na USDT (crypto).\n' +
+        '3. Soraty ny laharana sy ny anaran\'ny tompony (na ny adiresy USDT : T… ho TRC20, 0x… ho BEP20).\n' +
+        '4. Tsindrio « Retirer ».\n\n' +
+        'Ny 💰 vola tena izy ihany no alaina. Esorina avy hatrany amin\'ny solde ilay vola, ny admin no mandefa azy ary ampahafantarina ianao. ' +
+        'Raha tsy lasa izy dia averina aminao. ⚠️ Hamarino tsara ny adiresy USDT : raha diso izy, very ny vola.' },
+    { teny: ['transfert', 'afindra', 'hamindra', 'famindrana', 'mandefa vola', 'handefa vola', 'handefasana vola', 'alefa vola', 'id key', 'idkey', 'cle d identification'],
+      valiny: '🔁 Mandefa vola amin\'olona hafa : 💰 Portefeuille ' + BOT_MENU + ' → « 🔁 Hamindra vola any amin\'ny wallet hafa ».\n\n' +
+        '1. Angataho ny 🔑 ID KEY an\'ilay olona (ohatra NA-XXXX-XXXX) ary soraty.\n' +
+        '2. Soraty ny vola halefa, ary ny antony raha tianao.\n' +
+        '3. Tsindrio « 🔁 Afindra ».\n\n' +
+        'Ny 💰 vola tena izy ihany no afindra. Tonga avy hatrany ilay vola ary tsy azo averina : hamarino ny anarana miseho alohan\'ny handefasana.\n\n' +
+        'Ny ID KEY-nao dia hita eo ambony amin\'ny Portefeuille : « 📋 Adikao » mba hizarana azy, « ✏️ Ovaina » mba hanovana azy ho anarana tianao.' },
+    { teny: ['portefeuille', 'portfeuille', 'wallet', 'vola', 'solde', 'mvola', 'orange money', 'airtel'],
+      valiny: '💰 Portefeuille ' + BOT_MENU + ' : ny vola Ariary anao.\n\n' +
+        '• Solde : mizara roa, 💰 vola tena izy (azo ampiasaina sy alaina) ary 🏷️ avy amin\'ny appli (tsy azo ampiasaina raha tsy avadika).\n' +
+        '• 📥 Déposer : mametraka vola amin\'ny MVola, Orange Money, Airtel Money na karatra (Papi).\n' +
+        '• 💸 Retirer : misintona any amin\'ny Mobile Money na USDT.\n' +
+        '• 🔁 Hamindra vola : mandefa amin\'olona hafa amin\'ny ID KEY-ny.\n' +
+        '• 🔁 Avadika : manova ny vola appli ho vola tena izy.\n' +
+        '• 🌍 Hividy entana any ivelany : apetaho ny rohin\'ilay entana (Alibaba…), ny tompony no mividy sy mampandefa azy.\n' +
+        '• 🛒 Fividianana : voatazona ny vola mandra-pahazoanao ny entana ; tsindrio « Voaraiko » rehefa tonga.\n' +
+        '• 🧾 Historique : ny dépôt, ny retrait ary ny famindrana rehetra.\n\n' +
+        'Anontanio aho raha te hahafantatra ny antsipiriany : « ahoana ny dépôt », « ahoana ny retrait », « ahoana ny avadika »…' },
     { teny: ['stock', 'article', 'articles', 'entana', 'marchandise', 'rupture', 'nouvel article', 'entree en stock', 'historique des mouvements', 'gestion de compte'],
       valiny: '📦 Stock : 📋 Articles ' + BOT_MENU + '. Ao no ampidiranao entana vaovao (🆕 Nouvel article), ' +
         'izay miditra (📦 Entrée en stock), ary hitanao ny tantaran\'ny fivezivezena (📜 Historique des mouvements). ' +
@@ -1419,7 +1455,7 @@
     // any, ovay eto koa.
     { teny: ['affiliation', 'inviter', 'invitation', 'manasa', 'namana', 'ami', 'commission', 'rohiko', 'lien d affiliation'],
       valiny: '🤝 Affiliation : zarao ny rohinao (nyasako.com/?aff=…) avy amin\'ny « ✉️ Inviter des amis » ' + BOT_MENU + '.\n\n' +
-        '• Misy olona misoratra anarana amin\'ny rohinao : +10 000 Ar ho anao (vola ao anaty appli, azo lanina na avadika ho vola tena izy).\n' +
+        '• Misy olona misoratra anarana amin\'ny rohinao : +10 000 Ar ho anao (vola ao anaty appli : tsy azo ampiasaina raha tsy avadika ho vola tena izy).\n' +
         '• Isaky ny mividy entana ao amin\'ny fil ilay olona nentinao : 200 Ar + 8 % ny vidiny ho anao, rehefa voarainy ny entana. ' +
         'Vola tena izy azo alaina izany, ary ny mpivarotra no mandoa azy.\n\n' +
         'Fepetra : kaonty vaovao (7 andro farafahabetsany) ilay olona, ny rohy voalohany nampiasainy no manan-kery mandrakizay, ' +
