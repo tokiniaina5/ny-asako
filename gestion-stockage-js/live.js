@@ -1367,6 +1367,27 @@
         '• Farafahakeliny 50 000 Ar isaky ny fangatahana.\n' +
         '• Farafahabetsany 200 000 Ar isam-bolana.\n' +
         '• Frais 15 % (ohatra : 50 000 Ar → 42 500 Ar vola tena izy).' },
+    // Wallet any ivelany sy Mobile Money / carte : USDT ihany no raisiny, fa
+    // azo vidiana amin'ny P2P (plateforme) na « Buy » (carte). Alohan'ny dépôt USDT sy ny P2P.
+    { teny: ['wallet ivelany', 'portefeuille ivelany', 'portfeuille ivelany', 'wallet any ivelany', 'portefeuille any ivelany', 'portfeuille any ivelany',
+        'mandray mobile money', 'mandray vola mobile money', 'mobile money na card', 'mobile money na carte', 'mobile money sy carte', 'mandray mvola', 'mandray orange money', 'mandray airtel money',
+        'usdt carte', 'usdt amin ny carte', 'mividy usdt amin ny carte', 'carte bancaire usdt', 'carte visa usdt', 'acheter usdt carte',
+        'buy crypto', 'moonpay', 'transak', 'mercuryo'],
+      valiny: '🌍 Wallet any ivelany sy Mobile Money / carte : tsy mandray Mobile Money mivantana izy ireo, USDT (crypto) ihany no raisiny. ' +
+        'Azo vidiana amin\'ny Mobile Money na carte anefa ny USDT :\n\n' +
+        '1. Wallet an\'ny plateforme (Binance, OKX, Bybit, MEXC, Gate, HTX…) :\n' +
+        '• Mobile Money (MVola, Orange Money, Airtel Money) : eny, amin\'ny P2P. Mividy USDT amin\'olona (marchand) ianao, ' +
+        'alefanao amin\'ny Mobile Money-ny ny vola, dia mamoaka ny USDT ho anao ny plateforme.\n' +
+        '• Carte Visa / Mastercard : matetika eny, amin\'ny « Buy Crypto ». Fa tsy maintsy alefa (activée) ho an\'ny fandoavana amin\'ny Internet sy any ivelany ilay carte ' +
+        '(tsy manaiky izany ny carte banky malagasy maro), lafo kokoa ny frais (2 ka hatramin\'ny 4 % eo ho eo), ary mety tsy misy amin\'ny firenena sasany.\n\n' +
+        '2. Wallet tsy miankina (Trust Wallet, MetaMask, TronLink…) :\n' +
+        '• Mobile Money : tsia, tsy misy P2P ao aminy.\n' +
+        '• Carte : indraindray, amin\'ny bokotra « Buy » (MoonPay, Transak, Ramp…), saingy mila KYC, lafo ny frais, ary tsy voatery hiasa amin\'ny carte malagasy.\n' +
+        '• Ny lalana mahazatra : mividy USDT amin\'ny Binance P2P (Mobile Money), avy eo mamindra azy any amin\'ny Trust Wallet na TronLink. ' +
+        'Mila TRX kely ho an\'ny frais (TRC20).\n\n' +
+        '⚠️ P2P : aza mandoa raha tsy efa voahidin\'ny plateforme (escrow) ny USDT, ary aza mandoa ivelan\'ny plateforme. ' +
+        'Fidio mpivarotra manana commande maro sy taha avo. Aza manindry « Payé » raha tsy nalefanao tokoa ny vola, ary aza manindry « Release » raha tsy tonga marina ao amin\'ny findainao ny vola.\n\n' +
+        'Miova arakaraka ny firenena sy ny fotoana izay manaiky carte : jereo ao amin\'ny appli. Ny antsipirian\'ny P2P : anontanio aho hoe « ahoana ny P2P ».' },
     // Ny frais dia avy amin'ny secrets (DEPOSIT_FEE_PCT, PAYOUT_FEE_PCT,
     // TRANSFER_FEE_PCT) : tsy soratana eto, asehon'ny pejy alohan'ny hanamafisana.
     // Dépôt USDT : fonction wallet, « depot_usdt » (USDT_DEPOT_MIN, 3 miandry
@@ -1482,6 +1503,19 @@
         '• 200 Ar + 8 % isaky ny mividy entana ao amin\'ny fil ilay olona nentinao (vola tena izy, azo alaina ; ny mpivarotra no mandoa).\n\n' +
         '2. 📨 Binance, Payoneer sy sehatra hafa (Bybit, OKX, Wise, Skrill…) : ampidiro ao amin\'ny « ✉️ Inviter des amis » ny rohy parrainage-nao manokana, ' +
         '5 000 Ar indray mandeha. Ilay sehatra no mandoa anao rehefa misy misoratra amin\'ny rohinao, fa tsy ny Ny asako.' },
+    // Ny rohy manokana : « ✉️ Inviter des amis » (inviter.js, parrainage_voaloa
+    // ary ny item « parrainage » an'ny fonction wallet, 5 000 Ar).
+    { teny: ['rohiko manokana', 'rohy manokana', 'rohy parrainage', 'lien parrainage', 'lien de parrainage', 'rohy referral',
+        'hametraka rohy', 'apetraka rohy', 'hametraka ny rohy', 'apetraka ny rohy', 'hametrahana ny rohiko', 'hametrahana rohy',
+        'mametraka rohy', 'mametraka ny rohiko', 'sehatra hafa', 'tehirizo ny rohiko', 'aloavy 5 000', '5000 ar', '5 000 ar'],
+      valiny: '🔗 Hametraka ny rohy parrainage-nao manokana (Binance, Payoneer, Bybit, XM, Bet261…) : ✉️ Inviter des amis ' + BOT_MENU + ' → « 💸 Parrainage Binance, Payoneer & hafa ».\n\n' +
+        '1. Indray mandeha ihany : tsindrio « 🔓 Aloavy 5 000 Ar ». Vola tena izy no andoavana azy ; raha tsy ampy, ataovy aloha ny 📥 Déposer ao amin\'ny 💰 Portefeuille.\n' +
+        '2. Binance na Payoneer : apetaho ao amin\'ny saha-ny ny rohinao (na ny code-nao).\n' +
+        '3. Sehatra hafa : ao amin\'ny « ➕ Sehatra hafa », fidio ilay sehatra (na « Hafa » ary soraty ny anarany), tsindrio « ➕ Ampio », ary apetaho ny rohinao.\n' +
+        '4. Tsindrio « 💾 Tehirizo ny rohiko ».\n' +
+        '5. Zarao amin\'ny « 📋 Adikao » na « 📤 Zarao ».\n\n' +
+        'Ilay sehatra no mandoa anao rehefa misy misoratra amin\'ny rohinao, fa tsy ny Ny asako. ' +
+        'Hahafantatra hoe aiza no ahitana ny rohinao ao amin\'ny sehatra iray : soraty ny anarany (ohatra « bybit », « xm », « bet261 »).' },
     { teny: ['binance', 'payoneer', 'crypto', 'usdt', 'parrainage', 'referral', 'plateforme', 'sehatra',
         'bybit', 'okx', 'kucoin', 'bitget', 'mexc', 'gate', 'htx', 'redotpay', 'wise', 'skrill', 'airtm',
         'exness', 'deriv', 'xm', 'fbs', 'hfm', 'iq option', 'olymp trade', 'forex',
@@ -1841,6 +1875,9 @@
     // Teny iray manontolo : « gate » tsy hita ao anatin'ny « navigateur ».
     const t = ' ' + botTeny(soratra) + ' ';
     let voatonona = lisitra.filter(function(x){ return t.indexOf(' ' + botTeny(x.nom) + ' ') >= 0; });
+    // Sehatra 1 ka hatramin'ny 3 voatonona anarana : miaraka amin'ny
+    // torolalana (inviter.js, ireo hitan'ny pejy ihany).
+    const antsoina = voatonona.length > 0 && voatonona.length <= 3;
     // Tsy misy anarana fa sokajy (« inona ny lalao », « forex ») : io sokajy io ihany.
     if(!voatonona.length){
       const sokajy = botSokajy(t);
@@ -1850,7 +1887,12 @@
     const andalana = function(x){
       const mot = BOT_SEHATRA[x.nom.toLowerCase()];
       const valeur = /^https?:\/\//i.test(x.rohy) ? x.rohy : 'code ' + x.rohy;
-      return '• ' + x.nom + (mot ? ' : ' + mot : '') + '\n' + valeur;
+      let s = '• ' + x.nom + (mot ? ' : ' + mot : '') + '\n' + valeur;
+      const dingana = antsoina && typeof window.__torolalanaParrain === 'function' ? window.__torolalanaParrain(x.nom) : null;
+      if(dingana && dingana.length){
+        s += '\n\n📋 Torolalana ' + x.nom + ' :\n' + dingana.map(function(d, i){ return (i + 1) + '. ' + d; }).join('\n');
+      }
+      return s;
     };
     const vola = ireo.filter(function(x){ return BOT_LALAO.indexOf(x.nom.toLowerCase()) < 0; });
     const lalao = ireo.filter(function(x){ return BOT_LALAO.indexOf(x.nom.toLowerCase()) >= 0; });
@@ -1864,6 +1906,12 @@
     if(lalao.length){
       valiny += (valiny ? '\n\n' : '') + '🎲 Lalao sy filokana (18 taona no ho miakatra ihany, ary aza milalao vola tsy azonao very) :\n\n' +
         lalao.map(andalana).join('\n\n');
+    }
+    if(vola.some(function(x){ return BOT_FOREX.indexOf(x.nom.toLowerCase()) >= 0; })){
+      valiny += '\n\n⚠️ Forex sy options : misy loza be, ny ankamaroan\'ny mpanao azy no very vola. Aza mampiasa vola tsy azonao very.';
+    }
+    if(antsoina){
+      valiny += '\n\n🔗 Hametraka ny rohinao manokana eto amin\'ny Ny asako : anontanio aho hoe « ahoana no hametrahana ny rohiko ».';
     }
     return valiny;
   }

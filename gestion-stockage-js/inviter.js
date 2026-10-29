@@ -428,6 +428,22 @@
     ol.style.display = ol.children.length ? '' : 'none';
     ajouterOvaina(ol);
   }
+  // Pour le bot (live.js) : les étapes d'une plateforme, les mêmes que la
+  // page montre — celles de l'admin, sinon celles d'ici, sinon (Binance,
+  // Payoneer) celles que la page porte. Rien : null.
+  window.__torolalanaParrain = function(nom){
+    const cle = String(nom || '').toLowerCase();
+    const dingana = torolalanaDb[cle] || TOROLALANA_DEFAUT[cle];
+    if(dingana) return dingana.map(String);
+    const ol = [].filter.call(document.querySelectorAll('ol.parrain-torolalana'), function(o){
+      return (o.getAttribute('data-sehatra') || '').toLowerCase() === cle;
+    })[0];
+    if(!ol) return null;
+    const tmp = document.createElement('ol');
+    tmp.innerHTML = ol.getAttribute('data-page') || ol.innerHTML;
+    const lignes = [].map.call(tmp.children, function(li){ return li.textContent.replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+    return lignes.length ? lignes : null;
+  };
   // ✏️ pour l'admin seul : une étape par ligne. Vide : on revient à celles
   // d'ici. La base refuse de toute façon l'écriture à un autre.
   function ajouterOvaina(ol){
