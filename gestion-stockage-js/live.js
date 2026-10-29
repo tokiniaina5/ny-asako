@@ -422,6 +422,7 @@
     if(!mpisoratraMaka && (!mpisoratraCache || Date.now() - mpisoratraAt > 60000)){
       mpisoratraMaka = true;
       makaFifandraisana();
+      makaTsyAzo();
       // mpisoratra_rehetra() : anarana sy email ho an'ny rehetra, ny
       // laharana ho an'ny admin ihany (supabase-mpisoratra-rehetra.sql).
       window.__sb.rpc('mpisoratra_rehetra')
@@ -516,7 +517,9 @@
       // Hafatra tsy mbola voavaky : isa mena eo amin'ny bokotra, ary soratra.
       const vaovao = tsyVoavaky[o.cle || o.email] || 0;
       // Fanontaniana tsy azon'ny bot mbola tsy navalian'ny admin.
-      const tsyAzo = (resaka[o.cle || o.email] || []).filter(function(h){ return h.tsyAzoBot; }).length;
+      // Ireo voatahiry (bot_tsy_azo) sy ireo tonga teo (broadcast), indray mandeha.
+      const tsyAzo = isaTsyAzo(o.cle || o.email);
+      const taloha = tsyAzoTaloha[o.cle || o.email] || [];
       return '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; padding:0.6rem 0; border-bottom:1px solid var(--line);">' +
         '<div style="display:flex; align-items:center; gap:0.6rem; min-width:0;">' + avatarOlona(o) +
         '<div style="min-width:0;">' +
@@ -526,11 +529,177 @@
           (tsyAzo ? '<div style="font-size:0.72rem; color:#e5484d; font-weight:700;">❓ ' + tsyAzo + ' fanontaniana tsy azon\'ny bot — valio</div>' : '') +
           '<div style="font-size:0.72rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis;">' +
             escapeHtml(o.phone || o.email) + '</div></div></div>' +
+        '<div style="display:flex; gap:0.35rem; flex:none;">' +
+        // Admin ihany : ny fanontaniana taloha tsy azon'ny bot (bokotra ❓).
+        (taloha.length ? '<button type="button" class="btn btn-sm" title="Fanontaniana tsy azon\'ny bot" ' +
+          'data-tsyazo="' + escapeHtml(o.cle || o.email) + '" data-anarana="' + escapeHtml(o.name || '') + '" style="flex:none; position:relative;">❓' +
+          (tsyAzo ? '<span class="hafatra-isa-bokotra">' + (tsyAzo > 9 ? '9+' : tsyAzo) + '</span>' : '') + '</button>' : '') +
         '<button type="button" class="btn btn-sm" title="' + lohateny + '" data-i="' + i + '" style="flex:none; position:relative;">' +
           (typeof ikona === 'function' ? ikona(o) : ikona) +
           (vaovao ? '<span class="hafatra-isa-bokotra">' + (vaovao > 9 ? '9+' : vaovao) + '</span>' : '') + '</button>' +
-        '</div>';
+        '</div></div>';
     }).join('');
+  }
+
+  // ---------------- ❓ FANONTANIANA TALOHA TSY AZON'NY BOT (admin) ----------------
+  // Voatahiry ao amin'ny bot_tsy_azo (supabase-bot-tsy-azo.sql) : hitan'ny
+  // admin na dia tsy teo aza izy tamin'ny nanontaniana, na naverina nalaina
+  // ny pejy. Marika mena raha mbola tsy voavaly.
+  const tsyAzoTaloha = {};   // email → [{ id, avy, anarana, soratra, hafatra_id, navaliana, created_at }]
+  let tsyAzoAt = 0, tsyAzoMaka = false;
+  function adminVe(){
+    const me = myIdentity();
+    return me.isAdmin || (typeof isOwnerEmail === 'function' && isOwnerEmail(me.email));
+  }
+  function isaTsyAzo(email){
+    const ids = {};
+    let isa = 0;
+    (tsyAzoTaloha[email] || []).forEach(function(r){
+      if(r.navaliana) return;
+      isa++;
+      if(r.hafatra_id) ids[r.hafatra_id] = true;
+    });
+    (resaka[email] || []).forEach(function(h){ if(h.tsyAzoBot && !ids[h.id]) isa++; });
+    return isa;
+  }
+  function makaTsyAzo(tery){
+    if(!window.__sb || !currentUser || !adminVe() || tsyAzoMaka) return;
+    if(!tery && Date.now() - tsyAzoAt < 60000) return;
+    tsyAzoMaka = true;
+    window.__sb.from('bot_tsy_azo').select('id,avy,anarana,soratra,hafatra_id,navaliana,created_at')
+      .order('created_at', { ascending: false }).limit(300)
+      .then(function(res){
+        tsyAzoMaka = false;
+        if(!res || res.error) return;
+        tsyAzoAt = Date.now();
+        Object.keys(tsyAzoTaloha).forEach(function(k){ delete tsyAzoTaloha[k]; });
+        (res.data || []).forEach(function(r){ (tsyAzoTaloha[r.avy] = tsyAzoTaloha[r.avy] || []).push(r); });
+        asehoyIndrayLisitra();
+      }, function(){ tsyAzoMaka = false; });
+  }
+  // Mpanjifa : tahirizina ilay fanontaniana tsy azon'ny bot.
+  function tahiryTsyAzo(me, soratra, hafatraId){
+    if(!window.__sb || !soratra) return;
+    window.__sb.from('bot_tsy_azo').insert({
+      avy: me.email, anarana: me.name || null, soratra: String(soratra).slice(0, 1000), hafatra_id: hafatraId || null
+    }).then(function(){}, function(){});
+  }
+  // Admin : voavaly daholo ny fanontanian'io olona io (na ilay iray ihany).
+  function marihoNavaliana(email, id){
+    const androany = new Date().toISOString();
+    (tsyAzoTaloha[email] || []).forEach(function(r){
+      if(!id || r.id === id){ r.navaliana = true; r.navaliana_at = androany; }
+    });
+    (resaka[email] || []).forEach(function(h){
+      if(h.tsyAzoBot && (!id || (tsyAzoTaloha[email] || []).some(function(r){ return r.id === id && r.hafatra_id === h.id; }))){
+        delete h.tsyAzoBot; h.navaliana = true;
+      }
+    });
+    if(!window.__sb) return;
+    let q = window.__sb.from('bot_tsy_azo').update({ navaliana: true, navaliana_at: androany }).eq('navaliana', false);
+    q = id ? q.eq('id', id) : q.eq('avy', email);
+    q.then(function(){}, function(){});
+  }
+  function daty(iso){
+    try{
+      return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }catch(e){ return ''; }
+  }
+  // Varavarankely : ny fanontaniana taloha (iray olona, na ny rehetra).
+  function asehoyTsyAzoTaloha(email, anarana){
+    const ancien = document.getElementById('tsyAzoTalohaBoaty');
+    if(ancien) ancien.remove();
+    const emails = email ? [email] : Object.keys(tsyAzoTaloha);
+    const andalana = [];
+    emails.forEach(function(e){ (tsyAzoTaloha[e] || []).forEach(function(r){ andalana.push(r); }); });
+    // Ny tsy voavaly aloha, avy eo ny vaovao indrindra.
+    andalana.sort(function(a, b){
+      return (a.navaliana ? 1 : 0) - (b.navaliana ? 1 : 0) || String(b.created_at).localeCompare(String(a.created_at));
+    });
+    const fond = document.createElement('div');
+    fond.id = 'tsyAzoTalohaBoaty';
+    fond.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; ' +
+      'justify-content:center; z-index:9600; padding:1rem;';
+    const boite = document.createElement('div');
+    boite.className = 'panel';
+    boite.style.cssText = 'max-width:420px; width:100%; max-height:85vh; overflow:auto; margin:0;';
+    function anaranaAry(r){ return r.anarana || anaranaFantatra(r.avy) || r.avy; }
+    boite.innerHTML =
+      '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.6rem;">' +
+        '<h3 style="margin:0;">❓ ' + escapeHtml(email ? (anarana || email) : 'Tsy azon\'ny bot') + '</h3>' +
+        '<button type="button" class="btn btn-sm" data-hidio style="width:auto;">✕</button></div>' +
+      '<p style="font-size:0.75rem; color:var(--muted); margin-bottom:0.6rem;">Ireo fanontaniana tsy azon\'ny bot, tokony ho valianao.</p>' +
+      (andalana.length ? andalana.map(function(r){
+        return '<div style="border:' + (r.navaliana ? '1px solid var(--line)' : '2px solid #e5484d') + '; border-radius:10px; padding:0.5rem 0.6rem; margin-bottom:0.5rem;">' +
+          '<div style="display:flex; justify-content:space-between; gap:0.5rem; font-size:0.7rem; margin-bottom:0.25rem;">' +
+            '<strong>' + (email ? '' : escapeHtml(anaranaAry(r)) + ' · ') + '<span style="color:var(--muted); font-weight:400;">' + escapeHtml(daty(r.created_at)) + '</span></strong>' +
+            (r.navaliana
+              ? '<span style="color:#25D366; font-weight:700;">✅ Navalinao</span>'
+              : '<span style="color:#e5484d; font-weight:700;">● Tsy mbola voavaly</span>') + '</div>' +
+          '<div style="font-size:0.82rem; overflow-wrap:anywhere;">' + escapeHtml(r.soratra) + '</div>' +
+          '<div style="display:flex; gap:0.35rem; margin-top:0.4rem; flex-wrap:wrap;">' +
+            '<button type="button" class="btn btn-sm btn-primary" data-valio="' + escapeHtml(r.id) + '" style="width:auto;">💬 Valio</button>' +
+            (r.navaliana ? '' : '<button type="button" class="btn btn-sm" data-voavaly="' + escapeHtml(r.id) + '" style="width:auto;">✅ Efa voavaly</button>') +
+          '</div></div>';
+      }).join('') : '<p class="empty-hint">Tsy misy.</p>');
+    function hidio(){ fond.remove(); }
+    function hita(id){ return andalana.filter(function(r){ return r.id === id; })[0]; }
+    boite.querySelector('[data-hidio]').addEventListener('click', hidio);
+    boite.querySelectorAll('[data-valio]').forEach(function(b){
+      b.addEventListener('click', function(){
+        const r = hita(b.getAttribute('data-valio'));
+        if(!r) return;
+        hidio();
+        // Ny fanontaniana tsy voavaly dia apetraka ao amin'ny resaka, mba
+        // hitan'ny admin izay valiany.
+        const lisitra = resaka[r.avy] = resaka[r.avy] || [];
+        (tsyAzoTaloha[r.avy] || []).slice().reverse().forEach(function(x){
+          if(x.navaliana || lisitra.some(function(h){ return h.id === (x.hafatra_id || x.id); })) return;
+          lisitra.push({ id: x.hafatra_id || x.id, avy: 'izy', soratra: x.soratra, media: null,
+            at: new Date(x.created_at).getTime() || Date.now(), tsyAzoBot: true });
+        });
+        lisitra.sort(function(a, b){ return (a.at || 0) - (b.at || 0); });
+        sokafyResaka(r.avy, anaranaAry(r));
+      });
+    });
+    boite.querySelectorAll('[data-voavaly]').forEach(function(b){
+      b.addEventListener('click', function(){
+        const r = hita(b.getAttribute('data-voavaly'));
+        if(!r) return;
+        marihoNavaliana(r.avy, r.id);
+        asehoyIndrayLisitra();
+        asehoyTsyAzoTaloha(email, anarana);
+      });
+    });
+    fond.addEventListener('click', function(e){ if(e.target === fond) hidio(); });
+    fond.appendChild(boite);
+    document.body.appendChild(fond);
+  }
+  // Bokotra ❓ amin'ny andalana tsirairay.
+  document.addEventListener('click', function(e){
+    const b = e.target && e.target.closest && e.target.closest('[data-tsyazo]');
+    if(!b) return;
+    asehoyTsyAzoTaloha(b.getAttribute('data-tsyazo'), b.getAttribute('data-anarana') || '');
+  });
+  // Bokotra iray ambony ao amin'ny 💬 Message : ny rehetra, na ireo
+  // mpitsidika efa lasa (tsy ao amin'ny lisitra intsony).
+  function asehoyBokotraTsyAzo(){
+    const panel = document.getElementById('msgMitsidikaPanel');
+    if(!panel) return;
+    let b = document.getElementById('btnTsyAzoBot');
+    if(!adminVe() || !Object.keys(tsyAzoTaloha).length){ if(b) b.remove(); return; }
+    if(!b){
+      b = document.createElement('button');
+      b.type = 'button';
+      b.id = 'btnTsyAzoBot';
+      b.className = 'btn btn-sm';
+      b.style.cssText = 'width:auto; position:relative; margin-bottom:0.6rem;';
+      b.addEventListener('click', function(){ asehoyTsyAzoTaloha('', ''); });
+      panel.insertBefore(b, panel.querySelector('h3') ? panel.querySelector('h3').nextSibling : panel.firstChild);
+    }
+    const isa = Object.keys(tsyAzoTaloha).reduce(function(s, e){ return s + isaTsyAzo(e); }, 0);
+    b.innerHTML = '❓ Fanontaniana tsy azon\'ny bot' +
+      (isa ? '<span class="hafatra-isa-bokotra">' + (isa > 9 ? '9+' : isa) + '</span>' : '');
   }
 
   // ---------------- SARY TENA IZY (profil_sary) ----------------
@@ -570,6 +739,7 @@
   function asehoyIndrayLisitra(){
     renderMitsidika();
     renderMpisoratraListe();
+    asehoyBokotraTsyAzo();
   }
 
   // ---------------- FANGATAHANA ALOHAN'NY HAFATRA ----------------
@@ -1122,8 +1292,10 @@
     // Ny admin no mamaly : vita ny marika « ❓ Tsy azon'ny bot » tamin'io olona io.
     if(me.isAdmin || (typeof isOwnerEmail === 'function' && isOwnerEmail(me.email))){
       const nisy = (resaka[resakaMisokatra.email] || []).filter(function(h){ return h.tsyAzoBot; });
-      if(nisy.length){
-        nisy.forEach(function(h){ delete h.tsyAzoBot; h.navaliana = true; });
+      const voatahiry = (tsyAzoTaloha[resakaMisokatra.email] || []).some(function(r){ return !r.navaliana; });
+      if(nisy.length || voatahiry){
+        // Voavaly koa ireo voatahiry (bot_tsy_azo).
+        marihoNavaliana(resakaMisokatra.email);
         asehoyResaka();
         asehoyIndrayLisitra();
       }
@@ -1138,6 +1310,8 @@
   function onHafatraMarika(payload){
     const avy = payload.from;
     if(!avy || !payload.id) return;
+    // Ilay voatahiry (bot_tsy_azo) : mety mbola tsy tonga ao amin'ny base.
+    setTimeout(function(){ makaTsyAzo(true); }, 2500);
     const h = (resaka[avy] || []).filter(function(x){ return x.id === payload.id; })[0];
     if(!h){ (marikaMiandry[avy] = marikaMiandry[avy] || []).push(payload.id); return; }
     h.tsyAzoBot = true;
@@ -1706,6 +1880,7 @@
     botValinyFeno(email, soratra, media).then(null, function(){ return null; }).then(function(v){
       // Tsy azon'ny bot : voamarika any amin'ny admin ilay hafatra.
       if(v && v.tsyAzo && idHafatraNy){
+        tahiryTsyAzo(me, soratra || anaranaMedia(media), idHafatraNy);
         sendCallSignal({ kind: 'hafatra-marika', from: me.email, fromName: me.name, to: email, id: idHafatraNy });
       }
       // Fotoana kely farafahakeliny, mba tsy hipoitra mitampoka ny valiny.
