@@ -1372,17 +1372,23 @@
     // Dépôt USDT : fonction wallet, « depot_usdt » (USDT_DEPOT_MIN, 3 miandry
     // farafahabetsany). Alohan'ny dépôt ankapobeny sy ny Binance.
     { teny: ['depot usdt', 'dépôt usdt', 'mametraka usdt', 'hametraka usdt', 'depot binance', 'dépôt binance', 'avy amin ny binance',
-        'txid', 'tx id', 'trc20', 'bep20', 'receive amount', 'internal transfer', 'mametraka crypto'],
-      valiny: '💵 Mametraka USDT avy amin\'ny Binance : 💰 Portefeuille ' + BOT_MENU + ' → « 💵 Mametraka USDT ».\n\n' +
+        'txid', 'tx id', 'hash', 'trc20', 'bep20', 'receive amount', 'internal transfer', 'mametraka crypto',
+        'depot okx', 'depot bybit', 'depot bitget', 'depot kucoin', 'trust wallet', 'tronlink', 'metamask', 'safepal',
+        'wallet hafa', 'portefeuille hafa', 'portfeuille hafa'],
+      valiny: '💵 Mametraka USDT : 💰 Portefeuille ' + BOT_MENU + ' → « 💵 Mametraka USDT ».\n\n' +
+        'Mandeha ny wallet rehetra mandefa USDT amin\'ny TRC20 na BEP20 : Binance, OKX, Bybit, Bitget, KuCoin, MEXC, ' +
+        'Trust Wallet, TronLink, MetaMask, SafePal… Tsy mandeha kosa ny Payoneer, Wise, Skrill na PayPal (tsy crypto).\n\n' +
         '1. Fidio ny réseau (TRC20 na BEP20), ary tsindrio « 📋 Adikao » mba handika ny adiresy.\n' +
-        '2. Ao amin\'ny Binance : Retrait (Withdraw) → USDT → apetaho ilay adiresy → fidio ilay réseau MITOVY → alefaso.\n' +
-        '3. Rehefa lasa ilay vola, adikao ny TxID : Binance → Historique → Retrait → tsindrio ilay retrait → TxID.\n' +
-        '4. Ao amin\'ny Ny asako : soraty ny USDT TONGA (« Receive amount », efa nesorina ny frais Binance), apetaho ny TxID (📋 Coller), ary tsindrio « 📨 Alefaso ny fangatahana ».\n\n' +
+        '2. Ao amin\'ny wallet-nao : Retrait (Withdraw / Send) → USDT → apetaho ilay adiresy → fidio ilay réseau MITOVY → alefaso.\n' +
+        '3. Rehefa lasa ilay vola, adikao ny TxID (na « Hash ») ao amin\'ny historique-n\'ilay retrait.\n' +
+        '4. Ao amin\'ny Ny asako : soraty ny USDT TONGA (« Receive amount », efa nesorina ny frais), apetaho ny TxID (📋 Coller), ary tsindrio « 📨 Alefaso ny fangatahana ».\n\n' +
+        '• Anarana hafa ny réseau : TRC20 = « TRON » / « TRX » ; BEP20 = « BSC » / « BNB Smart Chain ».\n' +
+        '• Wallet manokana (Trust Wallet, TronLink, MetaMask…) : mila TRX kely (TRC20) na BNB kely (BEP20) ho an\'ny frais réseau.\n' +
         '• Ny admin no manamarina rehefa hita amin\'ny réseau ilay vola, dia tafiditra ho 💰 vola tena izy (azo ampiasaina sy alaina).\n' +
         '• Ny taux USDT amin\'ny fotoana handefasanao no mihatra ; hita eo ambanin\'ny montant ny vola Ariary ho azonao.\n' +
         '• Hita ao amin\'ny « 🧾 Historique » ny fangatahana miandry : aza averina indroa ny TxID iray.\n' +
-        '• Raha « Internal transfer » no hita fa tsy TxID, apetaho ihany ilay laharana : ny admin no hijery ao amin\'ny Binance.\n\n' +
-        '⚠️ USDT ihany, amin\'ilay réseau voafidy ihany. Raha diso réseau na diso vola, very tanteraka ilay vola. ' +
+        '• Binance mankany Binance : raha « Internal transfer » no hita fa tsy TxID, apetaho ihany ilay laharana ; ny admin no hijery ao amin\'ny Binance.\n\n' +
+        '⚠️ USDT ihany, amin\'ilay réseau voafidy ihany. Raha diso réseau (ERC20, Solana, TON, Polygon…) na diso vola, very tanteraka ilay vola. ' +
         'Raha mbola tsy manana USDT ianao, anontanio aho hoe « ahoana ny P2P ».' },
     // Ny P2P an'ny Binance : tsy ao amin'ny Ny asako, fa fanontaniana matetika.
     { teny: ['p2p', 'mividy usdt', 'hividy usdt', 'acheter usdt', 'amidy usdt', 'hivarotra usdt', 'mivarotra usdt', 'vendre usdt',
@@ -1400,7 +1406,7 @@
       valiny: '📥 Mametraka vola : 💰 Portefeuille ' + BOT_MENU + '. Fomba roa :\n\n' +
         '1. Mobile Money (« 📥 Déposer de l\'argent ») : soraty ny montant, fidio MVola, Orange Money, Airtel Money na carte bancaire, ' +
         'tsindrio « Payer avec Papi » ary aloavy eo amin\'ny pejy Papi. Tafiditra avy hatrany rehefa manamarina i Papi.\n\n' +
-        '2. USDT avy amin\'ny Binance (« 💵 Mametraka USDT ») : fidio ny réseau (TRC20 na BEP20), adikao ny adiresy, ' +
+        '2. USDT avy amin\'ny Binance, OKX, Trust Wallet… (« 💵 Mametraka USDT ») : fidio ny réseau (TRC20 na BEP20), adikao ny adiresy, ' +
         'alefaso avy amin\'ny Binance (Retrait → USDT, réseau mitovy), avy eo soraty ny USDT tonga sy ny TxID ary tsindrio « 📨 Alefaso ». ' +
         'Ny admin no manaiky rehefa hita amin\'ny réseau ilay vola. ⚠️ Raha diso réseau, very ny vola.\n\n' +
         'Samy tafiditra ho 💰 vola tena izy izy roa. Hita ao amin\'ny « 🧾 Historique » ny dépôt mbola miandry : aza mandoa indroa.' },

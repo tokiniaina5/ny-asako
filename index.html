@@ -3111,17 +3111,21 @@
                après que la chaîne l'a confirmé (fonction wallet, « depot_usdt »,
                « depot_usdt_vahana »). Les adresses : « depot_usdt_adiresy ». -->
           <div class="panel" id="walletUsdtDepotPanel" style="display:none;">
-            <h3>💵 Mametraka USDT (Binance…)</h3>
+            <h3>💵 Mametraka USDT (Binance, OKX, Trust Wallet…)</h3>
             <div id="usdtDepotMihidy" style="display:none; font-size:0.82rem; color:var(--muted); line-height:1.6;">
               Mbola tsy misy adiresy USDT apetraky ny admin. Ampiasao aloha ny dépôt Mobile Money etsy ambony.
             </div>
             <div id="usdtDepotForm" style="display:none;">
               <ol style="font-size:0.8rem; color:var(--muted); line-height:1.7; margin:0 0 0.9rem 1.1rem; padding:0;">
                 <li>Fidio ny réseau, ary adikao ny adiresy eto ambany.</li>
-                <li>Ao amin'ny Binance : <strong>Retrait (Withdraw) → USDT</strong>, apetaho ilay adiresy, ary fidio ilay <strong>réseau mitovy</strong> amin'ity.</li>
-                <li>Rehefa lasa ilay vola, adikao ny <strong>TxID</strong> (Historique → Retrait → TxID).</li>
-                <li>Soraty eto ny USDT <strong>tonga</strong> (« Receive amount », efa nesorina ny frais Binance) sy ny TxID, dia alefaso.</li>
+                <li>Ao amin'ny wallet-nao (Binance, OKX, Bybit, Bitget, KuCoin, Trust Wallet, TronLink, MetaMask…) : <strong>Retrait (Withdraw / Send) → USDT</strong>, apetaho ilay adiresy, ary fidio ilay <strong>réseau mitovy</strong> amin'ity.</li>
+                <li>Rehefa lasa ilay vola, adikao ny <strong>TxID</strong> (na « Hash ») ao amin'ny historique-n'ilay retrait.</li>
+                <li>Soraty eto ny USDT <strong>tonga</strong> (« Receive amount », efa nesorina ny frais) sy ny TxID, dia alefaso.</li>
               </ol>
+              <ul style="font-size:0.76rem; color:var(--muted); line-height:1.6; margin:0 0 0.8rem 1.1rem; padding:0;">
+                <li>Anarana hafa ny réseau : TRC20 = « TRON » / « TRX » ; BEP20 = « BSC » / « BNB Smart Chain ».</li>
+                <li>Wallet manokana (Trust Wallet, TronLink, MetaMask…) : mila TRX kely (TRC20) na BNB kely (BEP20) ho an'ny frais réseau.</li>
+              </ul>
               <div class="field">
                 <label for="usdtDepotReseau">Réseau</label>
                 <select id="usdtDepotReseau"></select>
@@ -3132,7 +3136,8 @@
                 <button type="button" class="btn btn-sm" id="usdtDepotAdikao" style="width:auto;">📋 Adikao</button>
               </div>
               <p style="font-size:0.76rem; color:var(--amber, #e9a23b); line-height:1.5; margin:0.4rem 0 0.8rem;">
-                ⚠️ USDT ihany, amin'ilay réseau voafidy ihany. Raha diso réseau na diso vola, very tanteraka ilay vola.
+                ⚠️ USDT ihany, amin'ilay réseau voafidy ihany. Raha diso réseau (ERC20, Solana, TON, Polygon…) na diso vola, very tanteraka ilay vola.
+                Tsy mandeha ny Payoneer, Wise, Skrill na PayPal.
               </p>
               <div class="form-grid">
                 <div class="field" style="margin-bottom:0;">
