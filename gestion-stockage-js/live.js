@@ -515,12 +515,15 @@
     return olona.map(function(o, i){
       // Hafatra tsy mbola voavaky : isa mena eo amin'ny bokotra, ary soratra.
       const vaovao = tsyVoavaky[o.cle || o.email] || 0;
+      // Fanontaniana tsy azon'ny bot mbola tsy navalian'ny admin.
+      const tsyAzo = (resaka[o.cle || o.email] || []).filter(function(h){ return h.tsyAzoBot; }).length;
       return '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; padding:0.6rem 0; border-bottom:1px solid var(--line);">' +
         '<div style="display:flex; align-items:center; gap:0.6rem; min-width:0;">' + avatarOlona(o) +
         '<div style="min-width:0;">' +
           '<strong style="font-size:0.85rem;">' + escapeHtml(o.name) + '</strong>' +
           (o.online ? ' <span style="font-size:0.68rem; color:#25D366;">En ligne</span>' : '') +
           (vaovao ? '<div style="font-size:0.72rem; color:#e5484d; font-weight:700;">💬 ' + vaovao + ' hafatra tsy mbola voavaky</div>' : '') +
+          (tsyAzo ? '<div style="font-size:0.72rem; color:#e5484d; font-weight:700;">❓ ' + tsyAzo + ' fanontaniana tsy azon\'ny bot — valio</div>' : '') +
           '<div style="font-size:0.72rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis;">' +
             escapeHtml(o.phone || o.email) + '</div></div></div>' +
         '<button type="button" class="btn btn-sm" title="' + lohateny + '" data-i="' + i + '" style="flex:none; position:relative;">' +
@@ -1008,6 +1011,7 @@
     else if(payload.kind === 'speech'){ if(typeof onRemoteSpeech === 'function') onRemoteSpeech(payload); }
     else if(payload.kind === 'hafatra') onHafatraTonga(payload);
     else if(payload.kind === 'hafatra-fafana') onHafatraFafana(payload);
+    else if(payload.kind === 'hafatra-marika') onHafatraMarika(payload);
     else if(payload.kind === 'fangatahana') onFangatahana(payload);
     else if(payload.kind === 'valiny-fangatahana') onValinyFangatahana(payload);
   }
@@ -1060,7 +1064,10 @@
     const avy = payload.from;
     if(!avy || (!payload.text && !payload.media)) return;
     if(presenceState[avy]) payload.fromName = anaranaAseho(avy);
-    (resaka[avy] = resaka[avy] || []).push({ id: payload.id || idHafatra(), avy: 'izy', soratra: String(payload.text || ''), media: payload.media || null, at: Date.now() });
+    const vao = { id: payload.id || idHafatra(), avy: 'izy', soratra: String(payload.text || ''), media: payload.media || null, at: Date.now() };
+    const miandry = marikaMiandry[avy] || [];
+    if(miandry.indexOf(vao.id) >= 0){ vao.tsyAzoBot = true; miandry.splice(miandry.indexOf(vao.id), 1); }
+    (resaka[avy] = resaka[avy] || []).push(vao);
     const fohy = payload.text ? String(payload.text).slice(0, 120) : anaranaMedia(payload.media);
     feoHafatra();
     if(currentUser && typeof pushNotification === 'function') pushNotification('hafatra', '💬 Hafatra avy amin\'i ' + (payload.fromName || avy) + '.');
@@ -1111,7 +1118,33 @@
     alefaPush(resakaMisokatra.email, 'hafatra', { text: soratra || anaranaMedia(media) });
     (resaka[resakaMisokatra.email] = resaka[resakaMisokatra.email] || []).push({ id: id, avy: 'izaho', soratra: soratra || '', media: media || null, at: Date.now() });
     asehoyResaka();
-    if(soratra || media) botMamaly(resakaMisokatra.email, soratra || '', media);
+    if(soratra || media) botMamaly(resakaMisokatra.email, soratra || '', media, id);
+    // Ny admin no mamaly : vita ny marika « ❓ Tsy azon'ny bot » tamin'io olona io.
+    if(me.isAdmin || (typeof isOwnerEmail === 'function' && isOwnerEmail(me.email))){
+      const nisy = (resaka[resakaMisokatra.email] || []).filter(function(h){ return h.tsyAzoBot; });
+      if(nisy.length){
+        nisy.forEach(function(h){ delete h.tsyAzoBot; h.navaliana = true; });
+        asehoyResaka();
+        asehoyIndrayLisitra();
+      }
+    }
+  }
+
+  // ---------------- ❓ TSY AZON'NY BOT ----------------
+  // Ny fanontaniana tsy azon'ny bot : alefan'ny mpanjifa any amin'ny admin
+  // ny id-n'ilay hafatra (broadcast), ka voamarika eo aminy ilay hafatra mba
+  // hamaliany. Mety ho tonga alohan'ilay hafatra ny marika : tazonina.
+  const marikaMiandry = {};   // email → [id]
+  function onHafatraMarika(payload){
+    const avy = payload.from;
+    if(!avy || !payload.id) return;
+    const h = (resaka[avy] || []).filter(function(x){ return x.id === payload.id; })[0];
+    if(!h){ (marikaMiandry[avy] = marikaMiandry[avy] || []).push(payload.id); return; }
+    h.tsyAzoBot = true;
+    showSystemNotification('❓ Tsy azon\'ny bot', (payload.fromName || avy) + ' : ' +
+      (h.soratra ? h.soratra.slice(0, 120) : anaranaMedia(h.media)), 'hafatra-' + avy);
+    if(resakaMisokatra && resakaMisokatra.email === avy) asehoyResaka();
+    asehoyIndrayLisitra();
   }
 
   // ---------------- 🤖 BOT NY ASAKO ----------------
@@ -1656,7 +1689,7 @@
     return averina + '\n' + v.fan + ' ' + voalohany;
   }
   const botEfaNilaza = {};
-  function botMamaly(email, soratra, media){
+  function botMamaly(email, soratra, media, idHafatraNy){
     // Amin'ny admin ihany, ary tsy rehefa ny admin no manoratra.
     if(typeof isOwnerEmail !== 'function' || !isOwnerEmail(email)) return;
     const me = myIdentity();
@@ -1671,6 +1704,10 @@
     if(resakaMisokatra && resakaMisokatra.email === email) asehoyResaka();
     const nanomboka = Date.now();
     botValinyFeno(email, soratra, media).then(null, function(){ return null; }).then(function(v){
+      // Tsy azon'ny bot : voamarika any amin'ny admin ilay hafatra.
+      if(v && v.tsyAzo && idHafatraNy){
+        sendCallSignal({ kind: 'hafatra-marika', from: me.email, fromName: me.name, to: email, id: idHafatraNy });
+      }
       // Fotoana kely farafahakeliny, mba tsy hipoitra mitampoka ny valiny.
       setTimeout(function(){
         const lisitra = resaka[email] || [];
@@ -2027,7 +2064,7 @@
       '\n\nTsindrio ny bokotra eto ambany dia sokafako ho anao izy. Raha mbola misy dingana tsy mazava, lazao ahy hoe ny faha-firy.';
   }
   function botValio(email, soratra, f, teny){
-    let valiny, lakile = null, sokafyIzao = false;
+    let valiny, lakile = null, sokafyIzao = false, tsyAzo = false;
     // « hazavao tsara ny notes » : ilay lohahevitra voalaza no hazavaina.
     const fHazavao = BOT_FAQ.filter(function(x){ return x.hazavao; })[0];
     const t = ' ' + botTeny(soratra) + ' ';
@@ -2055,6 +2092,8 @@
       // Valiana foana (« afaka manampy ahy ve ianao » tsy navaliana teo,
       // 27/10/2026), ary tsy mivaona : ireo pejy akaiky ilay fanontaniana no
       // atolotra ; ny lisitra feno indray mandeha ihany isaky ny resaka.
+      // Voamarika any amin'ny admin ilay hafatra mba hamaliany (29/10/2026).
+      tsyAzo = true;
       const akaiky = botAkaiky(soratra);
       if(akaiky.length){
         valiny = 'Miala tsiny tompoko, tsy azoko tsara ny fanontanianao. Angamba ireto no tadiavinao :\n' +
@@ -2070,7 +2109,7 @@
       }
     }
     return botAdikao(valiny, teny).then(function(v){
-      return { soratra: v.soratra, teny: v.teny, sokafy: sokafyIzao ? null : lakile, sokafyIzao: sokafyIzao ? lakile : null };
+      return { soratra: v.soratra, teny: v.teny, sokafy: sokafyIzao ? null : lakile, sokafyIzao: sokafyIzao ? lakile : null, tsyAzo: tsyAzo };
     });
   }
 
@@ -2588,6 +2627,12 @@
                   'style="display:block; max-width:100%; max-height:260px; border-radius:8px;"></a>';
           }
           if(h.soratra) atiny += (atiny ? '<div style="margin-top:0.3rem;">' : '<div>') + escapeHtml(h.soratra) + '</div>';
+          // Eo amin'ny admin : fanontaniana tsy azon'ny bot, andrasana ny valiny.
+          if(!izaho && h.tsyAzoBot){
+            atiny = '<div style="font-size:0.68rem; font-weight:700; color:#e5484d; margin-bottom:0.15rem;">❓ Tsy azon\'ny bot — valio</div>' + atiny;
+          } else if(!izaho && h.navaliana){
+            atiny = '<div style="font-size:0.68rem; font-weight:700; color:#25D366; margin-bottom:0.15rem;">✅ Navalinao</div>' + atiny;
+          }
           // Ny valin'ny bot : ankavia toy ny an'ilay olona, fa misy ny anarany
           // sy loko hafa, mba tsy hampifangaroana azy amin'ny tenin'ny admin.
           if(h.avy === 'bot'){
@@ -2641,7 +2686,8 @@
           return '<div style="display:flex; align-items:center; justify-content:' + (izaho ? 'flex-end' : 'flex-start') + '; margin:0.25rem 0;">' +
             (izaho ? fafao : '') +
             '<span style="max-width:80%; padding:0.4rem 0.6rem; border-radius:10px; overflow-wrap:anywhere; ' +
-              (izaho ? 'background:var(--cyan); color:#000;' : 'background:var(--panel-2); color:var(--text);') + '">' +
+              (izaho ? 'background:var(--cyan); color:#000;' : 'background:var(--panel-2); color:var(--text);') +
+              (!izaho && h.tsyAzoBot ? ' border:2px solid #e5484d;' : '') + '">' +
               atiny + '</span>' + (izaho ? '' : fafao) + '</div>';
         }).join('')
       : '<p style="color:var(--muted); font-size:0.76rem;">' +
