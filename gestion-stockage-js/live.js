@@ -419,6 +419,7 @@
     // Ny sarin'ity kaonty ity : mba hita ao amin'ny lisitry ny hafa koa.
     if(typeof window.__envoyerMaPhoto === 'function') window.__envoyerMaPhoto();
     renderMitsidika();
+    asehoyBokotraTsyAzo();
     if(!mpisoratraMaka && (!mpisoratraCache || Date.now() - mpisoratraAt > 60000)){
       mpisoratraMaka = true;
       makaFifandraisana();
@@ -531,7 +532,7 @@
             escapeHtml(o.phone || o.email) + '</div></div></div>' +
         '<div style="display:flex; gap:0.35rem; flex:none;">' +
         // Admin ihany : ny fanontaniana taloha tsy azon'ny bot (bokotra ❓).
-        (taloha.length ? '<button type="button" class="btn btn-sm" title="Fanontaniana tsy azon\'ny bot" ' +
+        (taloha.length || tsyAzo ? '<button type="button" class="btn btn-sm" title="Fanontaniana tsy azon\'ny bot" ' +
           'data-tsyazo="' + escapeHtml(o.cle || o.email) + '" data-anarana="' + escapeHtml(o.name || '') + '" style="flex:none; position:relative;">❓' +
           (tsyAzo ? '<span class="hafatra-isa-bokotra">' + (tsyAzo > 9 ? '9+' : tsyAzo) + '</span>' : '') + '</button>' : '') +
         '<button type="button" class="btn btn-sm" title="' + lohateny + '" data-i="' + i + '" style="flex:none; position:relative;">' +
@@ -687,7 +688,8 @@
     const panel = document.getElementById('msgMitsidikaPanel');
     if(!panel) return;
     let b = document.getElementById('btnTsyAzoBot');
-    if(!adminVe() || !Object.keys(tsyAzoTaloha).length){ if(b) b.remove(); return; }
+    // Hita foana ho an'ny admin, na banga aza (« Tsy misy » ao anatiny).
+    if(!adminVe()){ if(b) b.remove(); return; }
     if(!b){
       b = document.createElement('button');
       b.type = 'button';
