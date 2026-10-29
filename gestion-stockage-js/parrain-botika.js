@@ -17,18 +17,29 @@
       { nom: 'OKX', defaut: 'https://www.okx.com/join' },
       { nom: 'KuCoin', defaut: 'https://www.kucoin.com/' },
       { nom: 'Bitget', defaut: 'https://www.bitget.com/register' },
+      { nom: 'MEXC', defaut: 'https://www.mexc.com/register' },
+      { nom: 'Gate', defaut: 'https://www.gate.com/' },
+      { nom: 'HTX', defaut: 'https://www.htx.com/' },
       { nom: 'RedotPay', defaut: 'https://www.redotpay.com/' },
       { nom: 'Wise', defaut: 'https://wise.com/register' },
       { nom: 'Skrill', defaut: 'https://www.skrill.com/' },
       { nom: 'Airtm', defaut: 'https://www.airtm.com/' },
+      // Le trading (forex, options) : risqué, dit comme tel partout.
       { nom: 'Exness', defaut: 'https://www.exness.com/' },
       { nom: 'Deriv', defaut: 'https://deriv.com/' },
+      { nom: 'XM', defaut: 'https://www.xm.com/' },
+      { nom: 'FBS', defaut: 'https://fbs.com/' },
+      { nom: 'HFM', defaut: 'https://www.hfm.com/' },
+      { nom: 'IQ Option', defaut: 'https://iqoption.com/' },
+      { nom: 'Olymp Trade', defaut: 'https://olymptrade.com/' },
       // Les jeux (18 ans et plus). « Lalao Malagasy (Loterie) » n'a pas de
       // site connu : il ne se montre qu'avec le lien de l'admin.
       { nom: 'Bet261', defaut: 'https://www.bet261.mg/' },
       { nom: 'Aviator', defaut: 'https://spribe.co/games/aviator' },
       { nom: '1xBet', defaut: 'https://1xbet.com/' },
-      { nom: 'Melbet', defaut: 'https://melbet.com/' }
+      { nom: 'Melbet', defaut: 'https://melbet.com/' },
+      { nom: 'Betwinner', defaut: 'https://betwinner.com/' },
+      { nom: '22Bet', defaut: 'https://22bet.com/' }
     ];
 
     // Le logo d'une plateforme : son icône, servie par Google à partir du

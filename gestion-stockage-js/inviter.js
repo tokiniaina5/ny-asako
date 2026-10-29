@@ -279,6 +279,24 @@
       'Mahazo commission ianao amin\'ny trade ataon\'ireo nentinao.',
       'Ho Ariary : P2P ao amin\'ny Bitget.'
     ],
+    'mexc': [
+      'Misorata anarana amin\'ny app MEXC, ary ataovy ny vérification (KYC).',
+      'Profil → « Referral » (na « Invite friends ») : eo ny rohy sy ny code-nao. Adikao eto ambany.',
+      'Mahazo ampahany amin\'ny frais de trading an\'ireo nentinao ianao.',
+      'Ho Ariary : P2P ao amin\'ny MEXC raha misy MVola / Orange Money, na alefaso any amin\'ny Binance aloha.'
+    ],
+    'gate': [
+      'Misorata anarana amin\'ny app Gate, ary ataovy ny vérification (KYC).',
+      'Profil → « Referral » (na « Invite friends ») : eo ny rohy sy ny code-nao.',
+      'Mahazo commission ianao amin\'ny trade ataon\'ireo nentinao.',
+      'Ho Ariary : P2P ao amin\'ny Gate raha misy MVola / Orange Money, na alefaso any amin\'ny Binance aloha.'
+    ],
+    'htx': [
+      'Misorata anarana amin\'ny app HTX, ary ataovy ny vérification (KYC).',
+      'Profil → « Invite » (na « Referral ») : eo ny rohy sy ny code-nao.',
+      'Mahazo commission ianao amin\'ny trade ataon\'ireo nentinao.',
+      'Ho Ariary : P2P ao amin\'ny HTX raha misy, na alefaso any amin\'ny Binance aloha.'
+    ],
     'redotpay': [
       'Misorata anarana amin\'ny app RedotPay (karatra crypto), ary ataovy ny vérification.',
       'Ao amin\'ny app : « Invite friends » (na « Referral ») : eo ny rohy sy ny code-nao.',
@@ -309,6 +327,33 @@
       'Misorata ho « Deriv Partners » (affiliate) ao amin\'ny tranonkalan\'i Deriv : eo ny rohy partenaire-nao.',
       'Mahazo commission ianao amin\'ny trade ataon\'ireo nentinao. Trading misy loza.'
     ],
+    'xm': [
+      'Manokafa kaonty XM, ary ataovy ny vérification.',
+      'Misorata ho « XM Partners » (programme partenaire / IB) : eo ny rohy partenaire-nao.',
+      'Mahazo commission ianao amin\'ny trade ataon\'ireo nentinao. Trading misy loza : aza mampiasa vola tsy azonao very.'
+    ],
+    'fbs': [
+      'Manokafa kaonty FBS, ary ataovy ny vérification.',
+      'Misorata ho « FBS Partners » (IB / affiliate) : eo ny rohy partenaire-nao.',
+      'Mahazo commission ianao amin\'ny trade ataon\'ireo nentinao. Trading misy loza.'
+    ],
+    'hfm': [
+      'Manokafa kaonty HFM, ary ataovy ny vérification.',
+      'Misorata ho « HFM Partners » (IB / affiliate) : eo ny rohy partenaire-nao.',
+      'Mahazo commission ianao amin\'ny trade ataon\'ireo nentinao. Trading misy loza.'
+    ],
+    'iq option': [
+      'Manokafa kaonty IQ Option, ary ataovy ny vérification.',
+      'Misorata ao amin\'ny « IQ Option Affiliate Program » : eo ny rohy partenaire-nao.',
+      'Mahazo commission ianao araka ny filalaovan\'ireo nentinao.',
+      'Options sy CFD : misy loza be, ny ankamaroan\'ny mpampiasa no very vola. Aza mampiasa vola tsy azonao very.'
+    ],
+    'olymp trade': [
+      'Manokafa kaonty Olymp Trade, ary ataovy ny vérification.',
+      'Misorata ao amin\'ny « Olymp Trade Affiliates » (programme partenaire) : eo ny rohy partenaire-nao.',
+      'Mahazo commission ianao araka ny filalaovan\'ireo nentinao.',
+      'Trading misy loza be : aza mampiasa vola tsy azonao very.'
+    ],
     'lalao malagasy (loterie)': [
       'Jereo ao amin\'ny Lalao Malagasy raha misy programme parrainage na mpivarotra (revendeur).',
       'Apetraho eto ny rohy na ny code omeny anao.',
@@ -333,6 +378,18 @@
     ],
     'melbet': [
       'Misorata ho partenaire ao amin\'ny « Melbet Partners » (programme affiliate).',
+      'Ao amin\'ny tableau de bord : eo ny rohy partenaire-nao.',
+      'Mahazo commission ianao araka ny filalaovan\'ireo nentinao.',
+      LALAO_18
+    ],
+    'betwinner': [
+      'Misorata ho partenaire ao amin\'ny « Betwinner Partners » (programme affiliate).',
+      'Ao amin\'ny tableau de bord : eo ny rohy partenaire-nao.',
+      'Mahazo commission ianao araka ny filalaovan\'ireo nentinao.',
+      LALAO_18
+    ],
+    '22bet': [
+      'Misorata ho partenaire ao amin\'ny « 22Bet Partners » (programme affiliate).',
       'Ao amin\'ny tableau de bord : eo ny rohy partenaire-nao.',
       'Mahazo commission ianao araka ny filalaovan\'ireo nentinao.',
       LALAO_18

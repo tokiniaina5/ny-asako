@@ -1483,8 +1483,9 @@
         '2. 📨 Binance, Payoneer sy sehatra hafa (Bybit, OKX, Wise, Skrill…) : ampidiro ao amin\'ny « ✉️ Inviter des amis » ny rohy parrainage-nao manokana, ' +
         '5 000 Ar indray mandeha. Ilay sehatra no mandoa anao rehefa misy misoratra amin\'ny rohinao, fa tsy ny Ny asako.' },
     { teny: ['binance', 'payoneer', 'crypto', 'usdt', 'parrainage', 'referral', 'plateforme', 'sehatra',
-        'bybit', 'okx', 'kucoin', 'bitget', 'redotpay', 'wise', 'skrill', 'airtm', 'exness', 'deriv',
-        'bet261', 'aviator', '1xbet', 'melbet', 'trading', 'paris', 'filokana'],
+        'bybit', 'okx', 'kucoin', 'bitget', 'mexc', 'gate', 'htx', 'redotpay', 'wise', 'skrill', 'airtm',
+        'exness', 'deriv', 'xm', 'fbs', 'hfm', 'iq option', 'olymp trade', 'forex',
+        'bet261', 'aviator', '1xbet', 'melbet', 'betwinner', '22bet', 'trading', 'paris', 'filokana', 'lalao'],
       valiny: botSehatra },
     // Ny sanda dia avy amin'ny fonction wallet (AFF_*, CONV_*) : raha miova
     // any, ovay eto koa.
@@ -1800,21 +1801,51 @@
     'okx': 'crypto sy trading, P2P amin\'ny Ariary',
     'kucoin': 'crypto sy trading',
     'bitget': 'crypto sy trading',
+    'mexc': 'crypto sy trading, token maro',
+    'gate': 'crypto sy trading, token maro',
+    'htx': 'crypto sy trading',
     'redotpay': 'karatra crypto handoavana an-tserasera',
     'wise': 'fandefasana vola iraisam-pirenena',
     'skrill': 'portefeuille an-tserasera, fandoavana iraisam-pirenena',
     'airtm': 'dolara an-tserasera, misintona amin\'ny Mobile Money',
-    'exness': 'trading, misy loza',
-    'deriv': 'trading, misy loza'
+    'exness': 'forex sy trading, misy loza',
+    'deriv': 'forex sy trading, misy loza',
+    'xm': 'forex sy trading, misy loza',
+    'fbs': 'forex sy trading, misy loza',
+    'hfm': 'forex sy trading, misy loza',
+    'iq option': 'options sy trading, misy loza be',
+    'olymp trade': 'options sy trading, misy loza be',
+    'bet261': 'paris sportifs sy lalao, eto Madagasikara',
+    'aviator': 'lalao fiaramanidina (crash game), ao amin\'ny tranonkala filokana',
+    '1xbet': 'paris sportifs sy casino',
+    'melbet': 'paris sportifs sy casino',
+    'betwinner': 'paris sportifs sy casino',
+    '22bet': 'paris sportifs sy casino'
   };
-  const BOT_LALAO = ['bet261', 'aviator', '1xbet', 'melbet', 'lalao malagasy (loterie)'];
+  const BOT_LALAO = ['bet261', 'aviator', '1xbet', 'melbet', 'betwinner', '22bet', 'lalao malagasy (loterie)'];
+  // « forex » : ireo ihany ; « trading » : ireo sy ny crypto misy trading.
+  const BOT_FOREX = ['exness', 'deriv', 'xm', 'fbs', 'hfm', 'iq option', 'olymp trade'];
+  const BOT_CRYPTO_TRADING = ['binance', 'bybit', 'okx', 'kucoin', 'bitget', 'mexc', 'gate', 'htx'];
+  function botSokajy(t){
+    const misy = function(teny){ return teny.some(function(m){ return t.indexOf(' ' + m + ' ') >= 0; }); };
+    if(misy(['lalao', 'filokana', 'paris', 'casino', 'bet'])) return BOT_LALAO;
+    if(misy(['forex', 'options'])) return BOT_FOREX;
+    if(misy(['trading', 'trade'])) return BOT_CRYPTO_TRADING.concat(BOT_FOREX);
+    return null;
+  }
   function botSehatra(soratra){
     const lisitra = (typeof window.__lisitraParrain === 'function') ? window.__lisitraParrain() : [];
     if(!lisitra.length){
       return '💸 Binance, Payoneer & hafa : hitanao ao amin\'ny Botika ireo rohy fisoratana anarana.';
     }
-    const t = botMadio(soratra);
-    const voatonona = lisitra.filter(function(x){ return t.indexOf(botMadio(x.nom)) >= 0; });
+    // Teny iray manontolo : « gate » tsy hita ao anatin'ny « navigateur ».
+    const t = ' ' + botTeny(soratra) + ' ';
+    let voatonona = lisitra.filter(function(x){ return t.indexOf(' ' + botTeny(x.nom) + ' ') >= 0; });
+    // Tsy misy anarana fa sokajy (« inona ny lalao », « forex ») : io sokajy io ihany.
+    if(!voatonona.length){
+      const sokajy = botSokajy(t);
+      if(sokajy) voatonona = lisitra.filter(function(x){ return sokajy.indexOf(x.nom.toLowerCase()) >= 0; });
+    }
     const ireo = voatonona.length ? voatonona : lisitra;
     const andalana = function(x){
       const mot = BOT_SEHATRA[x.nom.toLowerCase()];
