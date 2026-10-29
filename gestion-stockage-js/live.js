@@ -1369,12 +1369,15 @@
         '• Frais 15 % (ohatra : 50 000 Ar → 42 500 Ar vola tena izy).' },
     // Ny frais dia avy amin'ny secrets (DEPOSIT_FEE_PCT, PAYOUT_FEE_PCT,
     // TRANSFER_FEE_PCT) : tsy soratana eto, asehon'ny pejy alohan'ny hanamafisana.
-    { teny: ['depot', 'dépôt', 'deposer', 'déposer', 'mametraka vola', 'hametraka vola', 'manampy vola', 'recharger', 'recharge', 'payer avec papi'],
-      valiny: '📥 Mametraka vola : 💰 Portefeuille ' + BOT_MENU + ' → « 📥 Déposer de l\'argent ».\n\n' +
-        '1. Soraty ny montant (Ar).\n' +
-        '2. Fidio MVola, Orange Money, Airtel Money na carte bancaire.\n' +
-        '3. Tsindrio « Payer avec Papi » ary aloavy eo amin\'ny pejy Papi.\n\n' +
-        'Rehefa manamarina i Papi, tafiditra ho 💰 vola tena izy ilay vola. Hita ao amin\'ny « 🧾 Historique » ny dépôt mbola miandry : aza mandoa indroa.' },
+    { teny: ['depot', 'dépôt', 'deposer', 'déposer', 'mametraka vola', 'hametraka vola', 'manampy vola', 'recharger', 'recharge', 'payer avec papi',
+        'depot usdt', 'mametraka usdt', 'depot binance', 'txid'],
+      valiny: '📥 Mametraka vola : 💰 Portefeuille ' + BOT_MENU + '. Fomba roa :\n\n' +
+        '1. Mobile Money (« 📥 Déposer de l\'argent ») : soraty ny montant, fidio MVola, Orange Money, Airtel Money na carte bancaire, ' +
+        'tsindrio « Payer avec Papi » ary aloavy eo amin\'ny pejy Papi. Tafiditra avy hatrany rehefa manamarina i Papi.\n\n' +
+        '2. USDT avy amin\'ny Binance (« 💵 Mametraka USDT ») : fidio ny réseau (TRC20 na BEP20), adikao ny adiresy, ' +
+        'alefaso avy amin\'ny Binance (Retrait → USDT, réseau mitovy), avy eo soraty ny USDT tonga sy ny TxID ary tsindrio « 📨 Alefaso ». ' +
+        'Ny admin no manaiky rehefa hita amin\'ny réseau ilay vola. ⚠️ Raha diso réseau, very ny vola.\n\n' +
+        'Samy tafiditra ho 💰 vola tena izy izy roa. Hita ao amin\'ny « 🧾 Historique » ny dépôt mbola miandry : aza mandoa indroa.' },
     { teny: ['retrait', 'retirer', 'misintona', 'hisintona', 'maka vola', 'haka vola', 'halaina', 'alaina ny vola', 'payout'],
       valiny: '💸 Misintona vola : 💰 Portefeuille ' + BOT_MENU + ' → « 💸 Retirer ».\n\n' +
         '1. Soraty ny vola horaisina (Ar).\n' +

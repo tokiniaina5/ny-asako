@@ -3106,6 +3106,73 @@
             <p id="papiStatus" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem; line-height:1.5;"></p>
           </div>
 
+          <!-- ---- DÉPÔT USDT : envoyé à l'adresse de l'admin, vérifié ----
+               La personne déclare la somme reçue et le TxID ; l'admin accepte
+               après que la chaîne l'a confirmé (fonction wallet, « depot_usdt »,
+               « depot_usdt_vahana »). Les adresses : « depot_usdt_adiresy ». -->
+          <div class="panel" id="walletUsdtDepotPanel" style="display:none;">
+            <h3>💵 Mametraka USDT (Binance…)</h3>
+            <div id="usdtDepotMihidy" style="display:none; font-size:0.82rem; color:var(--muted); line-height:1.6;">
+              Mbola tsy misy adiresy USDT apetraky ny admin. Ampiasao aloha ny dépôt Mobile Money etsy ambony.
+            </div>
+            <div id="usdtDepotForm" style="display:none;">
+              <ol style="font-size:0.8rem; color:var(--muted); line-height:1.7; margin:0 0 0.9rem 1.1rem; padding:0;">
+                <li>Fidio ny réseau, ary adikao ny adiresy eto ambany.</li>
+                <li>Ao amin'ny Binance : <strong>Retrait (Withdraw) → USDT</strong>, apetaho ilay adiresy, ary fidio ilay <strong>réseau mitovy</strong> amin'ity.</li>
+                <li>Rehefa lasa ilay vola, adikao ny <strong>TxID</strong> (Historique → Retrait → TxID).</li>
+                <li>Soraty eto ny USDT <strong>tonga</strong> (« Receive amount », efa nesorina ny frais Binance) sy ny TxID, dia alefaso.</li>
+              </ol>
+              <div class="field">
+                <label for="usdtDepotReseau">Réseau</label>
+                <select id="usdtDepotReseau"></select>
+              </div>
+              <div class="rohy-etiketa">Adiresy handefasana</div>
+              <div class="rohy-andalana">
+                <strong id="usdtDepotAdiresy" style="font-family:var(--font-mono); font-size:0.82rem; word-break:break-all; flex:1; min-width:0;">—</strong>
+                <button type="button" class="btn btn-sm" id="usdtDepotAdikao" style="width:auto;">📋 Adikao</button>
+              </div>
+              <p style="font-size:0.76rem; color:var(--amber, #e9a23b); line-height:1.5; margin:0.4rem 0 0.8rem;">
+                ⚠️ USDT ihany, amin'ilay réseau voafidy ihany. Raha diso réseau na diso vola, very tanteraka ilay vola.
+              </p>
+              <div class="form-grid">
+                <div class="field" style="margin-bottom:0;">
+                  <label for="usdtDepotMontant">USDT tonga</label>
+                  <input id="usdtDepotMontant" type="number" min="0" step="any" placeholder="10">
+                  <p id="usdtDepotEnAr" style="font-size:0.78rem; color:var(--muted); margin-top:0.3rem;"></p>
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label for="usdtDepotTxid">TxID</label>
+                  <div style="display:flex; gap:0.5rem;">
+                    <input id="usdtDepotTxid" type="text" autocomplete="off" spellcheck="false" placeholder="a1b2c3… na 0x…" style="flex:1; min-width:0; font-family:var(--font-mono);">
+                    <button type="button" class="btn btn-sm" id="usdtDepotColler" style="width:auto; white-space:nowrap;">📋 Coller</button>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="usdtDepotBtn" style="width:auto; margin-top:0.8rem;">📨 Alefaso ny fangatahana</button>
+              <p id="usdtDepotStatut" style="font-size:0.8rem; color:var(--cyan); margin-top:0.8rem; line-height:1.5;"></p>
+              <p style="font-size:0.74rem; color:var(--muted); line-height:1.5; margin:0.3rem 0 0;">
+                Ny admin no manamarina rehefa hita amin'ny réseau ilay vola, dia tafiditra ho 💰 vola tena izy. Hita ao amin'ny « 🧾 Historique » ny fangatahana miandry.
+              </p>
+            </div>
+
+            <!-- L'admin : ses adresses, et les dépôts qui attendent. -->
+            <div id="usdtDepotAdmin" style="display:none; margin-top:1rem; padding-top:0.8rem; border-top:1px solid var(--line);">
+              <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.4rem;">🛡️ Adiresy USDT-nao (admin)</div>
+              <label class="rohy-etiketa" for="usdtAdiresyTrc20">TRC20 (T…)</label>
+              <input id="usdtAdiresyTrc20" class="rohy-saha" type="text" autocomplete="off" spellcheck="false" placeholder="T…" style="width:100%; font-family:var(--font-mono);">
+              <label class="rohy-etiketa" for="usdtAdiresyBep20" style="margin-top:0.5rem;">BEP20 (0x…)</label>
+              <input id="usdtAdiresyBep20" class="rohy-saha" type="text" autocomplete="off" spellcheck="false" placeholder="0x…" style="width:100%; font-family:var(--font-mono);">
+              <p style="font-size:0.74rem; color:var(--muted); line-height:1.5; margin:0.4rem 0;">
+                Binance → Dépôt → USDT → fidio ny réseau → adikao ny adiresy. Avelao ho banga ny réseau tsy ampiasainao.
+              </p>
+              <button type="button" class="btn btn-primary btn-sm" id="usdtAdiresySave" style="width:auto;">💾 Tehirizina</button>
+              <p id="usdtAdiresyStatut" style="font-size:0.78rem; color:var(--cyan); margin:0.4rem 0 0;"></p>
+
+              <div style="font-weight:700; font-size:0.85rem; margin:1rem 0 0.4rem;">🛡️ Dépôt USDT miandry</div>
+              <div id="usdtDepotAdminLisitra" style="font-size:0.8rem;"></div>
+            </div>
+          </div>
+
           <!-- ---- RETIRER : l'argent qui SORT, en Mobile Money ----
                Papi n'envoie pas d'argent (il n'encaisse que) : le propriétaire
                envoie lui-même, puis marque la demande comme envoyée. -->

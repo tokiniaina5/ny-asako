@@ -533,7 +533,7 @@ async function cleFor(admin: Admin, email: string): Promise<string | null> {
 // premières sommes changées.
 const RETRAITS_ANCIENS = new Set(["paypal", "card", "cash", "wallet", "wise", "payoneer", "skrill"]);
 
-const PROVIDERS_REELS = ["papi", "mvola", "orange", "airtel", "paypal", "affiliation", "affiliation_admin", "avadika_frais"];
+const PROVIDERS_REELS = ["papi", "mvola", "orange", "airtel", "paypal", "affiliation", "affiliation_admin", "avadika_frais", "usdt"];
 
 async function retirableFor(admin: Admin, email: string, balance: number): Promise<number> {
   const { data: depots } = await admin.from("wallet_deposits")
@@ -603,6 +603,155 @@ async function partsSolde(admin: Admin, email: string, balance: number): Promise
   const conv = await conversionsFor(admin, email);
   const reste = entre + achats.recu + transferts.recu + conv.net - abonnements - transferts.envoye - retraits;
   return { papi: Math.max(0, Math.min(balance, reste)) };
+}
+
+// ---- Dépôt en USDT (29/10/2026) ----
+// La personne envoie des USDT (depuis Binance…) à l'adresse de l'admin, puis
+// déclare la somme et le TxID : une ligne « usdt » en attente dans
+// wallet_deposits, que le solde ignore. L'admin l'accepte après que la chaîne
+// a confirmé l'envoi (verifierUsdt) — ou, pour un transfert interne Binance
+// que la chaîne ne voit pas, après l'avoir vu lui-même dans son historique.
+// L'index unique (provider, provider_ref) empêche de déclarer deux fois le
+// même TxID ; un refus libère la référence, pour redéclarer sans erreur.
+const USDT_DEPOT_MIN = Math.max(0, Number(Deno.env.get("USDT_DEPOT_MIN") ?? "1"));
+const USDT_DEPOT_MAX_ATTENTE = 3;
+const USDT_EXPLORER: Record<string, string> = {
+  TRC20: "https://tronscan.org/#/transaction/",
+  BEP20: "https://bscscan.com/tx/",
+};
+
+// Les adresses de dépôt vivent dans l'app_metadata du compte admin : seule
+// la clé de service l'écrit, la page ne peut pas la changer en douce.
+let adiresyCache: { t: number; v: Record<string, string> } | null = null;
+async function adiresyDepot(admin: Admin, ownerEmail: string): Promise<Record<string, string>> {
+  if (adiresyCache && Date.now() - adiresyCache.t < 60_000) return adiresyCache.v;
+  const v: Record<string, string> = {};
+  if (ownerEmail) {
+    for (let page = 1; page <= 10; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+      if (error) break;
+      const users = data?.users ?? [];
+      const proprio = users.find((u) => norm(u.email) === ownerEmail);
+      if (proprio) {
+        const depot = (proprio.app_metadata?.usdt_depot ?? {}) as Record<string, unknown>;
+        for (const reseau of Object.keys(ADIRESY_USDT)) {
+          const a = String(depot[reseau] ?? "").trim();
+          if (ADIRESY_USDT[reseau].test(a)) v[reseau] = a;
+        }
+        break;
+      }
+      if (users.length < 200) break;
+    }
+  }
+  adiresyCache = { t: Date.now(), v };
+  return v;
+}
+
+// Un TxID se range sous une seule forme : TRC20 en 64 hexa sans « 0x »,
+// BEP20 en « 0x » + 64 hexa, en minuscules. Autre chose (« Internal
+// transfer » de Binance, qui ne passe pas par la chaîne) : son identifiant
+// tel quel, marqué « interne ».
+function normTxid(reseau: string, saisie: unknown): { txid: string; interne: boolean } | null {
+  const brut = String(saisie ?? "").trim();
+  const hexa = brut.toLowerCase().replace(/^0x/, "");
+  if (/^[0-9a-f]{64}$/.test(hexa)) return { txid: reseau === "BEP20" ? "0x" + hexa : hexa, interne: false };
+  if (/^[A-Za-z0-9_-]{6,100}$/.test(brut)) return { txid: brut, interne: true };
+  return null;
+}
+
+// Une adresse Tron (base58, « T… ») en ses 20 octets, en hexa : c'est sous
+// cette forme que la chaîne range les journaux d'un transfert.
+const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function tronHex(adresse: string): string {
+  let n = 0n;
+  for (const c of adresse) {
+    const i = B58.indexOf(c);
+    if (i < 0) return "";
+    n = n * 58n + BigInt(i);
+  }
+  const hex = n.toString(16).padStart(50, "0");
+  return hex.startsWith("41") ? hex.slice(2, 42) : "";
+}
+const SIG_TRANSFER = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+type VerifUsdt = { ok: true; usdt: number } | { ok: false; erreur: string };
+
+// Ce que la chaîne dit d'un TxID : combien d'USDT il a fait arriver à
+// « adresse », une fois l'envoi confirmé. Rien n'est cru sur parole.
+async function verifierUsdt(reseau: string, txid: string, adresse: string): Promise<VerifUsdt> {
+  try {
+    if (reseau === "TRC20") {
+      const apiKey = Deno.env.get("TRONGRID_API_KEY") ?? "";
+      // « walletsolidity » : seulement ce qui est confirmé pour de bon.
+      const res = await fetch("https://api.trongrid.io/walletsolidity/gettransactioninfobyid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(apiKey ? { "TRON-PRO-API-KEY": apiKey } : {}) },
+        body: JSON.stringify({ value: txid }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) return { ok: false, erreur: `Tron tsy namaly (${res.status}).` };
+      const info = await res.json();
+      if (!info?.id) return { ok: false, erreur: "Mbola tsy hita na mbola tsy voamarina amin'ny réseau Tron io TxID io." };
+      if (info.receipt?.result && info.receipt.result !== "SUCCESS") {
+        return { ok: false, erreur: `Tsy nety ilay transaction tamin'ny Tron (${info.receipt.result}).` };
+      }
+      const contrat = tronHex(USDT_CONTRAT.TRC20);
+      const dest = tronHex(adresse);
+      let somme = 0n;
+      for (const log of (info.log ?? []) as Array<{ address: string; topics: string[]; data: string }>) {
+        const ad = String(log.address ?? "").toLowerCase();
+        if ((ad.length === 42 ? ad.slice(2) : ad) !== contrat) continue;
+        if (String(log.topics?.[0] ?? "").toLowerCase() !== SIG_TRANSFER) continue;
+        if (String(log.topics?.[2] ?? "").toLowerCase().slice(-40) !== dest) continue;
+        somme += BigInt("0x" + (log.data || "0"));
+      }
+      if (somme === 0n) return { ok: false, erreur: "Tsy misy USDT TRC20 tonga tamin'ny adiresy admin tao amin'io transaction io." };
+      return { ok: true, usdt: Number(somme) / 1e6 };
+    }
+
+    const rpcUrl = Deno.env.get("BSC_RPC_URL") ?? "https://bsc-dataseed.bnbchain.org";
+    const rpc = async (method: string, params: unknown[]) => {
+      const res = await fetch(rpcUrl, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) throw new Error(`BSC tsy namaly (${res.status}).`);
+      return (await res.json())?.result;
+    };
+    const recu = await rpc("eth_getTransactionReceipt", [txid]);
+    if (!recu) return { ok: false, erreur: "Mbola tsy hita amin'ny réseau BSC io TxID io." };
+    if (recu.status !== "0x1") return { ok: false, erreur: "Tsy nety ilay transaction tamin'ny BSC." };
+    const tete = Number(BigInt(await rpc("eth_blockNumber", [])));
+    if (tete - Number(BigInt(recu.blockNumber)) < 15) {
+      return { ok: false, erreur: "Mbola tsy ampy fanamarinana (confirmations) amin'ny BSC : andraso kely." };
+    }
+    const dest = adresse.slice(2).toLowerCase();
+    let somme = 0n;
+    for (const log of (recu.logs ?? []) as Array<{ address: string; topics: string[]; data: string }>) {
+      if (String(log.address ?? "").toLowerCase() !== USDT_CONTRAT.BEP20.toLowerCase()) continue;
+      if (String(log.topics?.[0] ?? "").toLowerCase() !== "0x" + SIG_TRANSFER) continue;
+      if (String(log.topics?.[2] ?? "").toLowerCase().slice(-40) !== dest) continue;
+      somme += BigInt(log.data || "0x0");
+    }
+    if (somme === 0n) return { ok: false, erreur: "Tsy misy USDT BEP20 tonga tamin'ny adiresy admin tao amin'io transaction io." };
+    // 18 décimales : on garde 6 chiffres après la virgule.
+    return { ok: true, usdt: Number(somme / 10n ** 12n) / 1e6 };
+  } catch (e) {
+    return { ok: false, erreur: "Tsy azo jerena ny réseau : " + String((e as Error)?.message ?? e) };
+  }
+}
+
+// Pour l'admin : les dépôts USDT qui attendent.
+async function depotsUsdtEnAttente(admin: Admin) {
+  const { data } = await admin.from("wallet_deposits")
+    .select("id,email,amount_ar,provider_ref,raw,note,created_at")
+    .eq("provider", "usdt").eq("status", "en_attente")
+    .order("created_at", { ascending: true }).limit(50);
+  return ((data ?? []) as Array<{ raw: Record<string, unknown> | null }>).map((d) => {
+    const raw = d.raw ?? {};
+    return { ...d, explorer: raw.interne ? null : (USDT_EXPLORER[String(raw.reseau)] ?? "") + String(raw.txid ?? "") };
+  });
 }
 
 Deno.serve(async (req: Request) => {
@@ -724,7 +873,113 @@ Deno.serve(async (req: Request) => {
       avadika: await avadikaFor(admin, email, balance, isOwner),
       avadikaTantara: isOwner ? await conversionsTantara(admin) : null,
       avadikaEnAttente: isOwner ? await conversionsEnAttente(admin) : null,
+      depotUsdt: {
+        adiresy: await adiresyDepot(admin, ownerEmail), minUsdt: USDT_DEPOT_MIN,
+        enAttente: isOwner ? await depotsUsdtEnAttente(admin) : null,
+      },
     });
+  }
+
+  // ---- Dépôt USDT : l'admin donne ses adresses (vide : le réseau se ferme) ----
+  if (action === "depot_usdt_adiresy") {
+    if (!isOwner) return json({ error: "réservé au propriétaire" }, 403);
+    const user = caller!.user!;
+    const depot: Record<string, string> = {};
+    for (const reseau of Object.keys(ADIRESY_USDT)) {
+      const a = String(body[reseau] ?? "").trim();
+      if (!a) continue;
+      if (!ADIRESY_USDT[reseau].test(a)) {
+        return json({ error: `Adiresy ${reseau} diso (${reseau === "TRC20" ? "T… 34 litera" : "0x… 42 litera"}).` }, 400);
+      }
+      depot[reseau] = a;
+    }
+    const { error } = await admin.auth.admin.updateUserById(user.id, {
+      app_metadata: { ...(user.app_metadata ?? {}), usdt_depot: depot },
+    });
+    if (error) return json({ error: error.message }, 500);
+    adiresyCache = null;
+    return json({ adiresy: depot });
+  }
+
+  // ---- Dépôt USDT : la déclaration (montant reçu + TxID) ----
+  if (action === "depot_usdt") {
+    const reseau = String(body.reseau ?? "").toUpperCase();
+    const adresse = (await adiresyDepot(admin, ownerEmail))[reseau];
+    if (!adresse) return json({ error: "Tsy misy adiresy USDT ho an'io réseau io." }, 400);
+    const tx = normTxid(reseau, body.txid);
+    if (!tx) return json({ error: "TxID diso : adikao avy ao amin'ny Binance (Historique → Retrait → TxID)." }, 400);
+    const usdt = Math.round((Number(body.usdt) || 0) * 1e6) / 1e6;
+    if (!(usdt >= USDT_DEPOT_MIN)) return json({ error: `Farafahakeliny ${USDT_DEPOT_MIN} USDT.` }, 400);
+
+    const { data: attente } = await admin.from("wallet_deposits").select("id")
+      .eq("email", email).eq("provider", "usdt").eq("status", "en_attente");
+    if ((attente ?? []).length >= USDT_DEPOT_MAX_ATTENTE) {
+      return json({ error: `Efa misy dépôt USDT ${USDT_DEPOT_MAX_ATTENTE} miandry : andraso ny admin aloha.` }, 409);
+    }
+    const taux = await rateFromAr("USDT");
+    if (!(taux > 0)) return json({ error: "Tsy azo ny taux USDT izao : andramo indray afaka kelikely." }, 503);
+    const brut = Math.floor(usdt / taux);
+    const frais = fraisDepot(brut);
+    if (!(brut - frais > 0)) return json({ error: "Kely loatra ny vola." }, 400);
+
+    const { data, error } = await admin.from("wallet_deposits").insert({
+      email, amount_ar: brut - frais, provider: "usdt", provider_ref: `${reseau}:${tx.txid}`,
+      status: "en_attente", note: `${usdt} USDT (${reseau})`,
+      raw: { reseau, txid: tx.txid, interne: tx.interne, usdt, adresse, taux, brutAr: brut, fraisAr: frais },
+    }).select("id,amount_ar,provider,provider_ref,status,note,created_at").single();
+    if (error) {
+      if (error.code === "23505") return json({ error: "Efa nampiasaina io TxID io." }, 409);
+      return json({ error: error.message }, 500);
+    }
+    if (ownerEmail) {
+      await prevenir(admin, ownerEmail,
+        `💵 Dépôt USDT miandry : ${masquer(email)} — ${usdt} USDT (${reseau}) → ${ar(brut - frais)}.`);
+    }
+    return json({ depot: data });
+  }
+
+  // ---- Dépôt USDT : l'admin accepte ou refuse ----
+  // Accepter demande que la chaîne confirme l'arrivée d'au moins la somme
+  // déclarée à l'adresse de l'admin. « force » : l'admin l'a vu lui-même
+  // (transfert interne Binance, ou réseau injoignable).
+  if (action === "depot_usdt_vahana") {
+    if (!isOwner) return json({ error: "réservé au propriétaire" }, 403);
+    const id = String(body.id ?? "");
+    const ekena = body.ekena === true;
+    const note = String(body.note ?? "").trim().slice(0, 300);
+    const { data: d } = await admin.from("wallet_deposits")
+      .select("id,email,amount_ar,provider_ref,raw,note")
+      .eq("id", id).eq("provider", "usdt").eq("status", "en_attente").maybeSingle();
+    if (!d) return json({ error: "Efa voavaha io dépôt io." }, 409);
+    const raw = (d.raw ?? {}) as Record<string, unknown>;
+    const usdt = Number(raw.usdt) || 0;
+
+    let verifie: unknown = "force";
+    if (ekena && body.force !== true) {
+      if (raw.interne) {
+        return json({ error: "Internal transfer Binance : tsy hita amin'ny réseau. Jereo ao amin'ny historique Binance-nao.", azoTerena: true }, 409);
+      }
+      const v = await verifierUsdt(String(raw.reseau), String(raw.txid), String(raw.adresse));
+      if (!v.ok) return json({ error: v.erreur, azoTerena: true }, 409);
+      // Un millième de marge : les arrondis d'affichage, pas plus.
+      if (v.usdt + 0.001 < usdt) {
+        return json({ error: `${v.usdt} USDT ihany no tonga, nefa ${usdt} USDT no nambara.`, azoTerena: true }, 409);
+      }
+      verifie = { usdt: v.usdt, le: new Date().toISOString() };
+    }
+
+    const maj = ekena
+      ? { status: "confirme", confirmed_at: new Date().toISOString(), raw: { ...raw, verifie } }
+      // Refusé : la référence se libère, le même TxID pourra être redéclaré.
+      : { status: "refuse", provider_ref: `${d.provider_ref}:refuse:${d.id}`, note: d.note + (note ? ` — ${note}` : "") };
+    const { data: fait, error } = await admin.from("wallet_deposits").update(maj)
+      .eq("id", id).eq("status", "en_attente").select("id").maybeSingle();
+    if (error) return json({ error: error.message }, 500);
+    if (!fait) return json({ error: "Efa voavaha io dépôt io." }, 409);
+    await prevenir(admin, norm(d.email), ekena
+      ? `✅ Dépôt USDT ekena : ${ar(d.amount_ar)} tafiditra ho vola tena izy ao amin'ny portefeuille-nao.`
+      : `↩️ Dépôt USDT lavina (${usdt} USDT).` + (note ? ` (${note})` : ""));
+    return json({ ok: true, enAttente: await depotsUsdtEnAttente(admin) });
   }
 
   // ---- Avadika ho vola tena izy : la demande ----

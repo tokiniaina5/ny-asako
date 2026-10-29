@@ -981,6 +981,7 @@
     renderTransferts();
     renderAffiliation();
     renderAvadika();
+    renderDepotUsdt();
     transfertCalculer();
     const dispoEl = document.getElementById('etrangerDispo');
     if(dispoEl) dispoEl.textContent = 'Vola tena izy azo ampiasaina : ' + formatWalletAr(walletState.papiAr || 0);
@@ -1481,6 +1482,190 @@
     });
   }
 
+  // ---- Dépôt USDT (Binance…) ----
+  // Envoyé à l'adresse de l'admin, puis déclaré : USDT reçus + TxID. Le
+  // serveur convertit, retient la ligne en attente, et l'admin accepte après
+  // que la chaîne a confirmé. La page montre et envoie, rien de plus.
+  let usdtTauxAr = 0;   // USDT pour 1 Ar, lu une fois (action « rate »)
+  function usdtDepotKajy(){
+    const el = document.getElementById('usdtDepotEnAr');
+    const input = document.getElementById('usdtDepotMontant');
+    if(!el || !input) return;
+    const usdt = Number(input.value) || 0;
+    if(!usdt || !usdtTauxAr){ el.textContent = ''; return; }
+    const brut = Math.floor(usdt / usdtTauxAr);
+    const pct = Number(walletState && walletState.depositFeePct) || 0;
+    const frais = pct > 0 ? Math.ceil(brut * pct / 100) : 0;
+    el.textContent = '≈ ' + formatWalletAr(brut - frais) + (frais ? ' (frais ' + formatWalletAr(frais) + ')' : '') +
+      ' — ny taux amin\'ny fotoana handefasanao no mihatra.';
+  }
+  function usdtDepotAdiresy(){
+    const sel = document.getElementById('usdtDepotReseau');
+    const el = document.getElementById('usdtDepotAdiresy');
+    const d = walletState && walletState.depotUsdt;
+    if(el) el.textContent = (d && sel && d.adiresy[sel.value]) || '—';
+  }
+  function renderDepotUsdt(){
+    const panel = document.getElementById('walletUsdtDepotPanel');
+    if(!panel || !walletState) return;
+    const d = walletState.depotUsdt;
+    // Fonction pas encore à jour : rien à proposer.
+    panel.style.display = d ? '' : 'none';
+    if(!d) return;
+    const reseaux = Object.keys(d.adiresy || {});
+    document.getElementById('usdtDepotMihidy').style.display = reseaux.length ? 'none' : '';
+    document.getElementById('usdtDepotForm').style.display = reseaux.length ? '' : 'none';
+    const sel = document.getElementById('usdtDepotReseau');
+    if(sel && sel.getAttribute('data-reseaux') !== reseaux.join(',')){
+      const avant = sel.value;
+      sel.innerHTML = reseaux.map(function(r){
+        return '<option value="' + r + '">' + (r === 'TRC20' ? 'TRC20 (Tron)' : 'BEP20 (BNB Smart Chain)') + '</option>';
+      }).join('');
+      if(reseaux.indexOf(avant) >= 0) sel.value = avant;
+      sel.setAttribute('data-reseaux', reseaux.join(','));
+    }
+    usdtDepotAdiresy();
+    const montant = document.getElementById('usdtDepotMontant');
+    if(montant) montant.min = String(d.minUsdt || 0);
+    if(reseaux.length && !usdtTauxAr){
+      callWallet({ action: 'rate', currency: 'USDT' }).then(function(r){
+        usdtTauxAr = Number(r && r.rate) || 0;
+        usdtDepotKajy();
+      }, function(){});
+    }
+    usdtDepotKajy();
+
+    const admin = document.getElementById('usdtDepotAdmin');
+    if(admin) admin.style.display = walletState.isOwner ? '' : 'none';
+    if(!walletState.isOwner) return;
+    // Ce qui est en train d'être tapé ne s'efface pas à chaque relecture.
+    [['usdtAdiresyTrc20', 'TRC20'], ['usdtAdiresyBep20', 'BEP20']].forEach(function(p){
+      const input = document.getElementById(p[0]);
+      if(input && document.activeElement !== input) input.value = (d.adiresy || {})[p[1]] || '';
+    });
+    renderDepotUsdtAdmin(d.enAttente);
+  }
+  function renderDepotUsdtAdmin(lignes){
+    const liste = document.getElementById('usdtDepotAdminLisitra');
+    if(!liste || !Array.isArray(lignes)) return;
+    liste.innerHTML = lignes.map(function(r){
+      const raw = r.raw || {};
+      const id = escapeHtml(r.id);
+      return '<div style="padding:0.45rem 0; border-top:1px solid var(--line);">' +
+        '<div><strong>' + escapeHtml(r.email) + '</strong> — ' + escapeHtml(String(raw.usdt)) + ' USDT (' + escapeHtml(String(raw.reseau || '')) + ')' +
+        ' → <strong>' + formatWalletAr(r.amount_ar) + '</strong></div>' +
+        '<div style="font-size:0.7rem; color:var(--muted); word-break:break-all;">' + new Date(r.created_at).toLocaleString('fr-FR') +
+        ' · TxID : ' + (r.explorer
+          ? '<a href="' + escapeHtml(r.explorer) + '" target="_blank" rel="noopener">' + escapeHtml(String(raw.txid)) + '</a>'
+          : escapeHtml(String(raw.txid)) + ' <span style="color:var(--amber, #e9a23b);">(Internal transfer : jereo ao amin\'ny Binance-nao)</span>') +
+        '</div>' +
+        '<div style="display:flex; gap:0.4rem; margin-top:0.3rem;">' +
+        '<button type="button" class="btn btn-primary btn-sm" style="width:auto;" data-usdt-id="' + id + '" data-usdt-ekena="1">✅ Ekena</button>' +
+        '<button type="button" class="btn btn-sm" style="width:auto;" data-usdt-id="' + id + '" data-usdt-ekena="0">↩️ Lavina</button>' +
+        '</div></div>';
+    }).join('') || '<p style="color:var(--muted); margin:0;">Tsy misy miandry.</p>';
+  }
+  const usdtReseauSel = document.getElementById('usdtDepotReseau');
+  if(usdtReseauSel) usdtReseauSel.addEventListener('change', usdtDepotAdiresy);
+  const usdtMontantInput = document.getElementById('usdtDepotMontant');
+  if(usdtMontantInput) usdtMontantInput.addEventListener('input', usdtDepotKajy);
+  const usdtAdikao = document.getElementById('usdtDepotAdikao');
+  if(usdtAdikao){
+    usdtAdikao.addEventListener('click', function(){
+      const a = (document.getElementById('usdtDepotAdiresy') || {}).textContent || '';
+      if(!a || a === '—') return;
+      const fait = function(){ usdtAdikao.textContent = '✅ Voadika'; setTimeout(function(){ usdtAdikao.textContent = '📋 Adikao'; }, 1500); };
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(a).then(fait, function(){ window.prompt('Adikao :', a); });
+      else window.prompt('Adikao :', a);
+    });
+  }
+  const usdtColler = document.getElementById('usdtDepotColler');
+  if(usdtColler){
+    usdtColler.addEventListener('click', async function(){
+      const input = document.getElementById('usdtDepotTxid');
+      try { input.value = ((await navigator.clipboard.readText()) || '').trim(); }
+      catch(e){ input.focus(); }
+    });
+  }
+  const usdtDepotBtn = document.getElementById('usdtDepotBtn');
+  if(usdtDepotBtn){
+    usdtDepotBtn.addEventListener('click', function(){
+      const statut = document.getElementById('usdtDepotStatut');
+      const d = walletState && walletState.depotUsdt;
+      const reseau = (document.getElementById('usdtDepotReseau') || {}).value || '';
+      const usdt = Number((document.getElementById('usdtDepotMontant') || {}).value) || 0;
+      const txid = ((document.getElementById('usdtDepotTxid') || {}).value || '').trim();
+      // Le serveur vérifie de toute façon ; ici, on évite un aller-retour.
+      if(!d || !reseau){ return; }
+      if(!(usdt >= (Number(d.minUsdt) || 0)) || !usdt){ statut.style.color = 'var(--red, #e5484d)'; statut.textContent = 'Farafahakeliny ' + d.minUsdt + ' USDT.'; return; }
+      if(!txid){ statut.style.color = 'var(--red, #e5484d)'; statut.textContent = 'Apetaho ny TxID.'; return; }
+      if(!window.confirm('Nalefanao tamin\'ny réseau ' + reseau + ' tokoa ve ny ' + usdt + ' USDT ?')) return;
+      usdtDepotBtn.disabled = true;
+      statut.style.color = 'var(--muted)';
+      statut.textContent = 'Alefa…';
+      callWallet({ action: 'depot_usdt', reseau: reseau, usdt: usdt, txid: txid }).then(function(res){
+        usdtDepotBtn.disabled = false;
+        statut.style.color = 'var(--green, #2bb673)';
+        statut.textContent = '✅ Voaray : ' + formatWalletAr(res && res.depot && res.depot.amount_ar) + ' miandry ny fanamarinan\'ny admin.';
+        document.getElementById('usdtDepotMontant').value = '';
+        document.getElementById('usdtDepotTxid').value = '';
+        refreshWalletFromServer();
+      }, function(err){
+        usdtDepotBtn.disabled = false;
+        statut.style.color = 'var(--red, #e5484d)';
+        statut.textContent = '❌ ' + ((err && err.message) || 'Tsy nety.');
+      });
+    });
+  }
+  const usdtAdiresySave = document.getElementById('usdtAdiresySave');
+  if(usdtAdiresySave){
+    usdtAdiresySave.addEventListener('click', function(){
+      const statut = document.getElementById('usdtAdiresyStatut');
+      usdtAdiresySave.disabled = true;
+      statut.style.color = 'var(--muted)';
+      statut.textContent = 'Tehirizina…';
+      callWallet({
+        action: 'depot_usdt_adiresy',
+        TRC20: document.getElementById('usdtAdiresyTrc20').value.trim(),
+        BEP20: document.getElementById('usdtAdiresyBep20').value.trim()
+      }).then(function(){
+        usdtAdiresySave.disabled = false;
+        statut.style.color = 'var(--green, #2bb673)';
+        statut.textContent = '✅ Voatahiry.';
+        refreshWalletFromServer();
+      }, function(err){
+        usdtAdiresySave.disabled = false;
+        statut.style.color = 'var(--red, #e5484d)';
+        statut.textContent = '❌ ' + ((err && err.message) || 'Tsy nety.');
+      });
+    });
+  }
+  // Ekena : le serveur demande à la chaîne. S'il ne peut pas confirmer
+  // (transfert interne, réseau lent), l'admin peut passer outre, en sachant.
+  const usdtAdminListe = document.getElementById('usdtDepotAdminLisitra');
+  if(usdtAdminListe){
+    usdtAdminListe.addEventListener('click', function(ev){
+      const btn = ev.target.closest('[data-usdt-id]');
+      if(!btn) return;
+      const id = btn.getAttribute('data-usdt-id');
+      const ekena = btn.getAttribute('data-usdt-ekena') === '1';
+      const note = ekena ? '' : (window.prompt('Antony (tsy voatery) :', '') || '');
+      const vahana = function(force){
+        btn.disabled = true;
+        return callWallet({ action: 'depot_usdt_vahana', id: id, ekena: ekena, force: force, note: note })
+          .then(function(){ refreshWalletFromServer(); }, function(err){
+            btn.disabled = false;
+            const msg = (err && err.message) || 'Tsy nety.';
+            if(ekena && !force && window.confirm(msg + '\n\nEfa hitanao tokoa ve ao amin\'ny Binance-nao fa tonga ilay vola ? « OK » : ekena ihany.')){
+              return vahana(true);
+            }
+            if(!ekena || force) window.alert(msg);
+          });
+      };
+      vahana(false);
+    });
+  }
+
   // ---- Les achats du fil, payés avec le portefeuille ----
   // Comme acheteur : la somme est tenue, et « Voaraiko » la fait passer au
   // vendeur. Comme vendeur (ou propriétaire, pour un litige) : « Averina »
@@ -1663,7 +1848,8 @@
   };
   const DEPOT_CANAUX = {
     mvola: 'MVola', orange: 'Orange Money', airtel: 'Airtel Money',
-    paypal: 'Ancien dépôt (moyen retiré)', papi: 'Mobile Money (Papi)', essai: 'Essai', visiteur: 'Personne nouvelle sur le site'
+    paypal: 'Ancien dépôt (moyen retiré)', papi: 'Mobile Money (Papi)', essai: 'Essai', visiteur: 'Personne nouvelle sur le site',
+    usdt: 'USDT (crypto)'
   };
 
   function renderDepositList(){
