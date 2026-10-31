@@ -20,7 +20,7 @@
 <script src="/mazava.js?v=2bcdcfad" defer></script>
 <!-- 🔄 La page se met à jour seule quand une version neuve est en ligne (pejy-version.js) ;
      l'empreinte est écrite par outils/versionner.mjs. -->
-<meta name="pejy-version" content="fbe82b32">
+<meta name="pejy-version" content="f537171f">
 <script src="/pejy-version.js?v=97acc3b0" defer></script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -91,6 +91,10 @@
   @media (prefers-reduced-motion: reduce){ .mipipika{ animation:none; outline:2px solid var(--vaovao); } }
   .livreur-ouvrir.mipipika{ border-color:var(--vaovao); color:var(--vaovao); }
   .robot-marika{ margin-left:auto; padding:0.25rem 0.6rem; border-radius:999px; background:rgba(255,176,32,0.15); color:var(--vaovao); font-size:0.78rem; font-weight:700; white-space:nowrap; }
+  .livreur.robot.misy-rohy{ opacity:1; border-style:solid; }
+  .livreur-nom small.robot-rohy{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; user-select:all; }
+  .robot-adika{ border:1px solid var(--vaovao); cursor:pointer; font-family:inherit; }
+  .robot-adika:disabled{ opacity:0.45; cursor:not-allowed; }
   .robot-code{ display:flex; flex-direction:column; gap:0.3rem; font-size:0.85rem; color:var(--muted); font-weight:600; }
   .robot-code input{ font:inherit; font-size:1rem; font-weight:400; color:var(--text); background:var(--card); border:1px solid var(--line); border-radius:10px; padding:0.6rem 0.75rem; }
   .robot-code input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
@@ -105,9 +109,9 @@
 </style>
 <!-- Les émojis dessinés en 3D (emoji-3d.js). -->
 <!-- Les explications en visite guidée (fanazavana.js). -->
-<script src="/gestion-stockage-js/fanazavana.js?v=adfa06d4" defer></script>
+<script src="/gestion-stockage-js/fanazavana.js?v=b62223f3" defer></script>
 <script src="/gestion-stockage-js/emoji-3d.js?v=66dad412" defer></script>
-<script src="/gestion-stockage-js/teny.js?v=c290601b" defer></script>
+<script src="/gestion-stockage-js/teny.js?v=dfc183d0" defer></script>
 </head>
 <body>
 <main>
@@ -258,6 +262,12 @@
       }
       connues = ids;
       direRecues();
+      // Renvoyé depuis robot.html (« Avereno ny robot ») : le serveur n'a plus de
+      // trajet pour ce bon. Les 20 premières secondes, il peut ne pas encore
+      // avoir noté le départ : on ne conclut rien.
+      const d = diaRobot();
+      const cd = d && commandes.find(function (c) { return c.id === d.commande; });
+      if (cd && !cd.robot && !d.akaiky_at && Date.now() - new Date(d.at).getTime() > 20000) robotAkaiky();
       etat.textContent = '🟢 ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       dessiner();
     }).catch(function (e) {
@@ -515,6 +525,19 @@
       ampio.title = rohyMety(retenuLire('robot_rohy') || '') ? '' : "Tsy misy rohy an'ny robot : mipipika fotsiny izy.";
     }
     majBouton();
+    // Copie de secours (page sans HTTPS, ancien navigateur).
+    function adikaTaloha(t) {
+      const ta = el('textarea');
+      ta.value = t;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { }
+      ta.remove();
+      return ok;
+    }
     function tehirizo() {
       let v = champ.value.trim();
       if (v && !/^https?:\/\//i.test(v)) v = 'https://' + v;
@@ -580,14 +603,33 @@
     const robotNom = el('span', null, 'livreur-nom');
     robotNom.appendChild(el('strong', 'Livreur robot'));
     const sisaRobot = segondraSisa(dia);
-    const robotSoratra = el('small', !dia ? 'Mbola amboarina — ho avy tsy ho ela'
+    const robotSoratra = el('small', !dia ? ''
       : sisaRobot !== null ? '📍 Efa akaiky ny lakozia ny robot : mijanona afaka ' + sisaRobot + ' s'
       : (robotMiverina(dia.commande) ? '↩️ Voaray ny sakafo tao amin\'ny T' + dia.latabatra + ' : miverina ny robot…'
         : '🍽️ Mitondra ny sakafo any amin\'ny T' + dia.latabatra + ', dia miverina…'));
     robotSoratra.id = 'robotSoratra';
     robotNom.appendChild(robotSoratra);
     robot.appendChild(robotNom);
-    robot.appendChild(el('span', dia ? '🤖 Mandeha' : '🔧 Mbola amboarina', 'robot-marika'));
+    // Au repos : le lien « Avereno ny robot » (robot.html, une page à part, à
+    // un bouton, qui le renvoie en cuisine depuis n'importe quel téléphone).
+    if (dia) robot.appendChild(el('span', '🤖 Mandeha', 'robot-marika'));
+    else {
+      const rohyAverina = id && code ? location.origin + '/robot.html?id=' + encodeURIComponent(id) +
+        '&k=' + encodeURIComponent(code) : '';
+      robotSoratra.classList.add('robot-rohy');
+      robotSoratra.textContent = rohyAverina ? '↩️ ' + rohyAverina : "Tsy feno ny rohy an'ny lakozia";
+      robot.classList.toggle('misy-rohy', !!rohyAverina);
+      const adika = el('button', '📋 Adikao', 'robot-marika robot-adika');
+      adika.type = 'button';
+      adika.disabled = !rohyAverina;
+      adika.title = "Ny rohy misy ny bokotra « Avereno ny robot »";
+      adika.addEventListener('click', function () {
+        const vita = function () { adika.textContent = '✅ Voadika'; setTimeout(function () { adika.textContent = '📋 Adikao'; }, 1500); };
+        if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(rohyAverina).then(vita, function () { adikaTaloha(rohyAverina) && vita(); });
+        else if (adikaTaloha(rohyAverina)) vita();
+      });
+      robot.appendChild(adika);
+    }
     boite.appendChild(robot);
     fond.appendChild(boite);
     document.body.appendChild(fond);

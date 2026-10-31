@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="mg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Avereno ny robot</title>
+<!-- ↩️ Le lien « Avereno ny robot », copié depuis la carte du livreur robot
+     (lakozia.html, 🛵 Livreur) : « robot.html?id=<hôtel>&k=<code> ». Une page
+     à part, sans rien de la cuisine : un bouton qui renvoie le robot, depuis
+     n'importe quel téléphone. Elle efface le trajet au serveur
+     (hotelerie_lakozia_robot, sata null) ; la tablette le voit et le clôt.
+     Elle ne retient rien et ne sonne pas. -->
+<meta name="theme-color" content="#0f171b">
+<link rel="icon" href="/icone-192.png">
+<style>
+  :root{ --bg:#0f171b; --card:#16222a; --text:#e6eef0; --muted:#8fa3aa; --line:#25343b; --ok:#1e9e5a; --diso:#e05a5a; }
+  @media (prefers-color-scheme: light){ :root{ --bg:#f6f8f9; --card:#fff; --text:#1d2a30; --muted:#64757d; --line:#dbe3e6; --ok:#1e8f52; } }
+  *{ box-sizing:border-box; }
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px; background:var(--bg); color:var(--text); font:16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main{ width:min(440px, 100%); display:flex; flex-direction:column; align-items:center; gap:1rem; padding:2rem 1.25rem; background:var(--card); border:1px solid var(--line); border-radius:20px; text-align:center; }
+  .ikona{ font-size:4rem; line-height:1; }
+  h1{ margin:0; font-size:1.5rem; }
+  #sata{ margin:0; color:var(--muted); font-size:1.05rem; min-height:3em; }
+  #sata.diso{ color:var(--diso); }
+  #averina{ width:100%; min-height:4.5rem; border:0; border-radius:16px; background:var(--ok); color:#fff; font:inherit; font-size:1.35rem; font-weight:700; cursor:pointer; }
+  #averina:disabled{ opacity:0.4; cursor:not-allowed; }
+</style>
+</head>
+<body>
+<main>
+  <div class="ikona" aria-hidden="true">🤖</div>
+  <h1>Livreur robot</h1>
+  <p id="sata">Mijery…</p>
+  <button type="button" id="averina" disabled>↩️ Avereno ny robot</button>
+</main>
+<script>
+(function () {
+  const URL_SB = 'https://ezpsapvthujkhttbfhlr.supabase.co';
+  const CLE_SB = 'sb_publishable_7YAttwKbsmxJUxn9IwR86g_9_h4ZThk';
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id') || '', code = params.get('k') || '';
+  const sata = document.getElementById('sata');
+  const bokotra = document.getElementById('averina');
+  let dia = null;
+  function soraty(t, diso) { sata.textContent = t; sata.classList.toggle('diso', !!diso); }
+  function rpc(nom, corps) {
+    return fetch(URL_SB + '/rest/v1/rpc/' + nom, {
+      method: 'POST',
+      headers: { apikey: CLE_SB, Authorization: 'Bearer ' + CLE_SB, 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ hotel: id, code: code }, corps)), cache: 'no-store'
+    }).then(function (r) {
+      if (r.status === 400 || r.status === 401 || r.status === 403) throw new Error('diso');
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json().catch(function () { return null; });
+    });
+  }
+  // Le robot en route : la commande dont le serveur garde un trajet.
+  function jereo() {
+    rpc('hotelerie_lakozia_lisitra', {}).then(function (l) {
+      dia = (Array.isArray(l) ? l : []).find(function (c) { return c.robot === 'mandeha' || c.robot === 'miverina'; }) || null;
+      bokotra.disabled = !dia;
+      soraty(!dia ? 'Tsy mandeha ny robot izao : any an-dakozia izy.'
+        : dia.robot === 'miverina' ? "↩️ Miverina avy amin'ny T" + dia.latabatra + ' ny robot…'
+        : "🍽️ Mitondra ny sakafo any amin'ny T" + dia.latabatra + ' ny robot.');
+    }).catch(function (e) {
+      bokotra.disabled = true;
+      soraty(e.message === 'diso' ? "Tsy mety intsony ity rohy ity : adikao indray avy ao amin'ny lakozia." : '🔴 Tsy misy connexion — miandry...', true);
+    });
+  }
+  bokotra.addEventListener('click', function () {
+    if (!dia) return;
+    bokotra.disabled = true;
+    rpc('hotelerie_lakozia_robot', { commande: dia.id, sata: null }).then(function () {
+      dia = null;
+      soraty('✅ Nalefa : miverina any an-dakozia ny robot.');
+    }).catch(function () {
+      bokotra.disabled = false;
+      soraty('🔴 Tsy lasa : jereo ny connexion, dia avereno.', true);
+    });
+  });
+  if (!/^[0-9a-f-]{36}$/i.test(id) || !code) { soraty("Tsy feno ny rohy : adikao indray avy ao amin'ny lakozia.", true); return; }
+  jereo();
+  setInterval(function () { if (!document.hidden) jereo(); }, 5000);
+})();
+</script>
+</body>
+</html>
