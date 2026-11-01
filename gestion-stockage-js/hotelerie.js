@@ -47,7 +47,13 @@
       return false;
     }
     synchroniser();
+    versDisque();
     return true;
+  }
+  // La copie sur l'ordinateur (disque.js, ⚙️ Paramètres › 💽 Disque) : sans
+  // compte, ce menu-ci est le seul registre de l'hôtel.
+  function versDisque() {
+    if (!SUFFIXE && window.__disque) window.__disque.planifier('hotelerie_menu');
   }
   // Les plats effacés d'ici : on s'en souvient, pour qu'une autre copie du
   // menu (un autre appareil) ne les fasse pas revenir.
@@ -79,6 +85,7 @@
     t.maj = Date.now();
     try { localStorage.setItem(CLE_TETE, JSON.stringify(t)); } catch (e) { }
     synchroniser();
+    versDisque();
   }
   function nomHotel() { return (teteLire().anarana || '').trim() || NOM_DEFAUT; }
   // L'entrée du menu (et ses copies dans la rangée ou sur le fond) porte le

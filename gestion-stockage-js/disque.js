@@ -1,10 +1,17 @@
-// Disque : une copie des registres du Fokontany sur l'ordinateur.
+// Disque : une copie des registres du Fokontany et de l'hôtel sur l'ordinateur.
 //
-// On choisit un dossier une fois (⚙️ Fikirana). Ensuite, chaque
-// enregistrement, correction ou suppression dans Supabase (livre de famille,
-// ses membres, taratasy, adidy, fandoavana) réécrit le registre entier dans ce
-// dossier : <table>.json pour garder, <table>.csv pour Excel. Le fichier suit
-// donc toujours la base, sans rien à recoller.
+// On choisit un dossier une fois (⚙️ Fikirana du Fokontany, ⚙️ Paramètres de
+// Ny asako). Ensuite, chaque enregistrement, correction ou suppression dans
+// Supabase (livre de famille, ses membres, taratasy, adidy, fandoavana ; menu
+// et commandes de l'hôtel) réécrit le registre entier dans ce dossier :
+// <table>.json pour garder, <table>.csv pour Excel. Le fichier suit donc
+// toujours la base, sans rien à recoller.
+//
+// Le bloc #fkDisque dit ce qu'il garde par data-disque (« fokontany »,
+// « hotel », ou les deux). Les commandes arrivent aussi des clients, sans
+// écriture d'ici : leur relecture (toutes les 30 s, hotelerie.js) réécrit le
+// fichier quand quelque chose a changé. Le menu d'un compte non connecté ne
+// vit que dans le navigateur : c'est lui qui s'écrit alors.
 //
 // Le dossier passe par l'API File System Access (Chrome, Edge). Son accès est
 // gardé dans IndexedDB ; après un rechargement, le navigateur redemande la
@@ -16,14 +23,29 @@
 
   function $(id) { return document.getElementById(id); }
 
-  var TABLES = ['fianakaviana', 'fianakaviana_mpikambana', 'taratasy', 'adidy', 'adidy_fandoavana'];
+  // Chaque registre, et la colonne qui le lie au compte : l'email pour le
+  // Fokontany, l'identifiant pour l'hôtel.
+  var GROUPES = {
+    fokontany: ['fianakaviana', 'fianakaviana_mpikambana', 'taratasy', 'adidy', 'adidy_fandoavana'],
+    hotel: ['hotelerie_menu', 'hotelerie_commande']
+  };
+  var COLONNE = { hotelerie_menu: 'user_id', hotelerie_commande: 'hotel_id' };
   var ANARANA = {
     fianakaviana: 'Boky fianakaviana',
     fianakaviana_mpikambana: 'Mpikambana',
     taratasy: 'Taratasy',
     adidy: 'Adidy',
-    adidy_fandoavana: 'Fandoavana adidy'
+    adidy_fandoavana: 'Fandoavana adidy',
+    hotelerie_menu: 'Menu sakafo',
+    hotelerie_commande: 'Commandes'
   };
+  var groupes = ($('fkDisque').getAttribute('data-disque') || 'fokontany').split(/\s+/);
+  var TABLES = [];
+  groupes.forEach(function (g) { TABLES = TABLES.concat(GROUPES[g] || []); });
+  // Le dossier gardé, et son nom pour le sélecteur : celui du Fokontany garde
+  // le sien d'avant.
+  var CLE_DOSSIER = groupes.join('-');
+  var dernier = {};         // le dernier JSON écrit par registre : rien ne change, rien ne s'écrit
   var CLE_TELECHARGER = 'stockmanager_disque_telecharger';
   var aFichiers = typeof window.showDirectoryPicker === 'function';
   var dossier = null;       // FileSystemDirectoryHandle
@@ -33,6 +55,15 @@
   function monEmail() {
     var u = (typeof currentUser !== 'undefined') ? currentUser : null;
     return (u && u.email) ? String(u.email).trim().toLowerCase() : '';
+  }
+  // L'email et l'identifiant du compte connecté, d'après la session.
+  function moi() {
+    var sb = window.__sb;
+    if (!sb) return Promise.resolve({ email: monEmail(), id: '' });
+    return sb.auth.getSession().then(function (r) {
+      var u = r && r.data && r.data.session && r.data.session.user;
+      return { email: monEmail() || (u && u.email ? String(u.email).trim().toLowerCase() : ''), id: u ? u.id : '' };
+    }, function () { return { email: monEmail(), id: '' }; });
   }
   function dire(texte, erreur, montrer) {
     var st = $('fkDisqueStatus');
@@ -76,8 +107,8 @@
     return base().then(function (db) {
       return new Promise(function (ok) {
         var tx = db.transaction('dossier', 'readwrite');
-        if (valeur) tx.objectStore('dossier').put(valeur, 'fokontany');
-        else tx.objectStore('dossier').delete('fokontany');
+        if (valeur) tx.objectStore('dossier').put(valeur, CLE_DOSSIER);
+        else tx.objectStore('dossier').delete(CLE_DOSSIER);
         tx.oncomplete = function () { ok(); };
         tx.onerror = function () { ok(); };
       });
@@ -86,7 +117,7 @@
   function relire() {
     return base().then(function (db) {
       return new Promise(function (ok) {
-        var r = db.transaction('dossier').objectStore('dossier').get('fokontany');
+        var r = db.transaction('dossier').objectStore('dossier').get(CLE_DOSSIER);
         r.onsuccess = function () { ok(r.result || null); };
         r.onerror = function () { ok(null); };
       });
@@ -119,12 +150,34 @@
       return cols.map(function (c) { return cell(l[c]); }).join(';');
     })).join('\r\n');
   }
+  // Le menu tel que ce navigateur le garde (hotelerie.js) : seul registre
+  // d'un compte non connecté.
+  function menuLocal() {
+    function lu(cle, defaut) {
+      try { return JSON.parse(localStorage.getItem(cle)) || defaut; } catch (e) { return defaut; }
+    }
+    var cle = 'stockmanager_hotelerie_sakafo';
+    var plats = lu(cle, []);
+    if (!plats.length) return [];
+    return [{ plats: plats, voafafa: lu(cle + '_fafana', []), tete: lu(cle + '_tete', {}) }];
+  }
   function lireTable(table) {
-    var sb = window.__sb, email = monEmail();
-    if (!sb || !email) return Promise.reject(new Error('tsy tafiditra'));
-    return sb.from(table).select('*').eq('owner_email', email).then(function (r) {
-      if (r.error) throw r.error;
-      return r.data || [];
+    var sb = window.__sb;
+    return moi().then(function (c) {
+      var col = COLONNE[table] || 'owner_email';
+      var val = COLONNE[table] ? c.id : c.email;
+      if (!sb || !val) {
+        if (table === 'hotelerie_menu') return menuLocal();
+        throw new Error('tsy tafiditra');
+      }
+      // Le from d'origine : relire n'est pas une écriture à suivre.
+      var q = (sb.__fromDisque || sb.from).call(sb, table).select('*').eq(col, val);
+      if (table === 'hotelerie_commande') q = q.order('created_at', { ascending: false });
+      return q.then(function (r) {
+        if (r.error) throw r.error;
+        var l = r.data || [];
+        return (!l.length && table === 'hotelerie_menu') ? menuLocal() : l;
+      });
     });
   }
   function ecrireFichier(nom, contenu) {
@@ -146,9 +199,15 @@
     try { return localStorage.getItem(CLE_TELECHARGER) === '1'; } catch (e) { return false; }
   }
 
-  function sauver(table, versDossier) {
+  // vide === false laisse de côté un registre vide (« Tehirizo daholo » : un
+  // hôtel n'a pas à recevoir les fichiers vides du Fokontany, ni l'inverse).
+  // siChange : rien ne s'écrit si le registre est celui déjà écrit (-1).
+  function sauver(table, versDossier, vide, siChange) {
     return lireTable(table).then(function (lignes) {
       var json = JSON.stringify(lignes, null, 2);
+      if (vide === false && !lignes.length) return 0;
+      if (siChange && dernier[table] === json) return -1;
+      dernier[table] = json;
       var csv = enCsv(lignes);
       if (versDossier) {
         return ecrireFichier(table + '.json', json).then(function () {
@@ -162,25 +221,31 @@
 
   // Après un enregistrement : on attend que les écritures groupées soient
   // passées, puis on réécrit le registre.
-  function planifier(table) {
-    if (!dossier && !telechargerActif()) return;
+  // discret : une relecture (les commandes) et non un enregistrement d'ici.
+  // Elle ne va qu'au dossier, sans bulle, et seulement si le registre a changé.
+  function planifier(table, discret) {
+    if (TABLES.indexOf(table) < 0) return;
+    if (discret ? !dossier : (!dossier && !telechargerActif())) return;
     clearTimeout(attente[table]);
     attente[table] = setTimeout(function () {
       var versDossier = !!dossier;
       (versDossier ? permis(false) : Promise.resolve(true)).then(function (ok) {
         if (!ok) {
-          dire('Tsy voasoratra tao amin\'ny disque : tsindrio « 💾 Tehirizo daholo » ao amin\'ny ⚙️ hamela azy indray.', true, true);
+          if (!discret) dire('Tsy voasoratra tao amin\'ny disque : tsindrio « 💾 Tehirizo daholo » ao amin\'ny ⚙️ hamela azy indray.', true, true);
           return;
         }
-        return sauver(table, versDossier).then(function (n) {
+        return sauver(table, versDossier, true, discret).then(function (n) {
+          if (n < 0) return;
           dire('✓ ' + ANARANA[table] + ' voasoratra tao amin\'ny ' +
-            (versDossier ? 'dossier « ' + dossier.name + ' »' : 'Téléchargements') + ' (' + n + ')', false, true);
+            (versDossier ? 'dossier « ' + dossier.name + ' »' : 'Téléchargements') + ' (' + n + ')', false, !discret);
         });
       }).catch(function (e) {
-        dire('Tsy voasoratra tao amin\'ny disque : ' + ((e && e.message) || e), true, true);
+        dire('Tsy voasoratra tao amin\'ny disque : ' + ((e && e.message) || e), true, !discret);
       });
     }, 900);
   }
+  // hotelerie.js l'appelle quand le menu change dans ce navigateur.
+  window.__disque = { planifier: planifier };
 
   // ---------- Chaque écriture dans Supabase ----------
   // from(table).insert/update/upsert/delete rend un constructeur dont les
@@ -189,9 +254,25 @@
     if (!sb || sb.__disque) return;
     sb.__disque = true;
     var from = sb.from.bind(sb);
+    sb.__fromDisque = from;
     sb.from = function (table) {
       var q = from(table);
       if (TABLES.indexOf(table) < 0) return q;
+      // Les commandes : chaque relecture réussie peut en apporter de nouvelles.
+      if (table === 'hotelerie_commande' && typeof q.select === 'function') {
+        var sel = q.select;
+        q.select = function () {
+          var b = sel.apply(q, arguments);
+          var then = b.then;
+          b.then = function (ok, ko) {
+            return then.call(this, function (res) {
+              if (res && !res.error) planifier(table, true);
+              return ok ? ok(res) : res;
+            }, ko);
+          };
+          return b;
+        };
+      }
       ['insert', 'update', 'upsert', 'delete'].forEach(function (m) {
         if (typeof q[m] !== 'function') return;
         var orig = q[m];
@@ -234,7 +315,7 @@
   }
 
   $('fkDisqueChoisir').addEventListener('click', function () {
-    window.showDirectoryPicker({ id: 'fokontany', mode: 'readwrite' }).then(function (h) {
+    window.showDirectoryPicker({ id: CLE_DOSSIER, mode: 'readwrite' }).then(function (h) {
       dossier = h;
       return garder(h);
     }).then(function () {
@@ -254,7 +335,12 @@
       dire('Manoratra…');
       var total = 0;
       return TABLES.reduce(function (p, t) {
-        return p.then(function () { return sauver(t, versDossier).then(function (n) { total += n; }); });
+        return p.then(function () {
+          return sauver(t, versDossier, false).then(function (n) { total += n; }, function (e) {
+            // Sans compte, le menu s'écrit quand même ; le reste attend la connexion.
+            if (!(e && e.message === 'tsy tafiditra')) throw e;
+          });
+        });
       }, Promise.resolve()).then(function () {
         dire('✓ Voasoratra daholo tao amin\'ny ' +
           (versDossier ? 'dossier « ' + dossier.name + ' »' : 'Téléchargements') + ' (' + total + ' andalana)', false, true);
@@ -295,7 +381,7 @@
     if (!aFichiers || refuse || !monEmail()) return;
     // Pas encore de dossier : le premier « Tehirizo » le fait choisir. Le
     // registre entier s'y écrit dès qu'il est choisi, cet enregistrement compris.
-    window.showDirectoryPicker({ id: 'fokontany', mode: 'readwrite' }).then(function (h) {
+    window.showDirectoryPicker({ id: CLE_DOSSIER, mode: 'readwrite' }).then(function (h) {
       dossier = h;
       return garder(h);
     }).then(function () {

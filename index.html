@@ -16,7 +16,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- La version du site entier, écrite par outils/versionner.mjs : la veille de
      version (common.js) la compare à celle du serveur. -->
-<meta name="ny-asako-version" content="ee360b7e">
+<meta name="ny-asako-version" content="2e915529">
 <title>Ny asako</title>
 <!-- Ce que Google montre sous le titre, et ce qu'un lien partagé affiche
      (Facebook, WhatsApp). Sans description, Google prenait le premier texte
@@ -195,8 +195,8 @@
 <link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/demarrage/2732x2048.png">
 <!-- fin des écrans de démarrage iOS -->
 <link rel="icon" href="/icone-192.png" type="image/png">
-<link rel="stylesheet" href="gestion-stockage-css/base.css?v=5956f723">
-<link rel="stylesheet" href="gestion-stockage-css/components.css?v=d53a4cc5">
+<link rel="stylesheet" href="gestion-stockage-css/base.css?v=21ef0630">
+<link rel="stylesheet" href="gestion-stockage-css/components.css?v=4a110e9a">
 <!-- Les émojis dessinés en 3D (emoji-3d.js). -->
 <script src="gestion-stockage-js/emoji-3d.js?v=66dad412" defer></script>
 </head>
@@ -4001,6 +4001,26 @@
           <span id="profileSaveStatus" style="font-size:0.78rem; color:var(--muted); margin-left:0.6rem;"></span>
         </div>
 
+        <!-- Une copie de l'hôtel (menu, commandes) et des registres du
+             Fokontany sur l'ordinateur, réécrite à chaque enregistrement
+             (disque.js). -->
+        <div class="panel" id="fkDisque" data-disque="hotel fokontany">
+          <h3>💽 Disque (ordinateur)</h3>
+          <p style="font-size:0.78rem; color:var(--muted); margin:0 0 0.6rem; line-height:1.5;">
+            Hôtel (menu sakafo, commandes) sy Fokontany (boky fianakaviana, taratasy, adidy) : voasoratra ao anaty dossier eto amin'ny ordinateur isaky ny Tehirizo (.json sy .csv ho an'ny Excel).
+          </p>
+          <p id="fkDisqueNom" style="font-size:0.74rem; color:var(--muted); margin:0 0 0.5rem; line-height:1.4; word-break:break-all;"></p>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-sm" id="fkDisqueChoisir" style="flex:1;">📁 Misafidy dossier</button>
+            <button type="button" class="btn btn-sm" id="fkDisqueTout" style="flex:1; display:none;">💾 Tehirizo daholo</button>
+            <button type="button" class="btn btn-sm" id="fkDisqueEsory" style="width:auto; display:none;" aria-label="Esory ny dossier">✕</button>
+          </div>
+          <label style="display:none; font-size:0.74rem; margin-top:0.5rem; gap:0.4rem; align-items:center;">
+            <input type="checkbox" id="fkDisqueAuto"> Alaina isaky ny Tehirizo
+          </label>
+          <p id="fkDisqueStatus" style="font-size:0.72rem; color:var(--muted); margin:0.5rem 0 0; min-height:1em; line-height:1.4;"></p>
+        </div>
+
         <!-- Le compte s'efface lui-même, sans passer par un email : fonction
              fafao-kaonty (common.js). Caché pour le propriétaire et sans compte. -->
         <div class="panel" id="fafaoKaontyPanel" style="display:none; border-color:rgba(224,90,90,0.45);">
@@ -4042,45 +4062,46 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" crossorigin="anonymous"></script>
-<script src="gestion-stockage-js/common.js?v=0d83706a"></script>
+<script src="gestion-stockage-js/common.js?v=6f363d91"></script>
 <script src="gestion-stockage-js/herinaratra.js?v=cb17f293"></script>
-<script src="gestion-stockage-js/stock.js?v=d33d19a7"></script>
+<script src="gestion-stockage-js/stock.js?v=db26bec6"></script>
 <script src="gestion-stockage-js/ventes-achats.js?v=4705c180"></script>
 <script src="gestion-stockage-js/comptes.js?v=92ad47d0"></script>
 <script src="gestion-stockage-js/factures.js?v=69af0cd7"></script>
 <script src="gestion-stockage-js/factures-modely.js?v=8fbf4a42"></script>
-<script src="gestion-stockage-js/inviter.js?v=a03765ba"></script>
-<script src="gestion-stockage-js/parrain-botika.js?v=167f43a7"></script>
-<script src="gestion-stockage-js/contact.js?v=2cc9de65"></script>
+<script src="gestion-stockage-js/inviter.js?v=d20b760c"></script>
+<script src="gestion-stockage-js/parrain-botika.js?v=e83f22d0"></script>
+<script src="gestion-stockage-js/contact.js?v=34f24504"></script>
 <script src="gestion-stockage-js/zara-rehetra.js?v=9b9c2469"></script>
-<script src="gestion-stockage-js/live.js?v=2d14b1e9"></script>
+<script src="gestion-stockage-js/live.js?v=d45f3d14"></script>
 <script src="gestion-stockage-js/traduction.js?v=8f5605bc"></script>
-<script src="gestion-stockage-js/teny.js?v=c290601b"></script>
-<script src="gestion-stockage-js/parametres.js?v=df2b26fb"></script>
+<script src="gestion-stockage-js/teny.js?v=547e290d"></script>
+<script src="gestion-stockage-js/parametres.js?v=4eb90625"></script>
 <!-- Le partage reçu du dehors remplit la boîte « Écrire », que parametres.js
      tient : il se charge après elle. -->
 <script src="gestion-stockage-js/zara-miditra.js?v=4d5d0264"></script>
-<script src="gestion-stockage-js/identite.js?v=215c3762"></script>
+<script src="gestion-stockage-js/identite.js?v=6401f337"></script>
 <script src="gestion-stockage-js/fond.js?v=66e9ffc6"></script>
 <script src="gestion-stockage-js/carte-libre.js?v=da42db8a"></script>
 <script src="gestion-stockage-js/equipe.js?v=20f545e9"></script>
 <script src="gestion-stockage-js/vue-mpiasa.js?v=cbc8d51d"></script>
 <script src="gestion-stockage-js/vue-suivi.js?v=978e31e5"></script>
-<script src="gestion-stockage-js/hotelerie.js?v=a7b593d1"></script>
+<script src="gestion-stockage-js/disque.js?v=4eeba170"></script>
+<script src="gestion-stockage-js/hotelerie.js?v=24066a00"></script>
 <script src="gestion-stockage-js/fitaovana.js?v=bf90a8a5"></script>
 <script src="gestion-stockage-js/photocopie.js?v=be4f35a5"></script>
 <script src="gestion-stockage-js/pdf.js?v=b7c1f056"></script>
 <script src="gestion-stockage-js/projecteur.js?v=3d7ad52d"></script>
 <script src="gestion-stockage-js/commun-alalana.js?v=c3a8e119"></script>
 <!-- Les explications deviennent des fiches « 💡 Fanazavana » qu'un ✕ referme. -->
-<script src="gestion-stockage-js/fanazavana.js?v=adfa06d4"></script>
+<script src="gestion-stockage-js/fanazavana.js?v=6f58e8a3"></script>
 <script src="gestion-stockage-js/taratasy.js?v=7688b0e0"></script>
 <script src="gestion-stockage-js/fianakaviana.js?v=2d087da0"></script>
 <script src="gestion-stockage-js/validation-install.js?v=322302c3"></script>
 <script src="gestion-stockage-js/adidy.js?v=0f6b4f4c"></script>
 <script src="gestion-stockage-js/theme.js?v=096262fd"></script>
 <script src="gestion-stockage-js/mot-de-passe.js?v=fa311136"></script>
-<script src="gestion-stockage-js/securite.js?v=e38535e6"></script>
+<script src="gestion-stockage-js/securite.js?v=60c25fab"></script>
 
 
 
